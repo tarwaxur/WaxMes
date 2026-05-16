@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, nativeImage, Notification, Tray, Menu, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeImage, Notification, Tray, Menu, safeStorage, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
@@ -28,6 +29,10 @@ const iconCandidates = [
   path.join(__dirname, 'assets', 'app.png'),
   path.join(__dirname, 'assets', 'icon.png'),
   path.join(__dirname, 'assets', 'icon.ico'),
+  path.join(process.resourcesPath || __dirname, 'assets', 'app.ico'),
+  path.join(process.resourcesPath || __dirname, 'assets', 'app.png'),
+  path.join(process.resourcesPath || __dirname, 'assets', 'icon.png'),
+  path.join(process.resourcesPath || __dirname, 'assets', 'icon.ico'),
 ];
 const appIconPath = iconCandidates.find(c => fs.existsSync(c));
 const appIcon = appIconPath ? nativeImage.createFromPath(appIconPath) : undefined;
@@ -62,9 +67,25 @@ function createWindow() {
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, cb) => {
     cb({ responseHeaders: {
       ...details.responseHeaders,
-      'Content-Security-Policy': ["default-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app 'unsafe-inline' 'unsafe-eval' blob: data: mediastream:"]
+      'Content-Security-Policy': ["default-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app https://www.gstatic.com 'unsafe-inline' 'unsafe-eval' blob: data: mediastream:"]
     }});
   });
+
+  // Auto-updater
+  autoUpdater.autoDownload = false;
+  autoUpdater.setFeedURL({ provider: 'github', owner: 'tarwaxur', repo: 'WaxMes' });
+  autoUpdater.checkForUpdates().catch(() => {});
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents?.send('update-available', info.version);
+  });
+  autoUpdater.on('download-progress', (p) => {
+    mainWindow?.webContents?.send('update-progress', Math.round(p.percent));
+  });
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow?.webContents?.send('update-downloaded');
+  });
+  autoUpdater.on('error', () => {});
+
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => { mainWindow.show() });
   mainWindow.on('maximize', () => mainWindow?.webContents?.send('window-maximized', true));
@@ -182,6 +203,15 @@ ipcMain.handle('safe-decrypt', (_e, encryptedB64) => {
     const buf = Buffer.from(encryptedB64, 'base64');
     return safeStorage.decryptString(buf);
   } catch(e) { return null }
+});
+
+ipcMain.handle('start-download', () => {
+  autoUpdater.downloadUpdate();
+  return true;
+});
+ipcMain.handle('install-update', () => {
+  setImmediate(() => autoUpdater.quitAndInstall(false, true));
+  return true;
 });
 
 app.whenReady().then(() => {

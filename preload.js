@@ -17,4 +17,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setAutoStart: (val) => ipcRenderer.invoke('set-auto-start', val),
   safeEncrypt: (plaintext) => ipcRenderer.invoke('safe-encrypt', plaintext),
   safeDecrypt: (encryptedB64) => ipcRenderer.invoke('safe-decrypt', encryptedB64),
+  startDownload: () => ipcRenderer.invoke('start-download'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdateAvailable: (cb) => { ipcRenderer.on('update-available', (_e, v) => cb(v)) },
+  onUpdateProgress: (cb) => { ipcRenderer.on('update-progress', (_e, p) => cb(p)) },
+  onUpdateDownloaded: (cb) => { ipcRenderer.on('update-downloaded', () => cb()) },
 });

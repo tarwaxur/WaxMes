@@ -163,7 +163,7 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
 #avatar-picker img{width:100%;height:100%;object-fit:cover}
 #avatar-picker:hover{border-color:rgba(129,140,248,.4);background:rgba(129,140,248,.15)}
 
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:center;justify-content:center}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:700;align-items:center;justify-content:center}
 .modal-overlay.active{display:flex;animation:fadeIn .2s ease}
 .modal-overlay.active>.modal{animation:scaleIn .25s ease}
 .modal-overlay.closing{animation:fadeOut .15s ease forwards}
@@ -891,12 +891,73 @@ function doLoginWith(acc){activeAccountId=acc.id;showApp(acc.username,acc.displa
 
 // ===== LOGIN =====
 function validateLogin(){var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value,ok=e.length>0&&p.length>0;$('fg-login-email').classList.toggle('invalid',e.length>0&&!e.endsWith('@gmail.com'));$('fg-login-pass').classList.toggle('invalid',p.length>0&&p.length<6);$('login-btn').disabled=!ok;return ok}
-function doLogin(){var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value;if(!e||!p||!window.auth)return;if(!e.endsWith('@gmail.com')){$('fg-login-email').classList.add('invalid');$('fg-login-email').querySelector('.field-error').textContent='Sadece @gmail.com hesapları kabul edilir';return}// Show loading screen
-$('loading-screen').style.display='flex';$('loading-screen').style.animation='';document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active')});auth.signInWithEmailAndPassword(e,p).then(function(cred){var u=cred.user;return db.collection('users').doc(u.uid).get().then(function(doc){if(doc.exists){var d=doc.data();hideLoading(function(){showApp(d.username,d.displayName,u.email,d.avatar||null,d.status||'online',d.bio||'')})}else{hideLoading(function(){showApp(u.displayName||u.email.split('@')[0],u.displayName||u.email.split('@')[0],u.email,null,'online','')})}})}).catch(function(err){hideLoading(function(){$('screen-login').classList.add('active');var msg='';if(err.code==='auth/user-not-found'){msg='Bu e-posta ile kayıtlı hesap bulunamadı.';$('fg-login-email').classList.add('invalid');$('fg-login-email').querySelector('.field-error').textContent=msg}else if(err.code==='auth/wrong-password'){msg='Hatalı şifre.';$('fg-login-pass').classList.add('invalid');$('fg-login-pass').querySelector('.field-error').textContent=msg}else{msg='Giriş yapılamadı: '+err.message;$('fg-login-email').classList.add('invalid');$('fg-login-email').querySelector('.field-error').textContent=msg};showAlert(msg);$('login-btn').disabled=false})})}
+function doLogin(){
+  var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value;
+  if(!e||!p||!window.auth)return;
+  if(!e.endsWith('@gmail.com')){$('fg-login-email').classList.add('invalid');$('fg-login-email').querySelector('.field-error').textContent='Sadece @gmail.com hesapları kabul edilir';return}
+  console.log('[Auth] Login started for', e);
+  $('login-btn').disabled=true;
+  $('loading-screen').style.display='flex';$('loading-screen').style.animation='';
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active')});
+  var timedOut=false, timer=setTimeout(function(){timedOut=true;hideLoading(function(){$('screen-login').classList.add('active');showAlert('Sunucu yanıt vermiyor. Lütfen tekrar dene.');$('login-btn').disabled=false})},20000);
+  auth.signInWithEmailAndPassword(e,p).then(function(cred){
+    clearTimeout(timer);console.log('[Auth] Login success, uid:', cred.user.uid);
+    var u=cred.user;
+    db.collection('users').doc(u.uid).get().then(function(doc){
+      if(doc.exists){var d=doc.data();hideLoading(function(){showApp(d.username,d.displayName,u.email,d.avatar||null,d.status||'online',d.bio||'')})}
+      else{hideLoading(function(){showApp(u.displayName||u.email.split('@')[0],u.displayName||u.email.split('@')[0],u.email,null,'online','')})}
+    }).catch(function(){hideLoading(function(){showApp(u.displayName||u.email.split('@')[0],u.displayName||u.email.split('@')[0],u.email,null,'online','')})})
+  }).catch(function(err){
+    clearTimeout(timer);if(timedOut)return;
+    console.error('[Auth] Login error:', err.code, err.message);
+    hideLoading(function(){
+      $('screen-login').classList.add('active');$('login-btn').disabled=false;
+      var msg='',field=$('fg-login-email');
+      if(err.code==='auth/user-not-found'){msg='Bu e-posta ile kayıtlı hesap bulunamadı.';field=$('fg-login-email');field.classList.add('invalid');field.querySelector('.field-error').textContent=msg}
+      else if(err.code==='auth/wrong-password'){msg='Hatalı şifre.';field=$('fg-login-pass');field.classList.add('invalid');field.querySelector('.field-error').textContent=msg}
+      else if(err.code==='auth/too-many-requests'){msg='Çok fazla başarısız giriş. Hesabın geçici olarak kilitlendi. Birkaç dakika sonra tekrar dene.'}
+      else if(err.code==='auth/network-request-failed'){msg='Ağ hatası. İnternet bağlantını kontrol et.'}
+      else if(err.code==='auth/invalid-email'){msg='Geçersiz e-posta adresi.'}
+      else if(err.code==='auth/user-disabled'){msg='Bu hesap devre dışı bırakılmış.'}
+      else{msg='Giriş yapılamadı: '+err.message}
+      showAlert(msg)
+    })
+  })
+}
 
 // ===== REGISTER =====
 function updateRegStep(){document.querySelectorAll('.register-step').forEach(function(s){s.classList.remove('active')});var el=document.querySelector('.register-step[data-step="'+regStep+'"]');if(el)el.classList.add('active');document.querySelectorAll('.register-dot').forEach(function(d,i){d.className='register-dot';if(i===regStep)d.classList.add('active');else if(i<regStep)d.classList.add('done')});var sb=$('reg-step-back');if(sb)sb.style.display=regStep===0?'none':'flex';var n=$('reg-next');if(n)n.textContent=regStep===2?'Kayıt Ol':'İleri';validateRegister()}
-function regNext(){if(!validateRegister())return;if(regStep===0&&window.db){var u=$('reg-username').value.trim();if(!/^[a-zA-Z0-9_]+$/.test(u)){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı yalnızca harf, rakam ve alt çizgi içerebilir';showAlert('Kullanıcı adı yalnızca harf, rakam ve alt çizgi (_) içerebilir.');return}if(u.length<3){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı en az 3 karakter olmalı';return}db.collection('users').where('username','==',u).get().then(function(snap){if(!snap.empty){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Bu kullanıcı adı zaten alınmış';showAlert('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');return}regStep++;updateRegStep()}).catch(function(){showAlert('Kullanıcı adı kontrolü yapılamadı. Lütfen tekrar dene.');return})}else if(regStep===1&&window.db){var em=$('reg-email').value.trim().toLowerCase();db.collection('users').where('email','==',em).get().then(function(snap){if(!snap.empty){$('fg-email').classList.add('invalid');$('fg-email').querySelector('.field-error').textContent='Bu e-posta adresi zaten kayıtlı';showAlert('Bu e-posta adresi zaten kayıtlı. Lütfen farklı bir e-posta adresi dene.');return}regStep++;updateRegStep()}).catch(function(){showAlert('E-posta kontrolü yapılamadı. Lütfen tekrar dene.');return})}else if(regStep<2){regStep++;updateRegStep()}else completeRegistration()}
+function regNext(){
+  if(!validateRegister())return;
+  var btn=$('reg-next');
+  function advance(){regStep++;updateRegStep();if(btn)btn.disabled=false}
+  function dbError(label){if(btn)btn.disabled=false;showAlert(label+' kontrolü yapılamadı: servis şu anda kullanılamıyor. Lütfen daha sonra tekrar dene.')}
+  function dbTimeout(label){if(btn)btn.disabled=false;showAlert(label+' kontrolü zaman aşımına uğradı. İnternet bağlantını kontrol et.')}
+  if(regStep===0){
+    if(!window.db){showAlert('Veritabanı bağlantısı yok.');return}
+    var u=$('reg-username').value.trim();
+    if(!/^[a-zA-Z0-9_]+$/.test(u)){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı yalnızca harf, rakam ve alt çizgi içerebilir';showAlert('Kullanıcı adı yalnızca harf, rakam ve alt çizgi (_) içerebilir.');return}
+    if(u.length<3){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı en az 3 karakter olmalı';return}
+    if(btn)btn.disabled=true;
+    var timedOut=false,timer=setTimeout(function(){timedOut=true;dbTimeout('Kullanıcı adı')},15000);
+    db.collection('users').where('username','==',u).get().then(function(snap){
+      clearTimeout(timer);if(timedOut)return;
+      if(!snap.empty){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Bu kullanıcı adı zaten alınmış';showAlert('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');if(btn)btn.disabled=false;return}
+      advance()
+    }).catch(function(){clearTimeout(timer);if(!timedOut)dbError('Kullanıcı adı')})
+  }else if(regStep===1){
+    if(!window.db){showAlert('Veritabanı bağlantısı yok.');return}
+    var em=$('reg-email').value.trim().toLowerCase();
+    if(btn)btn.disabled=true;
+    var timedOut2=false,timer2=setTimeout(function(){timedOut2=true;dbTimeout('E-posta')},15000);
+    db.collection('users').where('email','==',em).get().then(function(snap){
+      clearTimeout(timer2);if(timedOut2)return;
+      if(!snap.empty){$('fg-email').classList.add('invalid');$('fg-email').querySelector('.field-error').textContent='Bu e-posta adresi zaten kayıtlı';showAlert('Bu e-posta adresi zaten kayıtlı. Lütfen farklı bir e-posta adresi dene.');if(btn)btn.disabled=false;return}
+      advance()
+    }).catch(function(){clearTimeout(timer2);if(!timedOut2)dbError('E-posta')})
+  }else if(regStep<2){advance()}
+  else completeRegistration()
+}
 function regPrev(){if(regStep>0){regStep--;updateRegStep()}}
 function validateRegister(){var u=$('reg-username').value.trim(),d=$('reg-display').value.trim(),uOk=u.length>=3&&/^[a-zA-Z0-9_]+$/.test(u),dOk=d.length>=1;$('fg-username').classList.toggle('invalid',u.length>0&&!uOk);$('fg-display').classList.toggle('invalid',d.length>0&&!dOk);var e=$('reg-email').value.trim().toLowerCase(),eOk=e.endsWith('@gmail.com');$('fg-email').classList.toggle('invalid',e.length>0&&!eOk);var p=$('reg-pass').value,p2=$('reg-pass2').value,pOk=p.length>=6,p2Ok=p===p2&&p.length>0,t=$('reg-terms').checked;$('fg-pass').classList.toggle('invalid',p.length>0&&!pOk);$('fg-pass2').classList.toggle('invalid',p2.length>0&&!p2Ok);var steps=[uOk&&dOk,eOk,pOk&&p2Ok&&t];var btn=$('reg-next');if(btn)btn.disabled=!steps[regStep];return steps[regStep]}
 function showAlert(msg){
@@ -909,8 +970,43 @@ function showAlert(msg){
   $('modal-delete').classList.add('active');
   pendingAlert=true
 }
-function completeRegistration(){var u=$('reg-username').value.trim(),d=$('reg-display').value.trim()||u,e=$('reg-email').value.trim().toLowerCase(),p=$('reg-pass').value;if(!window.auth||!p)return;// Check username availability
-if(window.db){db.collection('users').where('username','==',u).get().then(function(snap){if(!snap.empty){showAlert('Bu kullanıcı adı zaten alınmış.');return}auth.createUserWithEmailAndPassword(e,p).then(function(cred){var uid=cred.user.uid;db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()}).then(function(){showApp(u,d,e,avatarDataUrl||null,'online','')}).catch(function(){showApp(u,d,e,avatarDataUrl||null,'online','')})}).catch(function(err){if(err.code==='auth/email-already-in-use'){showAlert('Bu e-posta adresi zaten kayıtlı.')}else{showAlert('Kayıt olunamadı: '+err.message)}})}).catch(function(){showAlert('Kullanıcı adı kontrolü yapılamadı.')})}else{showAlert('Veritabanı bağlantısı yok.')}}
+function completeRegistration(){
+  var u=$('reg-username').value.trim(),d=$('reg-display').value.trim()||u,e=$('reg-email').value.trim().toLowerCase(),p=$('reg-pass').value;
+  if(!window.auth||!p)return;
+  var btn=$('reg-next');if(btn){btn.disabled=true;btn.textContent='Kaydediliyor...'}
+  console.log('[Auth] Signup started for', e);
+  function finishReg(errMsg){
+    if(btn){btn.disabled=false;btn.textContent='Kayıt Ol'}
+    if(errMsg)showAlert(errMsg)
+  }
+  if(!window.db){finishReg('Veritabanı bağlantısı yok.');return}
+  var timedOut=false, timer=setTimeout(function(){timedOut=true;finishReg('Sunucu yanıt vermiyor. Lütfen tekrar dene.')},15000);
+  auth.createUserWithEmailAndPassword(e,p).then(function(cred){
+    clearTimeout(timer);
+    console.log('[Auth] Signup success, uid:', cred.user.uid);
+    var uid=cred.user.uid;
+    db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()}).then(function(){
+      console.log('[Auth] User doc created');
+      finishReg();
+      showApp(u,d,e,avatarDataUrl||null,'online','')
+    }).catch(function(){
+      console.warn('[Auth] User doc write failed, proceeding anyway');
+      finishReg();
+      showApp(u,d,e,avatarDataUrl||null,'online','')
+    })
+  }).catch(function(err){
+    clearTimeout(timer);
+    console.error('[Auth] Signup error:', err.code, err.message);
+    if(timedOut)return;
+    var msg='';
+    if(err.code==='auth/email-already-in-use')msg='Bu e-posta adresi zaten kayıtlı.';
+    else if(err.code==='auth/weak-password')msg='Şifre çok zayıf. En az 6 karakter kullan.';
+    else if(err.code==='auth/network-request-failed')msg='Ağ hatası. İnternet bağlantını kontrol et.';
+    else if(err.code==='auth/invalid-email')msg='Geçersiz e-posta adresi.';
+    else msg='Kayıt olunamadı: '+err.message;
+    finishReg(msg)
+  })
+}
 
 async function pickAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){avatarDataUrl=r.thumb;var p=$('avatar-picker');p.innerHTML='<img src="'+r.thumb+'" alt="">';p.style.border='none'}}}catch(e){}}
 
@@ -942,6 +1038,9 @@ function getShortcutDisplay(keys){
   return d||'—'
 }
 function recordShortcut(id){
+  if(recordingShortcut)return;
+  // Clean up any leftover confirm buttons from previous incomplete sessions
+  document.querySelectorAll('[id^="sc-save-"],[id^="sc-cancel-"]').forEach(function(el){el.remove()});
   _recKeys={key:'',ctrl:false,alt:false,shift:false,meta:false};
   recordingShortcut=id;
   var btn=$('sc-'+id);if(!btn)return;
@@ -1064,38 +1163,51 @@ function sendFriendRequest(){
   if(Date.now()-_frCooldown<10000){$('add-friend-result').textContent='⏳ 10 saniye bekleyin.';$('add-friend-result').style.color='#ef4444';return}
   var name=$('add-friend-input').value.trim();
   if(!name||!window.db){$('add-friend-result').textContent='Lütfen bir kullanıcı adı gir.';return}
-  var uid=fbUserId();if(!uid)return;
-  // Check existing pending requests to same target
-  db.collection('friendRequests').where('from','==',uid).where('status','==','pending').limit(5).get().then(function(existing){
-    if(existing.size>=5){$('add-friend-result').textContent='Çok fazla bekleyen isteğin var.';$('add-friend-result').style.color='#ef4444';return}
-    _frCooldown=Date.now();
-    // Search user in Firestore
-    db.collection('users').where('username','==',name).limit(1).get().then(function(snap){
-      if(snap.empty){$('add-friend-result').textContent='Bu kullanıcı adıyla kayıtlı hesap bulunamadı.';$('add-friend-result').style.color='#ef4444';return}
-      var targetUser=snap.docs[0];
-      if(targetUser.id===uid){$('add-friend-result').textContent='Kendine istek gönderemezsin.';$('add-friend-result').style.color='#ef4444';return}
-      // Check if already friends
-      db.collection('friends').doc(uid).collection('list').where('id','==',targetUser.id).get().then(function(fs){
-        if(!fs.empty){$('add-friend-result').textContent='Bu kullanıcı zaten arkadaşlarında.';$('add-friend-result').style.color='var(--text4)';return}
-        // Check for existing pending request to same target
-        db.collection('friendRequests').where('from','==',uid).where('to','==',targetUser.id).where('status','==','pending').limit(1).get().then(function(dup){
-          if(!dup.empty){$('add-friend-result').textContent='Bu kullanıcıya zaten istek göndermişsin.';$('add-friend-result').style.color='var(--text4)';return}
-          // Send request
-          var reqId=uid();
-          db.collection('friendRequests').doc(reqId).set({
-            from:uid,fromName:$('sidebar-username').textContent||'Sen',
-            to:targetUser.id,toName:targetUser.data().displayName||name,
-            status:'pending',createdAt:Date.now()
-          }).then(function(){
-            $('add-friend-input').value='';
-            $('add-friend-result').textContent='✓ "'+name+'" için arkadaşlık isteği gönderildi.';
-            $('add-friend-result').style.color='var(--accent)';
-            setTimeout(function(){$('add-friend-result').textContent='';$('add-friend-result').style.color='var(--text4)'},2500)
-          }).catch(function(){showAlert('İstek gönderilemedi.')})
-        }).catch(function(){showAlert('Kontrol yapılamadı.')})
-      }).catch(function(){showAlert('Kontrol yapılamadı.')})
-    }).catch(function(){showAlert('Kullanıcı aranamadı.')})
-  }).catch(function(){showAlert('Kontrol yapılamadı.')})
+  var fbUid=fbUserId();if(!fbUid)return;
+  _frCooldown=Date.now();
+  var opTimer=setTimeout(function(){$('add-friend-result').textContent='Zaman aşımı. İnternet bağlantını kontrol et.';$('add-friend-result').style.color='#ef4444'},30000);
+  function fail(msg){clearTimeout(opTimer);$('add-friend-result').textContent=msg;$('add-friend-result').style.color='#ef4444'}
+  function ok(msg){clearTimeout(opTimer);$('add-friend-input').value='';$('add-friend-result').textContent=msg;$('add-friend-result').style.color='var(--accent)';setTimeout(function(){$('add-friend-result').textContent='';$('add-friend-result').style.color='var(--text4)'},2500)}
+  function step(next){clearTimeout(opTimer);opTimer=setTimeout(function(){$('add-friend-result').textContent='Zaman aşımı. İnternet bağlantını kontrol et.';$('add-friend-result').style.color='#ef4444'},30000);next()}
+  function catchErr(label,err){
+    clearTimeout(opTimer);
+    console.error('[FriendReq] '+label+':', err&&err.code?err.code:'', err&&err.message?err.message:err);
+    if(err&&err.code==='permission-denied'){fail('Yetki hatası. Lütfen tekrar giriş yap.');return}
+    if(err&&err.code==='unavailable'){fail('Sunucuya bağlanılamadı.');return}
+    fail('Hata ('+(err&&err.code?err.code:'?')+'): '+(err&&err.message?err.message:'Bilinmeyen hata'))
+  }
+  // Step 1: Search user
+  db.collection('users').where('username','==',name).limit(1).get().then(function(snap){
+    if(snap.empty){fail('Bu kullanıcı adıyla kayıtlı hesap bulunamadı.');return}
+    var targetUser=snap.docs[0];
+    if(targetUser.id===fbUid){fail('Kendine istek gönderemezsin.');return}
+    // Step 2: Check already friends
+    step(function(){
+      db.collection('friends').doc(fbUid).collection('list').where('id','==',targetUser.id).get().then(function(fs){
+        if(!fs.empty){fail('Bu kullanıcı zaten arkadaşlarında.');return}
+        // Step 3: Check pending count + duplicate (single-field query, in-memory filter)
+        step(function(){
+          db.collection('friendRequests').where('from','==',fbUid).get().then(function(allSent){
+            var pendingCount=0, alreadySent=false;
+            allSent.forEach(function(doc){
+              var d=doc.data();
+              if(d.status==='pending'){pendingCount++;if(d.to===targetUser.id)alreadySent=true}
+            });
+            if(pendingCount>=5){fail('Çok fazla bekleyen isteğin var.');return}
+            if(alreadySent){fail('Bu kullanıcıya zaten istek göndermişsin.');return}
+            // Step 4: Send request
+            var reqId=uid();
+            db.collection('friendRequests').doc(reqId).set({
+              from:fbUid,fromName:$('sidebar-username').textContent||'Sen',
+              to:targetUser.id,toName:targetUser.data().displayName||name,
+              status:'pending',createdAt:Date.now()
+            }).then(function(){ok('✓ "'+name+'" için arkadaşlık isteği gönderildi.')})
+            .catch(function(err){catchErr('Gönderme',err)})
+          }).catch(function(err){catchErr('İstek sorgusu',err)})
+        })
+      }).catch(function(err){catchErr('Arkadaş sorgusu',err)})
+    })
+  }).catch(function(err){catchErr('Kullanıcı arama',err)})
 }
 function acceptFriendRequest(reqId){
   if(!window.db)return;
@@ -1169,11 +1281,11 @@ function switchFriendsTab(tab){
   }else if(tab==='pending'){
     if(!window.db||!uid){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>';return}
     Promise.all([
-      db.collection('friendRequests').where('to','==',uid).where('status','==','pending').get(),
-      db.collection('friendRequests').where('from','==',uid).where('status','==','pending').get()
+      db.collection('friendRequests').where('to','==',uid).get(),
+      db.collection('friendRequests').where('from','==',uid).get()
     ]).then(function(results){
-      var incoming=results[0].docs.map(function(d){return{id:d.id,data:d.data()}});
-      var sent=results[1].docs.map(function(d){return{id:d.id,data:d.data()}});
+      var incoming=[]; results[0].forEach(function(d){if(d.data().status==='pending')incoming.push({id:d.id,data:d.data()})});
+      var sent=[]; results[1].forEach(function(d){if(d.data().status==='pending')sent.push({id:d.id,data:d.data()})});
       var html='';
       if(incoming.length>0){
         html+='<div style="font-size:11px;color:var(--text4);margin-bottom:6px">Gelen istekler</div>';
@@ -1291,11 +1403,6 @@ async function forwardToSelected(){
     conv.lastActivity=Date.now();conv.time=timeNow();
     fbSendMessage(cid,fwd)
   }
-  $('modal-forward').classList.remove('active');
-  forwardMsgData=null;forwardingLock=false;
-  renderConversations();saveMessages();
-  if(activeConvId)renderMessages(activeConvId)
-}
   $('modal-forward').classList.remove('active');
   forwardMsgData=null;forwardingLock=false;
   renderConversations();saveMessages();
@@ -1819,15 +1926,84 @@ function showSettingsCat(cat){
     content.innerHTML='<div class="stitle">Veri Yönetimi</div>'+
       '<div style="padding:18px;border-radius:12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><svg width="20" height="20" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg><h4 style="font-size:13px;font-weight:600;color:#ef4444;margin:0">Hesabı Sil</h4></div><p style="font-size:11px;color:var(--text4);line-height:1.5;margin-bottom:12px">Bu hesabı ve tüm mesajlarını kalıcı olarak siler. Diğer hesapların etkilenmez.</p><button onclick="resetAllData()" style="padding:9px 20px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:#ef4444;color:#fff;transition:all .2s;box-shadow:0 3px 12px rgba(239,68,68,.25)" onmouseover="this.style.background=\'#dc2626\'" onmouseout="this.style.background=\'#ef4444\'">Hesabı Sil</button></div>'
   }else if(cat==='about'){
+    var updateBtn = '<button id="update-btn" onclick="checkUpdate()" style="padding:9px 20px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;transition:all .2s">Güncellemeleri Kontrol Et</button>';
+    var updateBar = '<div id="update-bar" style="display:none;margin-top:16px"></div>';
     content.innerHTML='<div class="stitle">Hakkında</div>'+
-      '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px"><div style="width:48px;height:48px;border-radius:14px;background:var(--grad);display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.477 2 2 6.477 2 12c0 2.17.678 4.182 1.838 5.843L2.5 21.5l3.657-1.338A9.967 9.967 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg></div><div><div style="font-size:16px;font-weight:700;color:var(--text)">WaxMes</div><div style="font-size:11px;color:var(--text4)">v0.1.0</div></div></div>'+
+      '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px"><div style="width:48px;height:48px;border-radius:14px;background:var(--grad);display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.477 2 2 6.477 2 12c0 2.17.678 4.182 1.838 5.843L2.5 21.5l3.657-1.338A9.967 9.967 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg></div><div><div style="font-size:16px;font-weight:700;color:var(--text)">WaxMes</div><div id="about-version" style="font-size:11px;color:var(--text4)">v0.1.0</div></div></div>'+
       '<p style="font-size:12px;color:var(--text3);line-height:1.7;margin-bottom:16px">WaxMes, arkadaş grupları için tasarlanmış modern bir mesajlaşma uygulamasıdır. Hızlı, güvenli ve kullanımı kolaydır.</p>'+
       '<div style="padding:12px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text4);line-height:1.6">'+
       '<b style="color:var(--text3)">Özellikler:</b><br>• Gerçek zamanlı mesajlaşma<br>• Grup sohbetleri<br>• Medya paylaşımı (görsel, GIF)<br>• Mesaj düzenleme ve silme<br>• Çoklu tema desteği<br>• Çevrimiçi/Boşta/Rahatsız Etme durumları<br>• Hesap yönetimi ve oturum hatırlama<br><br>'+
       '<b style="color:var(--text3)">Teknolojiler:</b><br>• Electron • Vanilla JS • CSS3<br><br>'+
-      '<b style="color:var(--text3)">Geliştirici:</b><br>• Waxur tarafından geliştiriliyor</div>'
+      '<b style="color:var(--text3)">Geliştirici:</b><br>• Waxur tarafından geliştiriliyor</div>'+
+      '<div style="margin-top:16px">'+updateBtn+'</div>'+updateBar
   }
   requestAnimationFrame(function(){content.classList.add('settings-content-anim')})
+}
+
+// ===== AUTO-UPDATE =====
+function checkUpdate(){
+  var btn = $('update-btn');
+  if(!btn) return;
+  btn.textContent = 'Kontrol ediliyor...';
+  btn.disabled = true;
+  if(window.electronAPI && electronAPI.startDownload){
+    // If update was already downloaded, install now
+    if(btn.dataset.downloaded === '1') {
+      electronAPI.installUpdate();
+      return;
+    }
+    // Otherwise check: main process already checks on startup,
+    // but allow re-check. We simulate trigger via IPC.
+    // The main process sends update-available on its own.
+    // We just set a small timeout to show "up to date" if nothing happens.
+    // But for manual re-check, we need a different approach.
+    // Let's just show a message to use auto-check.
+    showUpdateBar('Güncelleme kontrol ediliyor...', 'info');
+    setTimeout(function(){
+      if(btn && !btn.dataset.found) {
+        btn.textContent = 'Güncellemeleri Kontrol Et';
+        btn.disabled = false;
+        showUpdateBar('Zaten en son sürümü kullanıyorsun.', 'info');
+      }
+    }, 5000);
+    // Listeners are already registered in preload
+  } else {
+    showUpdateBar('Güncelleme kontrolü sadece masaüstü uygulamasında çalışır.', 'error');
+    btn.textContent = 'Güncellemeleri Kontrol Et';
+    btn.disabled = false;
+  }
+}
+function showUpdateBar(msg, type){
+  var bar = $('update-bar');
+  if(!bar) return;
+  var colors = {info: 'var(--accent)', success: '#22c55e', error: '#ef4444'};
+  bar.style.display = 'block';
+  bar.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:'+(colors[type]||colors.info)+'20;border:1px solid '+(colors[type]||colors.info)+'40;font-size:12px;color:var(--text3)">'+msg+'</div>';
+}
+
+if(window.electronAPI){
+  window.electronAPI.onUpdateAvailable(function(version){
+    var btn = $('update-btn');
+    if(btn) { btn.textContent = 'v'+version+' İndir'; btn.dataset.found = '1'; btn.disabled = false; }
+    showUpdateBar('Yeni sürüm v'+version+' mevcut. İndirmek için "v'+version+' İndir" butonuna tıkla.', 'info');
+    if(btn) btn.onclick = function(){
+      btn.textContent = 'İndiriliyor...';
+      btn.disabled = true;
+      electronAPI.startDownload();
+    };
+  });
+  window.electronAPI.onUpdateProgress(function(percent){
+    var bar = $('update-bar');
+    if(bar) bar.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:var(--accent)20;border:1px solid var(--accent)40;font-size:12px;color:var(--text3)">İndiriliyor: %'+percent+'</div>';
+  });
+  window.electronAPI.onUpdateDownloaded(function(){
+    var btn = $('update-btn');
+    if(btn) { btn.textContent = 'Yeniden Başlat'; btn.dataset.downloaded = '1'; btn.disabled = false; }
+    showUpdateBar('Güncelleme indirildi. Kurulum için "Yeniden Başlat" butonuna tıkla.', 'success');
+    if(btn) btn.onclick = function(){
+      electronAPI.installUpdate();
+    };
+  });
 }
 
 // ===== CAMERA / MIC / SCREEN =====

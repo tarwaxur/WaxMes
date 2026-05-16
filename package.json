@@ -1,6 +1,6 @@
 {
   "name": "WaxMes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "WaxMes - Modern Messaging App",
   "main": "main.js",
   "scripts": {
@@ -10,6 +10,7 @@
     "brand-electron": "node scripts/patch-electron.js",
     "generate-icon": "node scripts/generate-icon.js",
     "shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
+    "release": "npm run build -- --publish always",
     "test": "node tests/e2e.test.js",
     "postinstall": "node scripts/generate-icon.js"
   },
@@ -32,10 +33,21 @@
       "artifactName": "${productName}Setup.${ext}",
       "signAndEditExecutable": false,
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "afterPack": "scripts/afterPack.js",
+    "publish": {
+      "provider": "github",
+      "owner": "tarwaxur",
+      "repo": "WaxMes",
+      "releaseType": "release"
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -63,6 +75,7 @@
     "sharp": "^0.34.5"
   },
   "dependencies": {
+    "electron-updater": "^6.8.3",
     "firebase": "^12.13.0"
   }
 }
