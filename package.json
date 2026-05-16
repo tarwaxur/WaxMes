@@ -1,0 +1,68 @@
+{
+  "name": "WaxMes",
+  "version": "0.1.0",
+  "description": "WaxMes - Modern Messaging App",
+  "main": "main.js",
+  "scripts": {
+    "start": "node scripts/patch-electron.js && electron .",
+    "build": "node scripts/patch-electron.js && npm run generate-icon && electron-builder --win --x64",
+    "dist": "electron-builder --win --x64 && node scripts/apply-icon.js",
+    "brand-electron": "node scripts/patch-electron.js",
+    "generate-icon": "node scripts/generate-icon.js",
+    "shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
+    "test": "node tests/e2e.test.js",
+    "postinstall": "node scripts/generate-icon.js"
+  },
+  "build": {
+    "appId": "com.waxmes.app",
+    "productName": "WaxMes",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "package.json",
+      "assets/**/*"
+    ],
+    "win": {
+      "icon": "assets/app.ico",
+      "executableName": "WaxMes",
+      "artifactName": "${productName}Setup.${ext}",
+      "signAndEditExecutable": false,
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "afterPack": "scripts/afterPack.js",
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/app.ico",
+      "uninstallerIcon": "assets/app.ico",
+      "installerHeaderIcon": "assets/app.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "WaxMes",
+      "unicode": true
+    }
+  },
+  "keywords": [
+    "messaging",
+    "chat"
+  ],
+  "author": "Waxur",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": "https://github.com/tarwaxur/WaxMes",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^42.0.1",
+    "electron-builder": "^26.8.1",
+    "rcedit": "^5.0.2",
+    "sharp": "^0.34.5"
+  },
+  "dependencies": {
+    "firebase": "^12.13.0"
+  }
+}
