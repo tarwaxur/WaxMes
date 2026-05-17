@@ -4931,11 +4931,19 @@ loadFirebase(function(){
       if(user){
         // Skip if autoLogin is handling this login (prevents double showApp call)
         if(_explicitLogin){_explicitLogin=false;return}
+        // Find local account by email - use LOCAL data (always up-to-date from settings saves)
+        var accs=getAccounts(),acc=null;
+        for(var ai=0;ai<accs.length;ai++){if(accs[ai].email===user.email){acc=accs[ai];break}}
         startPendingListener(user.uid);
-        db.collection('users').doc(user.uid).get().then(function(doc){
-          if(doc.exists){var d=doc.data();hideLoading(function(){doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||''})})}
-          else{initWelcome()}
-        }).catch(function(){initWelcome()})
+        if(acc){
+          hideLoading(function(){doLoginWith({id:user.uid,username:acc.username||user.email.split('@')[0],displayName:acc.displayName||user.displayName||user.email.split('@')[0],email:user.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})
+        }else{
+          // No local account found, fall back to Firestore
+          db.collection('users').doc(user.uid).get().then(function(doc){
+            if(doc.exists){var d=doc.data();hideLoading(function(){doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||''})})}
+            else{initWelcome()}
+          }).catch(function(){initWelcome()})
+        }
       }else{
         // Only reset if not in the middle of an account switch
         // (account switch triggers null -> newUser in quick succession)
