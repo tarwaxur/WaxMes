@@ -40,3 +40,5 @@
 - [ ]  Sesli Arama Sistemi – Realtime Call Signaling Çalışmıyor
 - [✓]  Profil Fotoğrafı Senkronizasyonu – Arkadaşlık ve Grup Sisteminde Avatarlar Görünmüyor
 - [ ]  DM Sohbet Sistemi – Conversation ID Karışması ve Mesaj Sahibi (Sender) Bug’u
+- [ ]  Hesaplar Arası Geçiş – Eski Session Sohbet State’i Temizlenmiyor
+- [ ]  DM Mesaj Sistemi – Cross-Account Sender Perspektifi Bozuk

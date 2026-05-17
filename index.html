@@ -1635,10 +1635,97 @@ function showContextMenu(x,y,items){
   m.classList.add('active')
 }
 
+// ===== SESSION STATE MANAGEMENT =====
+// All session-specific state that MUST be reset on account switch
+function resetSessionState(){
+  // Firebase listeners
+  for(var kl in _fbListeners){_fbListeners[kl]();delete _fbListeners[kl]}
+  _fbListeners={};
+  _fbMsgCache={};
+  if(_fbConvUnsub){_fbConvUnsub();_fbConvUnsub=null}
+  _convListenerActive=false;
+  fbUnlistenTyping();
 
+  // Friend request listeners
+  if(_pendingUnsub){_pendingUnsub();_pendingUnsub=null}
+  if(_outgoingUnsub){_outgoingUnsub();_outgoingUnsub=null}
 
-function doLogout(){closeProfilePanel();hideSettings();if(window.auth)auth.signOut();for(var kl in _fbListeners){_fbListeners[kl]();delete _fbListeners[kl]}_fbListeners={};fbUnlistenTyping();fbStopCallSignals();activeAccountId=null;activeConvId=null;conversations=[];if(callPollTimer){clearInterval(callPollTimer);callPollTimer=null};goToWelcome()}
+  // Core data
+  messages={};
+  conversations=[];
+  activeConvId=null;
+  activeAccountId=null;
 
+  // E2E encryption state
+  e2eReady=false;
+  e2eKeys=null;
+  _pubKeyCache={};
+
+  // Call state
+  if(callState==='connected'||callState==='ringing'||callState==='calling'){endCall()}
+  callState=null;callPeerConn=null;callLocalStream=null;
+  if(callTimerInterval){clearInterval(callTimerInterval);callTimerInterval=null}
+  callStartTime=0;callMicMuted=false;callSpeakerMuted=false;pendingCallMsgId=null;
+  if(callPollTimer){clearInterval(callPollTimer);callPollTimer=null}
+  pendingCallData=null;
+  fbStopCallSignals();
+  stopRingtone();
+
+  // UI state
+  pendingClearConvId=null;
+  pendingMediaFiles=[];mediaIndex=0;mediaThumbCount=0;
+  pendingCollageDelete=null;pendingDeleteMsgId=null;pendingSelfDeleteId=null;
+  pendingDeleteGroupId=null;pendingRemoveMember=null;pendingRemoveGroup=null;
+  pendingAlert=false;
+  contextMenuMsgId=null;contextMenuScrollPos=0;contextMenuRelY=0;contextMenuRelX=0;
+  editGroupState=null;groupAvatarDataUrl=null;
+  forwardMsgData=null;forwardingLock=false;
+  replyToMsgId=null;replyToMsgText='';
+  _frCooldown=0;
+  _searchQuery='';_showArchived=false;
+  _forceScrollBottom=false;_hasNewMsg=false;
+  avatarDataUrl=null;
+  if(idleTimer){clearTimeout(idleTimer);idleTimer=null}
+  prevStatus=null;
+  currentEmojiCat='face';
+
+  // Typing indicators
+  if(typingTimer){clearTimeout(typingTimer);typingTimer=null}
+  if(_typingRemoteUnsub){_typingRemoteUnsub();_typingRemoteUnsub=null}
+  _typingLocalUid=null;
+
+  // Voice recording
+  if(voiceTimer){clearTimeout(voiceTimer);voiceTimer=null}
+  audioChunks=[];voiceStart=0;
+  if(animFrame){cancelAnimationFrame(animFrame);animFrame=null}
+
+  // Audio playback
+  if(currentAudio){currentAudio.pause();currentAudio=null}
+  currentAudioId=null;
+  if(audioProgressTimer){clearInterval(audioProgressTimer);audioProgressTimer=null}
+  seekCache={};
+
+  // Call streams
+  if(callCamStream){callCamStream.getTracks().forEach(function(t){t.stop()});callCamStream=null}
+  if(callScreenStream){callScreenStream.getTracks().forEach(function(t){t.stop()});callScreenStream=null}
+
+  // Call signals
+  if(_callSignalUnsub){_callSignalUnsub();_callSignalUnsub=null}
+  _callSigOfferId=null;
+  if(vadTimer){clearInterval(vadTimer);vadTimer=null}
+
+  // Audio test
+  if(micTestInterval){clearInterval(micTestInterval);micTestInterval=null}
+  if(testCamStream){testCamStream.getTracks().forEach(function(t){t.stop()});testCamStream=null}
+  if(testMicStream){testMicStream.getTracks().forEach(function(t){t.stop()});testMicStream=null}
+
+  // Hide all modals/panels
+  closeProfilePanel();hideSettings();hideContextMenu();hideAvatarMenu();
+  var md=document.querySelectorAll('.modal.active');
+  for(var mi=0;mi<md.length;mi++)md[mi].classList.remove('active');
+}
+
+function doLogout(){resetSessionState();if(window.auth)auth.signOut();goToWelcome()}
 function leaveGroup(convId){
   var conv=findConv(convId);if(!conv||!conv.isGroup)return;
   // Remove from conversations
@@ -2568,6 +2655,7 @@ function resetAllData(){
 
 // ===== MAIN APP =====
 async function showApp(username,display,email,avatar,status,bio){
+  resetSessionState();
   status=status||'online';currentStatus=status;
   var accs=getAccounts(),existing=null;
   for(var i=0;i<accs.length;i++){if(accs[i].email===email){existing=accs[i];break}}
@@ -4788,10 +4876,7 @@ loadFirebase(function(){
           else{initWelcome()}
         }).catch(function(){initWelcome()})
       }else{
-        if(window._pendingUnsub){_pendingUnsub()}
-        if(window._outgoingUnsub){_outgoingUnsub()}
-        fbStopConversations()
-        fbStopCallSignals()
+        resetSessionState();
         initWelcome()
       }
     })
