@@ -1971,11 +1971,21 @@ function checkUpdate(){
         btn.textContent = 'v'+result.version+' İndir';
         btn.dataset.found = '1';
         btn.disabled = false;
-        showUpdateBar('Yeni sürüm v'+result.version+' mevcut. İndirmek için tıkla.', 'info');
+        showUpdateBar('Yeni sürüm v'+result.version+' mevcut (mevcut: v'+result.currentVersion+'). İndirmek için tıkla.', 'info');
         btn.onclick = function(){
           btn.textContent = 'İndiriliyor...';
           btn.disabled = true;
-          electronAPI.startDownload();
+          electronAPI.startDownload().then(function(resp){
+            if(!resp || !resp.success){
+              btn.textContent = 'Güncellemeleri Kontrol Et';
+              btn.disabled = false;
+              showUpdateBar('İndirme hatası: '+(resp&&resp.error?resp.error:'Bilinmeyen hata'), 'error');
+            }
+          }).catch(function(err){
+            btn.textContent = 'Güncellemeleri Kontrol Et';
+            btn.disabled = false;
+            showUpdateBar('İndirme başarısız: '+(err&&err.message?err.message:err), 'error');
+          });
         };
       } else {
         btn.textContent = 'Güncellemeleri Kontrol Et';
@@ -2014,11 +2024,21 @@ if(window.electronAPI){
   window.electronAPI.onUpdateAvailable(function(version){
     var btn = $('update-btn');
     if(btn && !btn.dataset.downloaded) { btn.textContent = 'v'+version+' İndir'; btn.dataset.found = '1'; btn.disabled = false; }
-    showUpdateBar('Yeni sürüm v'+version+' mevcut. İndirmek için "v'+version+' İndir" butonuna tıkla.', 'info');
+    showUpdateBar('Yeni sürüm v'+version+' mevcut. İndirmek için tıkla.', 'info');
     if(btn) btn.onclick = function(){
       btn.textContent = 'İndiriliyor...';
       btn.disabled = true;
-      electronAPI.startDownload();
+      electronAPI.startDownload().then(function(resp){
+        if(!resp || !resp.success){
+          btn.textContent = 'Güncellemeleri Kontrol Et';
+          btn.disabled = false;
+          showUpdateBar('İndirme hatası: '+(resp&&resp.error?resp.error:'Bilinmeyen hata'), 'error');
+        }
+      }).catch(function(err){
+        btn.textContent = 'Güncellemeleri Kontrol Et';
+        btn.disabled = false;
+        showUpdateBar('İndirme başarısız: '+(err&&err.message?err.message:err), 'error');
+      });
     };
   });
   window.electronAPI.onUpdateProgress(function(percent){

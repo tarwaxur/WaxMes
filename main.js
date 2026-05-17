@@ -216,17 +216,32 @@ ipcMain.handle('check-for-updates', async () => {
   try {
     const result = await autoUpdater.checkForUpdates();
     if (result && result.updateInfo && result.updateInfo.version) {
-      return { updateAvailable: true, version: result.updateInfo.version };
+      var current = app.getVersion();
+      var latest = result.updateInfo.version;
+      // Semantic version compare: current < latest ?
+      var curParts = current.split('.').map(Number);
+      var latParts = latest.split('.').map(Number);
+      var isNewer = false;
+      for (var i = 0; i < 3; i++) {
+        if ((latParts[i] || 0) > (curParts[i] || 0)) { isNewer = true; break; }
+        if ((latParts[i] || 0) < (curParts[i] || 0)) { break; }
+      }
+      if (isNewer) return { updateAvailable: true, version: latest, currentVersion: current };
+      return { updateAvailable: false, currentVersion: current };
     }
-    return { updateAvailable: false };
+    return { updateAvailable: false, currentVersion: app.getVersion() };
   } catch (e) {
-    return { error: e.message || e || 'Güncelleme kontrolü başarısız' };
+    return { error: e.message || e || 'Güncelleme kontrolü başarısız', currentVersion: app.getVersion() };
   }
 });
 
 ipcMain.handle('start-download', () => {
-  autoUpdater.downloadUpdate();
-  return true;
+  try {
+    autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message || e || 'İndirme başlatılamadı' };
+  }
 });
 ipcMain.handle('install-update', () => {
   setImmediate(() => autoUpdater.quitAndInstall(false, true));
