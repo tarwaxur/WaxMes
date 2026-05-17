@@ -58,7 +58,7 @@ async function patchExecutable() {
   console.log('Electron exe branded as WaxMes');
 }
 
-Promise.all([patchDefaultApp(), patchExecutable()]).catch(e => {
+Promise.all([patchDefaultApp()]).catch(e => {
   console.error(e.message || e);
   process.exitCode = 1;
 });
