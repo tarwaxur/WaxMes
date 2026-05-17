@@ -1073,6 +1073,7 @@ document.addEventListener('keyup',function(e){
   var btn=$('sc-'+recordingShortcut);if(btn)btn.textContent=getShortcutDisplay(_recKeys)
 });
 function resetShortcut(id){
+  if(recordingShortcut){recordingShortcut=null;_recKeys=null}
   var def=defaultShortcutsMap[id];if(!def)return;
   var saved=ls('shortcuts')||{};
   delete saved[id];ls('shortcuts',saved);
