@@ -2696,17 +2696,17 @@ async function showApp(username,display,email,avatar,status,bio){
   if(existing){existing.displayName=display;existing.username=username;existing.avatar=avatar||existing.avatar;existing.bio=bio||existing.bio;existing.lastLogin=new Date().toISOString();saveAccount(existing);activeAccountId=existing.id;setActiveAccount(existing.id)}
   else{var acc={id:uid(),username:username,displayName:display,email:email,avatar:avatar||null,bio:bio||'',lastLogin:new Date().toISOString()};saveAccount(acc);activeAccountId=acc.id;setActiveAccount(acc.id)}
   await loadMessages();
-  showScreen(null);$('app-main').classList.add('active');
+  showScreen(null);$('app-main').classList.add('active');$('app-layout').classList.add('active');
   $('sidebar-username').textContent=display;updateStatusUI(status);
   var sa=$('sidebar-avatar');if(avatar){sa.innerHTML='<img src="'+avatar+'" alt="">'}else{sa.textContent=display.charAt(0).toUpperCase();sa.style.background='linear-gradient(135deg,#2563eb,#6d28d9)'}
   var savedStatus=ls('status_'+activeAccountId);if(savedStatus)updateStatusUI(savedStatus);
-  // Load persisted conversations per account (only if loadMessages didn't already load them)
-  if(!conversations||conversations.length===0){
-    var persisted=loadConversations();
-    if(persisted&&persisted.length>0){
-      conversations=persisted
-    }else{
-      conversations=[]
+  // Load conversations: merge encrypted + localStorage data
+  var localConvs=loadConversations();
+  if(localConvs&&localConvs.length>0){
+    for(var lci=0;lci<localConvs.length;lci++){
+      var exists=false;
+      for(var eci=0;eci<conversations.length;eci++){if(conversations[eci].id===localConvs[lci].id){exists=true;break}}
+      if(!exists)conversations.push(localConvs[lci])
     }
   }
   var savedGroups=getGroups();
@@ -2737,12 +2737,19 @@ async function showApp(username,display,email,avatar,status,bio){
   // Init background mode
   if(ls('backgroundMode')&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
   initE2E();
-  // Render sidebar after DOM is ready
-  requestAnimationFrame(function(){
-    renderConversations();
-    setTimeout(function(){renderConversations()},500)
-  });
+  // Render sidebar: wait for DOM to be fully ready
   _authTransitioning=false;
+  function tryRender(){
+    var el=$('conv-list');
+    if(el&&el.parentElement){
+      renderConversations();
+    }else{
+      setTimeout(tryRender,200)
+    }
+  }
+  setTimeout(tryRender,100);
+  setTimeout(function(){renderConversations()},500);
+  setTimeout(function(){renderConversations()},1500);
   setTimeout(function(){
     // Start on the chat selection screen
   },300)
