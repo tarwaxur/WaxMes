@@ -1942,7 +1942,7 @@ function showSettingsCat(cat){
         '<span style="font-size:12px;color:var(--text3)">'+sc.label+'</span>'+
         '<div style="display:flex;align-items:center;gap:6px" id="sc-group-'+sc.id+'">'+
           '<button onclick="recordShortcut(\''+sc.id+'\')" style="padding:4px 10px;border:none;border-radius:6px;background:var(--bg3);color:var(--text4);font-family:monospace;font-size:11px;cursor:pointer;min-width:70px;text-align:center;transition:all .15s" id="sc-'+sc.id+'" title="Atamak için tıkla">'+(displayKey||'Atama')+'</button>'+
-          '<button onclick="resetShortcut(\''+sc.id+'\')" style="width:24px;height:24px;border:none;border-radius:5px;background:transparent;cursor:pointer;color:var(--text4);font-size:12px;display:flex;align-items:center;justify-content:center" title="Sıfırla">↺</button>'+
+          (recordingShortcut?'':'<button onclick="resetShortcut(\''+sc.id+'\')" style="width:24px;height:24px;border:none;border-radius:5px;background:transparent;cursor:pointer;color:var(--text4);font-size:12px;display:inline-flex;align-items:center;justify-content:center" title="Sıfırla">↺</button>')+
         '</div></div>'
     }
     html+='</div>';
