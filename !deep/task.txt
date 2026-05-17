@@ -27,3 +27,15 @@
 - [✓]  Kısayol Sistemi – Yazı Yazarken Global Shortcut Çakışması
 - [✓]  Arkadaşlık İsteği Sistemi – Bekleyen Listesi, Bildirim Rozetleri ve Kabul/Reddet Akışı
 - [✓]  Kısayol Ayarlama Sistemi – Reset Butonu State Bozulma Bug’u
+- [ ]  Arkadaşlık İsteği Reddetme Sistemi – Pending State Senkronizasyon Bug’u
+- [ ]  Arkadaşlık İsteği Kabul Sistemi – Realtime Arkadaş Senkronizasyon Bug’u
+- [ ]  Typing Indicator Sistemi – Ters Kullanıcı Gösterimi Bug’u
+- [ ]  DM Mesajlaşma Sistemi – Mesajlar Karşı Tarafa Ulaşmıyor
+- [ ]  Typing Indicator Sistemi – Ters Kullanıcı Gösterimi Bug’u
+- [ ]  DM Mesajlaşma Sistemi – Mesajlar Karşı Tarafa Ulaşmıyor
+- [ ]  DM Sohbeti Kapatma Sistemi – Conversation State Kaybolma Bug’u
+- [ ]  DM Sohbet Temizleme Sistemi – Mesajlar Yeniden Yükleniyor
+- [ ]  Presence Sistemi – Online/Idle/DND/Offline State Güncellenmiyor
+- [ ]  DM Sohbet Log Sistemi – Son Mesaj/Event Güncellenmiyor
+- [ ]  Sesli Arama Sistemi – Realtime Call Signaling Çalışmıyor
+- [✓]  Profil Fotoğrafı Senkronizasyonu – Arkadaşlık ve Grup Sisteminde Avatarlar Görünmüyor

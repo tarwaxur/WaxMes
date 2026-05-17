@@ -27,7 +27,8 @@ service cloud.firestore {
         && (resource.data.from == request.auth.uid
           || resource.data.to == request.auth.uid);
       allow delete: if request.auth != null
-        && resource.data.from == request.auth.uid;
+        && (resource.data.from == request.auth.uid
+          || resource.data.to == request.auth.uid);
     }
 
     // ===== Arkadaş Listesi =====
@@ -51,6 +52,19 @@ service cloud.firestore {
         && request.auth.uid in resource.data.memberIds;
       allow delete: if request.auth != null
         && request.auth.uid in resource.data.memberIds;
+
+      // ===== Call Signaling =====
+      // Üyeler signalling verilerini okuyup yazabilir
+      match /call_signals/{sigId} {
+        allow read: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.memberIds;
+        allow create: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.memberIds;
+        allow delete: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.memberIds;
+        allow update: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.memberIds;
+      }
 
       // ===== Mesajlar =====
       // Üst sohbetin memberIds'ine göre kontrol
