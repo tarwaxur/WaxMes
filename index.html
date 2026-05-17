@@ -1899,23 +1899,23 @@ function fbSendMessage(convId,msg){
 
 function fbListenMessages(convId){
   if(!window.db||_fbListeners[convId])return;
-  // Capture the current account ID at listener setup time to prevent cross-account contamination
-  var _setupAccountId=activeAccountId;
+  // Capture the Firebase UID at listener setup time to prevent cross-account contamination
+  var _setupFirebaseUid=fbUserId();
+  if(!_setupFirebaseUid)return;
   // Check for clearedAt to skip old messages on restart
   var _clearTime=null;
   var conv=findConv(convId);
   if(conv&&conv._clearedAt)_clearTime=conv._clearedAt;
   _fbListeners[convId]=db.collection('conversations').doc(convId).collection('messages').orderBy('createdAt','asc').onSnapshot(function(snapshot){
     // Skip if account has changed since listener was set up
-    if(_authTransitioning||activeAccountId!==_setupAccountId)return;
+    if(_authTransitioning)return;
+    var curUid=fbUserId();
+    if(!curUid||curUid!==_setupFirebaseUid)return;
     snapshot.docChanges().forEach(function(change){
       if(change.type==='added'){
         var d=change.doc.data();var mid=change.doc.id;
         // Skip messages that were cleared
         if(_clearTime&&d.createdAt&&d.createdAt.toMillis&&d.createdAt.toMillis()<_clearTime){return}
-        var curUid=fbUserId();
-        // Verify current auth state matches expected account
-        if(!curUid||curUid!==_setupAccountId)return;
         if(!messages[convId])messages[convId]=[];
         var exists=false;
         for(var fi=0;fi<messages[convId].length;fi++){if(messages[convId][fi]._fbId===mid){exists=true;break}}
@@ -2700,12 +2700,14 @@ async function showApp(username,display,email,avatar,status,bio){
   $('sidebar-username').textContent=display;updateStatusUI(status);
   var sa=$('sidebar-avatar');if(avatar){sa.innerHTML='<img src="'+avatar+'" alt="">'}else{sa.textContent=display.charAt(0).toUpperCase();sa.style.background='linear-gradient(135deg,#2563eb,#6d28d9)'}
   var savedStatus=ls('status_'+activeAccountId);if(savedStatus)updateStatusUI(savedStatus);
-  // Load persisted conversations per account
-  var persisted=loadConversations();
-  if(persisted&&persisted.length>0){
-    conversations=persisted
-  }else{
-    conversations=[]
+  // Load persisted conversations per account (only if loadMessages didn't already load them)
+  if(!conversations||conversations.length===0){
+    var persisted=loadConversations();
+    if(persisted&&persisted.length>0){
+      conversations=persisted
+    }else{
+      conversations=[]
+    }
   }
   var savedGroups=getGroups();
   for(var i=0;i<savedGroups.length;i++){
