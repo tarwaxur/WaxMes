@@ -1,0 +1,26 @@
+- [ ]  Arka Plan Servisinde Idle Algılama Sistemi
+- [ ]  Mevcut Instance Focus / Çoklu Pencere Açılma Hatası
+- [ ]  Arkadaşlık İsteği Bildirim Rozeti Sistemi
+- [ ]  Arkadaşlar Paneli Hızlı Geçiş UI State Hatası
+- [ ]  Gelişmiş Sesli Arama Ekran Yayını Sistemi
+- [ ]  Ayarlar Menüsü Ekran Yayını Test Sistemi
+- [ ]  Kapsamlı Kullanıcı Engelleme Sistemi
+- [ ]  Engellenenler Yönetim Sayfası
+- [ ]  Kullanıcı Engelleme Onay Akışı
+- [ ]  Engellenmiş DM Etkileşim Kısıtlamaları
+- [ ]  Engellenmiş Mesaj Teslim Sistemi
+- [ ]  Engellenen Kullanıcı Profil Gizliliği
+- [ ]  Grup Sohbetlerinde Engellenen Mesaj Gizleme Sistemi
+- [ ]  Grup Aramalarında Engellenen Kullanıcı Davranışı
+- [ ]  Kullanıcı Engel Kaldırma Sistemi
+- [ ]  Gerçek Zamanlı Block State Senkronizasyonu
+- [ ]  Runtime Ekran Yayını Kalite Kontrolleri
+- [ ]  Ekran Yayını Ses Yönetimi
+- [ ]  Bağımsız Kamera ve Ekran Yayını Stream Yönetimi
+- [ ]  Ekran Yayını Context Menu Kontrolleri
+- [ ]  Ekran Yayını Stabilite ve Stream Yönetimi İyileştirmeleri
+- [✓]  Hesap Oluşturma ve Giriş Akışı (Firebase/Auth Hata Yönetimi ve Silent Fail Düzeltmesi)
+- [✓]  Kısayol Atama UI – Çoklu Onay Paneli Oluşma (Duplicate Modal Bug)
+- [✓]  Arkadaşlık İsteği Gönderimi Hatası (Firebase Kontrol Fail + UI Z-Index Konumlandırma Sorunu)
+- [✓]  Uygulama Güncelleme Sistemi – Sürüm Kontrolü Çalışmıyor
+- [✓]  Güncelleme Sistemi – Yanlış Sürüm Algılama ve Self-Update Loop Bug'u

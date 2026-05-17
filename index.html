@@ -944,7 +944,7 @@ function regNext(){
       clearTimeout(timer);if(timedOut)return;
       if(!snap.empty){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Bu kullanıcı adı zaten alınmış';showAlert('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');if(btn)btn.disabled=false;return}
       advance()
-    }).catch(function(){clearTimeout(timer);if(!timedOut)dbError('Kullanıcı adı')})
+    }).catch(function(err){clearTimeout(timer);if(!timedOut){console.error('[Reg] Username check error:', err&&err.code?err.code:'', err&&err.message?err.message:err);dbError('Kullanıcı adı')}})
   }else if(regStep===1){
     if(!window.db){showAlert('Veritabanı bağlantısı yok.');return}
     var em=$('reg-email').value.trim().toLowerCase();
@@ -954,7 +954,7 @@ function regNext(){
       clearTimeout(timer2);if(timedOut2)return;
       if(!snap.empty){$('fg-email').classList.add('invalid');$('fg-email').querySelector('.field-error').textContent='Bu e-posta adresi zaten kayıtlı';showAlert('Bu e-posta adresi zaten kayıtlı. Lütfen farklı bir e-posta adresi dene.');if(btn)btn.disabled=false;return}
       advance()
-    }).catch(function(){clearTimeout(timer2);if(!timedOut2)dbError('E-posta')})
+    }).catch(function(err){clearTimeout(timer2);if(!timedOut2){console.error('[Reg] Email check error:', err&&err.code?err.code:'', err&&err.message?err.message:err);dbError('E-posta')}})
   }else if(regStep<2){advance()}
   else completeRegistration()
 }

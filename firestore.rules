@@ -7,7 +7,7 @@ service cloud.firestore {
     // Write: sadece kendisi
     // online/publicKey güncellemelerine izin ver
     match /users/{uid} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow create: if request.auth != null && request.auth.uid == uid;
       allow update: if request.auth != null && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()
