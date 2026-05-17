@@ -4385,7 +4385,9 @@ document.addEventListener('keydown',function(e){
     else if($('modal-group').classList.contains('active')){if(!$('group-create-btn').disabled){e.preventDefault();$('group-create-btn').onclick()}}
     else if($('modal-forward').classList.contains('active')){e.preventDefault();forwardToSelected()}
   }
-  // Custom shortcuts from settings
+  // Custom shortcuts from settings — skip if user is typing in an input
+  var tag=e.target.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||e.target.isContentEditable)return;
   var saved=ls('shortcuts')||{};
   for(var sid in saved){
     var s=saved[sid];
