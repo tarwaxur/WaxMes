@@ -1370,34 +1370,37 @@ function switchFriendsTab(tab){
   }
 }
 
+function dmConvId(uid1,uid2){
+  var s=[uid1,uid2].sort();return 'dm_'+s[0]+'_'+s[1]
+}
 function startConvWith(name,friendId){
-  // Check if conversation already exists (including closed ones)
+  var uid=fbUserId();
+  // Use deterministic conversation ID from sorted member UIDs
+  var convId=dmConvId(uid,friendId||'');
+  // Check if conversation already exists locally
   for(var ci=0;ci<conversations.length;ci++){
-    if(conversations[ci].name===name){
-      var oldConv=conversations[ci];
-      oldConv.hidden=false;
-      oldConv.lastMsg=oldConv.lastMsg||'';
+    var conv=conversations[ci];
+    if(conv.id===convId||(!conv.isGroup&&conv.memberIds&&conv.memberIds.length===2&&conv.memberIds.indexOf(uid)!==-1&&conv.memberIds.indexOf(friendId)!==-1)){
+      conv.hidden=false;
+      conv.lastMsg=conv.lastMsg||'';
       $('modal-friends').classList.remove('active');
-      selectConversation(oldConv.id);
+      selectConversation(conv.id);
       return
     }
   }
-  // Check if this friend was a saved conversation
-  // Create new conversation
-  var id=uid();
+  // Create new conversation (or re-use existing Firestore doc)
   var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
   var color=colors[Math.floor(Math.random()*colors.length)];
-  var memberIds=[fbUserId()];
-  if(friendId)memberIds.push(friendId);
-  var newConv={id:id,name:name,avatar:name.charAt(0).toUpperCase(),color:color,online:true,lastMsg:'',time:'',unread:0,isGroup:false,memberIds:memberIds};
+  var memberIds=[uid,friendId];
+  var newConv={id:convId,name:name,avatar:name.charAt(0).toUpperCase(),color:color,online:true,lastMsg:'',time:'',unread:0,isGroup:false,memberIds:memberIds};
   if(window.db&&friendId)db.collection('users').doc(friendId).get().then(function(snap){if(snap.exists&&snap.data().avatar){newConv.avatar=snap.data().avatar;renderConversations()}}).catch(function(){});
   conversations.unshift(newConv);
   saveConversations();
-  // Create Firestore conversation with members
-  if(window.db&&fbUserId())db.collection('conversations').doc(id).set({type:'dm',memberIds:memberIds,createdAt:Date.now(),lastActivity:Date.now()}).catch(function(){});
+  // Create/update Firestore conversation with members (idempotent)
+  if(window.db&&uid)db.collection('conversations').doc(convId).set({type:'dm',memberIds:memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(function(){});
   renderConversations();
   $('modal-friends').classList.remove('active');
-  selectConversation(id)
+  selectConversation(convId)
 }
 
 var groupAvatarDataUrl=null;
@@ -1456,7 +1459,7 @@ async function forwardToSelected(){
     // E2E encrypt forwarded text for target conversation
     if(e2eReady&&window.db&&fwdTxt){var pubKeys=await getRecipientPubKey(cid);if(pubKeys&&(Array.isArray(pubKeys)?pubKeys.length:1)){try{var enc=await e2eEncrypt(fwdTxt,pubKeys);if(enc&&enc.indexOf('🔒')===0){fwdTxt=enc}}catch(e){}}}
     var fwd={
-      id:uid(),type:'sent',text:fwdTxt,time:timeNow(),
+      id:uid(),type:'sent',senderId:fbUserId(),text:fwdTxt,time:timeNow(),
       image:forwardMsgData.image||null,video:forwardMsgData.video||null,
       audio:forwardMsgData.audio||null,duration:forwardMsgData.duration||0,
       isForwarded:true,originalSender:forwardMsgData.originalSender||($('sidebar-username')&&$('sidebar-username').textContent||''),
@@ -1709,6 +1712,13 @@ function fbListenConversations(uid){
           var otherId=null;
           for(var mi=0;mi<(d.memberIds||[]).length;mi++){if(d.memberIds[mi]!==uid){otherId=d.memberIds[mi];break}}
           if(otherId){
+            // Check if a conversation with same member pair already exists (different ID)
+            var alreadyHas=false;
+            for(var ci=0;ci<conversations.length;ci++){
+              var cv=conversations[ci];
+              if(!cv.isGroup&&cv.memberIds&&cv.memberIds.length===2&&cv.memberIds.indexOf(uid)!==-1&&cv.memberIds.indexOf(otherId)!==-1){alreadyHas=true;break}
+            }
+            if(!alreadyHas){
             (function(oid,cid2){
               db.collection('users').doc(oid).get().then(function(uDoc){
                 if(!uDoc.exists)return;
@@ -1719,6 +1729,7 @@ function fbListenConversations(uid){
                 convListenerAddConv(newConv)
               }).catch(function(){})
             })(otherId,cid)
+            }
           }
         }
       }
@@ -1755,7 +1766,7 @@ function fbSendMessage(convId,msg){
   if(!window.db||!fbUserId())return;
   var sendData={
     type:msg.type,text:msg.text||'',time:msg.time,edited:!!msg.edited,deleted:!!msg.deleted,
-    sender:msg.sender||null,image:msg.image||null,video:msg.video||null,audio:msg.audio||null,
+    senderId:msg.senderId||fbUserId(),sender:msg.sender||null,image:msg.image||null,video:msg.video||null,audio:msg.audio||null,
     duration:msg.duration||0,replyTo:msg.replyTo||null,replyText:msg.replyText||null,
     isForwarded:!!msg.isForwarded,forwardComment:msg.forwardComment||null,originalSender:msg.originalSender||null,
     createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -1789,14 +1800,16 @@ function fbListenMessages(convId){
         for(var fi=0;fi<messages[convId].length;fi++){if(messages[convId][fi]._fbId===mid){exists=true;break}}
         if(!exists){
           var linked=false;
+          var curUid=fbUserId();
           for(var li=0;li<messages[convId].length;li++){
             var lm=messages[convId][li];
-            if(!lm._fbId&&lm.text===d.text&&lm.time===d.time&&lm.type==='sent'&&!lm.replyTo&&!lm.image&&!lm.video&&!lm.audio){
+            if(!lm._fbId&&lm.text===d.text&&lm.time===d.time&&lm.type==='sent'&&lm.senderId===curUid&&!lm.replyTo&&!lm.image&&!lm.video&&!lm.audio){
               lm._fbId=mid;linked=true;break
             }
           }
           if(!linked){
-          var m={id:uid(),type:d.type||'received',text:d.text||'',time:d.time||timeNow(),edited:!!d.edited,deleted:!!d.deleted,sender:d.sender||null,image:d.image||null,video:d.video||null,audio:d.audio||null,duration:d.duration||0,replyTo:d.replyTo||null,replyText:d.replyText||null,isForwarded:!!d.isForwarded,forwardComment:d.forwardComment||null,originalSender:d.originalSender||null,_fbId:mid};
+          var msgType=d.senderId!==undefined?(d.senderId===curUid?'sent':'received'):(d.type||'received');
+          var m={id:uid(),type:msgType,senderId:d.senderId||null,text:d.text||'',time:d.time||timeNow(),edited:!!d.edited,deleted:!!d.deleted,sender:d.sender||null,image:d.image||null,video:d.video||null,audio:d.audio||null,duration:d.duration||0,replyTo:d.replyTo||null,replyText:d.replyText||null,isForwarded:!!d.isForwarded,forwardComment:d.forwardComment||null,originalSender:d.originalSender||null,_fbId:mid};
           if(d.e2e||(d.text&&d.text.indexOf('🔒')===0))m.e2e=true;
           messages[convId].push(m);
           if(activeConvId===convId){
@@ -2715,7 +2728,8 @@ async function getRecipientPubKey(convId){
 async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!txt||!activeConvId)return;var conv=findConv(activeConvId);
   var finalText=txt;
   if(conv&&e2eReady&&window.db){var pubKeys=await getRecipientPubKey(activeConvId);if(pubKeys&&(Array.isArray(pubKeys)?pubKeys.length:1)){try{var enc=await e2eEncrypt(txt,pubKeys);if(enc&&enc.indexOf('🔒')===0)finalText=enc}catch(e){}}}
-  var id=uid(),msg={id:id,type:'sent',text:finalText,time:timeNow(),edited:false,deleted:false};if(replyToMsgId){msg.replyTo=replyToMsgId;msg.replyText=replyToMsgText&&replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt;conv.lastMsg='🔒 Mesaj'}if(!messages[activeConvId])messages[activeConvId]=[];messages[activeConvId].push(msg);renderMessages(activeConvId);inp.value='';$('chat-send').disabled=true;if(conv&&finalText===txt){conv.lastMsg=txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(activeConvId,msg);stopTyping()}
+  var uid=fbUserId();
+  var id=uid(),msg={id:id,type:'sent',senderId:uid,text:finalText,time:timeNow(),edited:false,deleted:false};if(replyToMsgId){msg.replyTo=replyToMsgId;msg.replyText=replyToMsgText&&replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt;conv.lastMsg='🔒 Mesaj'}if(!messages[activeConvId])messages[activeConvId]=[];messages[activeConvId].push(msg);renderMessages(activeConvId);inp.value='';$('chat-send').disabled=true;if(conv&&finalText===txt){conv.lastMsg=txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(activeConvId,msg);stopTyping()}
 
 
 
@@ -2999,7 +3013,7 @@ async function confirmSendMedia(){
         if(!messages[activeConvId])messages[activeConvId]=[];
         var txt=file.type==='image'||file.type==='video'?caption:'📎 '+file.name+(caption?' — '+caption:'');
         var encTxt=await e2eMediaText(txt,activeConvId);
-        var msg={id:id,type:'sent',text:encTxt,time:timeNow(),edited:false,deleted:false};
+        var msg={id:id,type:'sent',senderId:fbUserId(),text:encTxt,time:timeNow(),edited:false,deleted:false};
         if(file.type==='image')msg.image=url;
         else if(file.type==='video')msg.video=url;
         if(encTxt!==txt)msg.e2e=true;
@@ -3011,7 +3025,7 @@ async function confirmSendMedia(){
       }).catch(function(){
         var id=uid();
         if(!messages[activeConvId])messages[activeConvId]=[];
-        var msg={id:id,type:'sent',text:caption,time:timeNow(),edited:false,deleted:false,image:dataUrl};
+        var msg={id:id,type:'sent',senderId:fbUserId(),text:caption,time:timeNow(),edited:false,deleted:false,image:dataUrl};
         messages[activeConvId].push(msg);
         processMedia(idx+1)
       })
@@ -3021,7 +3035,7 @@ async function confirmSendMedia(){
       (async function(){
         var txt=file.type==='document'?'📎 '+file.name+(caption?' — '+caption:''):caption;
         var encTxt=await e2eMediaText(txt,activeConvId);
-        var msg={id:id,type:'sent',text:encTxt,time:timeNow(),edited:false,deleted:false};
+        var msg={id:id,type:'sent',senderId:fbUserId(),text:encTxt,time:timeNow(),edited:false,deleted:false};
         if(file.type==='image')msg.image=dataUrl;
         else if(file.type==='video')msg.video=dataUrl;
         if(encTxt!==txt)msg.e2e=true;
@@ -3813,7 +3827,7 @@ function sendVoice(){
     var dataUrl=reader.result;
     var id=uid();
     if(!messages[activeConvId])messages[activeConvId]=[];
-    var msg={id:id,type:'sent',text:'',time:timeNow(),edited:false,deleted:false,audio:dataUrl,duration:dur};
+    var msg={id:id,type:'sent',senderId:fbUserId(),text:'',time:timeNow(),edited:false,deleted:false,audio:dataUrl,duration:dur};
     messages[activeConvId].push(msg);
     renderMessages(activeConvId);
     var conv=findConv(activeConvId);
