@@ -78,7 +78,7 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
 .welcome-btn:hover{transform:translateY(-2px);box-shadow:0 8px 36px rgba(37,99,235,.35)}
 .welcome-btn:active{transform:scale(.97)}
 .saved-accounts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:20px;max-width:420px}
-.saved-account{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:all .2s;min-width:160px;text-align:left}
+.saved-account{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:all .2s;min-width:160px;max-width:200px;text-align:left;height:56px;box-sizing:border-box}
 .saved-account:hover{background:var(--hover);border-color:rgba(129,140,248,.2)}
 .saved-account:active{transform:scale(.97)}
 .saved-account .sa-avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;overflow:hidden}
@@ -881,10 +881,34 @@ function renderSavedAccounts(){
   var a=getAccounts();el.innerHTML='';
   for(var i=0;i<a.length;i++){(function(acc){
     var d=document.createElement('div');d.className='saved-account';
-    d.innerHTML='<div class="sa-avatar"'+(acc.avatar?' style="background:none"':'')+'>'+(acc.avatar?'<img src="'+escJs(acc.avatar)+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+esc(acc.displayName.charAt(0).toUpperCase())+'\';this.parentElement.textContent=\''+esc(acc.displayName.charAt(0).toUpperCase())+'\'">':esc(acc.displayName.charAt(0).toUpperCase()))+'</div><div class="sa-info"><div class="sa-name">'+esc(acc.displayName)+'</div><div class="sa-email">'+esc(acc.email)+'</div></div><button class="sa-remove" onclick="event.stopPropagation();removeAccount(\''+escJs(acc.id)+'\')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
-    d.onclick=function(){goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus()};
+    d.innerHTML='<div class="sa-avatar"'+(acc.avatar?' style="background:none"':'')+'>'+(acc.avatar?'<img src="'+escJs(acc.avatar)+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+esc(acc.displayName.charAt(0).toUpperCase())+'\';this.parentElement.textContent=\''+esc(acc.displayName.charAt(0).toUpperCase())+'\'">':esc(acc.displayName.charAt(0).toUpperCase()))+'</div><div class="sa-info"><div class="sa-name">'+esc(acc.displayName)+'</div><div class="sa-email" title="'+esc(acc.email)+'">'+esc(acc.email)+'</div></div><button class="sa-remove" onclick="event.stopPropagation();removeAccount(\''+escJs(acc.id)+'\')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+    d.onclick=function(){
+      if(acc.password){
+        autoLogin(acc)
+      }else{
+        goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus()
+      }
+    };
     el.appendChild(d)
   })(a[i])}
+}
+
+function autoLogin(acc){
+  if(!window.auth)return;
+  $('loading-screen').style.display='flex';
+  document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});
+  auth.signInWithEmailAndPassword(acc.email,acc.password).then(function(cred){
+    var u=cred.user;
+    db.collection('users').doc(u.uid).get().then(function(doc){
+      if(doc.exists){var d=doc.data();hideLoading(function(){doLoginWith({id:u.uid,username:d.username,displayName:d.displayName,email:u.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||''})})}
+      else{hideLoading(function(){doLoginWith({id:u.uid,username:acc.username,displayName:acc.displayName,email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})}
+    }).catch(function(){hideLoading(function(){doLoginWith({id:u.uid,username:acc.username,displayName:acc.displayName,email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})})
+  }).catch(function(){
+    hideLoading(function(){
+      goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
+      showAlert('Otomatik giriş başarısız. Lütfen şifreni gir.')
+    })
+  })
 }
 
 function doLoginWith(acc){activeAccountId=acc.id;showApp(acc.username,acc.displayName,acc.email,acc.avatar,acc.status||'online',acc.bio||'')}
@@ -899,6 +923,9 @@ function doLogin(){
   $('login-btn').disabled=true;
   auth.signInWithEmailAndPassword(e,p).then(function(cred){
     console.log('[Auth] Login success, uid:', cred.user.uid);
+    var accs=getAccounts();
+    for(var i=0;i<accs.length;i++){if(accs[i].email===e){accs[i].password=p;break}}
+    ls('accounts',accs);
   }).catch(function(err){
     console.error('[Auth] Login error:', err.code, err.message);
     $('login-btn').disabled=false;
@@ -976,6 +1003,9 @@ function completeRegistration(){
     var uid=cred.user.uid;
     db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()}).then(function(){
       console.log('[Auth] User doc created');
+      var accs=getAccounts();
+      for(var i=0;i<accs.length;i++){if(accs[i].email===e){accs[i].password=p;break}}
+      ls('accounts',accs);
       finishReg();
       showApp(u,d,e,avatarDataUrl||null,'online','')
     }).catch(function(){
@@ -1819,6 +1849,7 @@ function fbListenConversations(uid){
 }
 
 function convListenerAddConv(newConv){
+  for(var ci=0;ci<conversations.length;ci++){if(conversations[ci].id===newConv.id)return}
   conversations.push(newConv);
   saveConversations();
   renderConversations();
@@ -2693,6 +2724,8 @@ async function showApp(username,display,email,avatar,status,bio){
   activeConvId=null;renderConversations();
   // Start listening to conversation updates from Firestore
   if(window.db&&fbUserId())fbListenConversations(fbUserId());
+  // Force sidebar refresh after a short delay to ensure all conversations are loaded
+  setTimeout(function(){renderConversations()},500);
   // Init background mode
   if(ls('backgroundMode')&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
   initE2E();
