@@ -1657,6 +1657,7 @@ function showContextMenu(x,y,items){
 // ===== SESSION STATE MANAGEMENT =====
 // All session-specific state that MUST be reset on account switch
 function resetSessionState(){
+  _authTransitioning=true;
   // Firebase listeners
   for(var kl in _fbListeners){_fbListeners[kl]();delete _fbListeners[kl]}
   _fbListeners={};
@@ -1808,6 +1809,7 @@ var _fbListeners={};
 var _fbMsgCache={};
 var _fbConvUnsub=null;
 var _convListenerActive=false;
+var _authTransitioning=false; // Prevents processing stale auth state changes
 
 function fbListenConversations(uid){
   if(_fbConvUnsub){_fbConvUnsub();_fbConvUnsub=null}
@@ -1897,22 +1899,28 @@ function fbSendMessage(convId,msg){
 
 function fbListenMessages(convId){
   if(!window.db||_fbListeners[convId])return;
+  // Capture the current account ID at listener setup time to prevent cross-account contamination
+  var _setupAccountId=activeAccountId;
   // Check for clearedAt to skip old messages on restart
   var _clearTime=null;
   var conv=findConv(convId);
   if(conv&&conv._clearedAt)_clearTime=conv._clearedAt;
   _fbListeners[convId]=db.collection('conversations').doc(convId).collection('messages').orderBy('createdAt','asc').onSnapshot(function(snapshot){
+    // Skip if account has changed since listener was set up
+    if(_authTransitioning||activeAccountId!==_setupAccountId)return;
     snapshot.docChanges().forEach(function(change){
       if(change.type==='added'){
         var d=change.doc.data();var mid=change.doc.id;
         // Skip messages that were cleared
         if(_clearTime&&d.createdAt&&d.createdAt.toMillis&&d.createdAt.toMillis()<_clearTime){return}
+        var curUid=fbUserId();
+        // Verify current auth state matches expected account
+        if(!curUid||curUid!==_setupAccountId)return;
         if(!messages[convId])messages[convId]=[];
         var exists=false;
         for(var fi=0;fi<messages[convId].length;fi++){if(messages[convId][fi]._fbId===mid){exists=true;break}}
         if(!exists){
           var linked=false;
-          var curUid=fbUserId();
           for(var li=0;li<messages[convId].length;li++){
             var lm=messages[convId][li];
             if(!lm._fbId&&lm.text===d.text&&lm.time===d.time&&lm.type==='sent'&&lm.senderId===curUid&&!lm.replyTo&&!lm.image&&!lm.video&&!lm.audio){
@@ -2721,14 +2729,18 @@ async function showApp(username,display,email,avatar,status,bio){
   for(var sci=0;sci<conversations.length;sci++){
     updateConvPreview(conversations[sci].id)
   }
-  activeConvId=null;renderConversations();
+  activeConvId=null;
   // Start listening to conversation updates from Firestore
   if(window.db&&fbUserId())fbListenConversations(fbUserId());
-  // Force sidebar refresh after a short delay to ensure all conversations are loaded
-  setTimeout(function(){renderConversations()},500);
   // Init background mode
   if(ls('backgroundMode')&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
   initE2E();
+  // Render sidebar after DOM is ready
+  requestAnimationFrame(function(){
+    renderConversations();
+    setTimeout(function(){renderConversations()},500)
+  });
+  _authTransitioning=false;
   setTimeout(function(){
     // Start on the chat selection screen
   },300)
@@ -4899,7 +4911,9 @@ loadFirebase(function(){
           else{initWelcome()}
         }).catch(function(){initWelcome()})
       }else{
-        resetSessionState();
+        // Only reset if not in the middle of an account switch
+        // (account switch triggers null -> newUser in quick succession)
+        if(!_authTransitioning){resetSessionState()}
         initWelcome()
       }
     })
