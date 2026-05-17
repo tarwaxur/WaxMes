@@ -26,4 +26,4 @@
 - [✓]  Güncelleme Sistemi – Yanlış Sürüm Algılama ve Self-Update Loop Bug'u
 - [✓]  Kısayol Sistemi – Yazı Yazarken Global Shortcut Çakışması
 - [✓]  Arkadaşlık İsteği Sistemi – Bekleyen Listesi, Bildirim Rozetleri ve Kabul/Reddet Akışı
-- [ ]  Kısayol Ayarlama Sistemi – Reset Butonu State Bozulma Bug’u
+- [✓]  Kısayol Ayarlama Sistemi – Reset Butonu State Bozulma Bug’u
