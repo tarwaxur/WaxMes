@@ -525,7 +525,7 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
     <div class="saved-accounts" id="saved-accounts"></div>
     <button class="welcome-btn" onclick="goToLogin()" style="margin-bottom:8px">Giriş Yap</button>
     <div class="welcome-links"><a onclick="goToRegister()">Hesap Oluştur</a><a onclick="showTos()">Kullanım Koşulları</a></div>
-    <div class="welcome-version">v0.1.0</div>
+    <div class="welcome-version" id="welcome-version">v0.1.0</div>
   </div>
 
   <!-- LOGIN -->
@@ -1935,39 +1935,61 @@ function showSettingsCat(cat){
       '<b style="color:var(--text3)">Özellikler:</b><br>• Gerçek zamanlı mesajlaşma<br>• Grup sohbetleri<br>• Medya paylaşımı (görsel, GIF)<br>• Mesaj düzenleme ve silme<br>• Çoklu tema desteği<br>• Çevrimiçi/Boşta/Rahatsız Etme durumları<br>• Hesap yönetimi ve oturum hatırlama<br><br>'+
       '<b style="color:var(--text3)">Teknolojiler:</b><br>• Electron • Vanilla JS • CSS3<br><br>'+
       '<b style="color:var(--text3)">Geliştirici:</b><br>• Waxur tarafından geliştiriliyor</div>'+
-      '<div style="margin-top:16px">'+updateBtn+'</div>'+updateBar
+      '<div style="margin-top:16px">'+updateBtn+'</div>'+updateBar;
+    var appVer = 'v0.1.0';
+    if(window.electronAPI && electronAPI.getAppVersion) electronAPI.getAppVersion().then(function(v){appVer='v'+v;var el=$('about-version');if(el)el.textContent=appVer;var wel=$('welcome-version');if(wel)wel.textContent=appVer}).catch(function(){});
+    var el=$('about-version');if(el)el.textContent=appVer;
   }
   requestAnimationFrame(function(){content.classList.add('settings-content-anim')})
 }
 
 // ===== AUTO-UPDATE =====
+var _updateCheckLock = false;
 function checkUpdate(){
+  if(_updateCheckLock) return;
   var btn = $('update-btn');
   if(!btn) return;
   btn.textContent = 'Kontrol ediliyor...';
   btn.disabled = true;
-  if(window.electronAPI && electronAPI.startDownload){
-    // If update was already downloaded, install now
+  _updateCheckLock = true;
+  if(window.electronAPI && electronAPI.checkForUpdates){
     if(btn.dataset.downloaded === '1') {
       electronAPI.installUpdate();
+      _updateCheckLock = false;
       return;
     }
-    // Otherwise check: main process already checks on startup,
-    // but allow re-check. We simulate trigger via IPC.
-    // The main process sends update-available on its own.
-    // We just set a small timeout to show "up to date" if nothing happens.
-    // But for manual re-check, we need a different approach.
-    // Let's just show a message to use auto-check.
     showUpdateBar('Güncelleme kontrol ediliyor...', 'info');
-    setTimeout(function(){
-      if(btn && !btn.dataset.found) {
+    electronAPI.checkForUpdates().then(function(result){
+      _updateCheckLock = false;
+      if(result && result.error){
+        btn.textContent = 'Güncellemeleri Kontrol Et';
+        btn.disabled = false;
+        showUpdateBar('Hata: '+result.error, 'error');
+        return;
+      }
+      if(result && result.updateAvailable){
+        btn.textContent = 'v'+result.version+' İndir';
+        btn.dataset.found = '1';
+        btn.disabled = false;
+        showUpdateBar('Yeni sürüm v'+result.version+' mevcut. İndirmek için tıkla.', 'info');
+        btn.onclick = function(){
+          btn.textContent = 'İndiriliyor...';
+          btn.disabled = true;
+          electronAPI.startDownload();
+        };
+      } else {
         btn.textContent = 'Güncellemeleri Kontrol Et';
         btn.disabled = false;
         showUpdateBar('Zaten en son sürümü kullanıyorsun.', 'info');
       }
-    }, 5000);
-    // Listeners are already registered in preload
+    }).catch(function(err){
+      _updateCheckLock = false;
+      btn.textContent = 'Güncellemeleri Kontrol Et';
+      btn.disabled = false;
+      showUpdateBar('Kontrol başarısız: '+(err&&err.message?err.message:err), 'error');
+    });
   } else {
+    _updateCheckLock = false;
     showUpdateBar('Güncelleme kontrolü sadece masaüstü uygulamasında çalışır.', 'error');
     btn.textContent = 'Güncellemeleri Kontrol Et';
     btn.disabled = false;
@@ -1981,10 +2003,17 @@ function showUpdateBar(msg, type){
   bar.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:'+(colors[type]||colors.info)+'20;border:1px solid '+(colors[type]||colors.info)+'40;font-size:12px;color:var(--text3)">'+msg+'</div>';
 }
 
+function setAppVersion(ver){
+  var v = ver ? 'v'+ver : 'v0.1.0';
+  var el = $('about-version'); if(el) el.textContent = v;
+  var wel = $('welcome-version'); if(wel) wel.textContent = v;
+}
+
 if(window.electronAPI){
+  electronAPI.getAppVersion().then(function(v){setAppVersion(v)}).catch(function(){});
   window.electronAPI.onUpdateAvailable(function(version){
     var btn = $('update-btn');
-    if(btn) { btn.textContent = 'v'+version+' İndir'; btn.dataset.found = '1'; btn.disabled = false; }
+    if(btn && !btn.dataset.downloaded) { btn.textContent = 'v'+version+' İndir'; btn.dataset.found = '1'; btn.disabled = false; }
     showUpdateBar('Yeni sürüm v'+version+' mevcut. İndirmek için "v'+version+' İndir" butonuna tıkla.', 'info');
     if(btn) btn.onclick = function(){
       btn.textContent = 'İndiriliyor...';
@@ -2003,6 +2032,11 @@ if(window.electronAPI){
     if(btn) btn.onclick = function(){
       electronAPI.installUpdate();
     };
+  });
+  window.electronAPI.onUpdateError(function(msg){
+    var btn = $('update-btn');
+    if(btn) { btn.textContent = 'Güncellemeleri Kontrol Et'; btn.dataset.found = '0'; btn.disabled = false; }
+    showUpdateBar('Güncelleme hatası: '+msg, 'error');
   });
 }
 
@@ -4427,6 +4461,7 @@ if(chatMsgs)chatMsgs.addEventListener('scroll',function(){
 // ===== INIT =====
 if(!ls('version')){localStorage.clear();ls('version','0.5.0')}
 applyTheme(getTheme());
+if(window.electronAPI&&electronAPI.getAppVersion)electronAPI.getAppVersion().then(function(v){setAppVersion(v)}).catch(function(){});
 
 function hideLoading(cb){
   var ls=$('loading-screen');

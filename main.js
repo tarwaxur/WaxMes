@@ -78,13 +78,18 @@ function createWindow() {
   autoUpdater.on('update-available', (info) => {
     mainWindow?.webContents?.send('update-available', info.version);
   });
+  autoUpdater.on('update-not-available', () => {
+    mainWindow?.webContents?.send('update-not-available');
+  });
   autoUpdater.on('download-progress', (p) => {
     mainWindow?.webContents?.send('update-progress', Math.round(p.percent));
   });
   autoUpdater.on('update-downloaded', () => {
     mainWindow?.webContents?.send('update-downloaded');
   });
-  autoUpdater.on('error', () => {});
+  autoUpdater.on('error', (err) => {
+    mainWindow?.webContents?.send('update-error', err.message || err);
+  });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => { mainWindow.show() });
@@ -203,6 +208,20 @@ ipcMain.handle('safe-decrypt', (_e, encryptedB64) => {
     const buf = Buffer.from(encryptedB64, 'base64');
     return safeStorage.decryptString(buf);
   } catch(e) { return null }
+});
+
+ipcMain.handle('get-app-version', () => app.getVersion());
+
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    if (result && result.updateInfo && result.updateInfo.version) {
+      return { updateAvailable: true, version: result.updateInfo.version };
+    }
+    return { updateAvailable: false };
+  } catch (e) {
+    return { error: e.message || e || 'Güncelleme kontrolü başarısız' };
+  }
 });
 
 ipcMain.handle('start-download', () => {
