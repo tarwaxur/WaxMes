@@ -895,6 +895,7 @@ function renderSavedAccounts(){
 
 function autoLogin(acc){
   if(!window.auth)return;
+  _explicitLogin=true;
   $('loading-screen').style.display='flex';
   document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});
   auth.signInWithEmailAndPassword(acc.email,acc.password).then(function(cred){
@@ -904,6 +905,7 @@ function autoLogin(acc){
       else{hideLoading(function(){doLoginWith({id:u.uid,username:acc.username,displayName:acc.displayName,email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})}
     }).catch(function(){hideLoading(function(){doLoginWith({id:u.uid,username:acc.username,displayName:acc.displayName,email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})})
   }).catch(function(){
+    _explicitLogin=false;
     hideLoading(function(){
       goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
       showAlert('Otomatik giriş başarısız. Lütfen şifreni gir.')
@@ -1810,6 +1812,20 @@ var _fbMsgCache={};
 var _fbConvUnsub=null;
 var _convListenerActive=false;
 var _authTransitioning=false; // Prevents processing stale auth state changes
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
 
 function fbListenConversations(uid){
   if(_fbConvUnsub){_fbConvUnsub();_fbConvUnsub=null}
@@ -2741,10 +2757,11 @@ async function showApp(username,display,email,avatar,status,bio){
   _authTransitioning=false;
   function tryRender(){
     var el=$('conv-list');
-    if(el&&el.parentElement){
+    var layout=document.querySelector('.app-layout');
+    if(el&&layout&&layout.classList.contains('active')){
       renderConversations();
     }else{
-      setTimeout(tryRender,200)
+      setTimeout(tryRender,150)
     }
   }
   setTimeout(tryRender,100);
@@ -4914,6 +4931,8 @@ loadFirebase(function(){
   if(window.auth){
     auth.onAuthStateChanged(function(user){
       if(user){
+        // Skip if autoLogin is handling this login (prevents double showApp call)
+        if(_explicitLogin){_explicitLogin=false;return}
         startPendingListener(user.uid);
         db.collection('users').doc(user.uid).get().then(function(doc){
           if(doc.exists){var d=doc.data();hideLoading(function(){doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||''})})}
