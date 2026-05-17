@@ -597,7 +597,7 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
             <div class="ad-item danger" onclick="doLogout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Çıkış Yap</div>
           </div>
         </div>
-        <div class="sidebar-actions"><button class="sidebar-action-btn" title="Arkadaş Ekle / Grup Oluştur" onclick="showFriendsPanel()"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button></div>
+        <div class="sidebar-actions"><button class="sidebar-action-btn" title="Arkadaş Ekle / Grup Oluştur" onclick="showFriendsPanel()" style="position:relative"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span class="badge-pending" id="badge-pending-sidebar" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;line-height:16px;box-shadow:0 0 0 2px var(--bg1)"></span></button></div>
       </div>
       <div class="sidebar-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Sohbet ara..." oninput="filterConversations(this.value)"></div>
       <div id="archive-bar" onclick="toggleArchiveView()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;margin:2px 6px;border-radius:8px;cursor:pointer;font-size:11px;color:var(--text4);transition:all .15s" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg><span id="archive-label">Arşiv</span><span id="archive-badge" style="display:none;background:var(--accent);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0"></span></div>
@@ -830,7 +830,7 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
     <div class="modal-body" style="padding:0;display:flex;flex-direction:column">
       <div style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0">
         <button class="friends-tab active" data-tab="friends" onclick="switchFriendsTab('friends')" style="flex:1;padding:10px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text4);transition:all .15s">👥 Arkadaşlar</button>
-        <button class="friends-tab" data-tab="pending" onclick="switchFriendsTab('pending')" style="flex:1;padding:10px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text4);transition:all .15s">⏳ Bekleyen</button>
+        <button class="friends-tab" data-tab="pending" onclick="switchFriendsTab('pending')" style="flex:1;padding:10px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text4);transition:all .15s;position:relative">⏳ Bekleyen<span class="badge-pending" id="badge-pending-tab" style="display:none;margin-left:4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;line-height:16px;vertical-align:middle"></span></button>
         <button class="friends-tab" data-tab="add" onclick="switchFriendsTab('add')" style="flex:1;padding:10px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text4);transition:all .15s">➕ Ekle</button>
       </div>
       <div id="friends-content" style="flex:1;overflow-y:auto;padding:14px"></div>
@@ -1232,6 +1232,29 @@ function declineFriendRequest(reqId){
   if(!window.db)return;
   db.collection('friendRequests').doc(reqId).delete().then(function(){switchFriendsTab('pending')}).catch(function(){switchFriendsTab('pending')})
 }
+function updatePendingBadge(count){
+  if(count<0)count=0;
+  var sidebar=$('badge-pending-sidebar');
+  var tab=$('badge-pending-tab');
+  if(count>0){
+    var c=count>99?'99+':''+count;
+    [sidebar,tab].forEach(function(el){el.textContent=c;el.style.display='inline-flex'})
+  }else{
+    [sidebar,tab].forEach(function(el){el.style.display='none'})
+  }
+}
+var _pendingUnsub=null;
+function startPendingListener(uid){
+  if(_pendingUnsub){_pendingUnsub()}
+  if(!window.db)return;
+  _pendingUnsub=db.collection('friendRequests').where('to','==',uid).onSnapshot(function(snap){
+    var count=0;
+    snap.forEach(function(doc){if(doc.data().status==='pending')count++});
+    updatePendingBadge(count)
+  },function(err){
+    if(err)console.error('pendingListener error:',err)
+  })
+}
 function showFriendMenu(e,name,friendId){
   e.preventDefault();
   showContextMenu(e.clientX,e.clientY,[
@@ -1279,6 +1302,7 @@ function switchFriendsTab(tab){
       }
     }).catch(function(){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Henüz arkadaşın yok.</div>'})
   }else if(tab==='pending'){
+    updatePendingBadge(0);
     if(!window.db||!uid){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>';return}
     Promise.all([
       db.collection('friendRequests').where('to','==',uid).get(),
@@ -4523,11 +4547,15 @@ loadFirebase(function(){
   if(window.auth){
     auth.onAuthStateChanged(function(user){
       if(user){
+        startPendingListener(user.uid);
         db.collection('users').doc(user.uid).get().then(function(doc){
           if(doc.exists){var d=doc.data();hideLoading(function(){doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||''})})}
           else{initWelcome()}
         }).catch(function(){initWelcome()})
-      }else{initWelcome()}
+      }else{
+        if(window._pendingUnsub){_pendingUnsub()}
+        initWelcome()
+      }
     })
   }else{initWelcome()}
 });

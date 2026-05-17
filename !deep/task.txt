@@ -24,5 +24,5 @@
 - [✓]  Arkadaşlık İsteği Gönderimi Hatası (Firebase Kontrol Fail + UI Z-Index Konumlandırma Sorunu)
 - [✓]  Uygulama Güncelleme Sistemi – Sürüm Kontrolü Çalışmıyor
 - [✓]  Güncelleme Sistemi – Yanlış Sürüm Algılama ve Self-Update Loop Bug'u
-- [ ]  Kısayol Sistemi – Yazı Yazarken Global Shortcut Çakışması
-- [ ]  Arkadaşlık İsteği Sistemi – Bekleyen Listesi, Bildirim Rozetleri ve Kabul/Reddet Akışı
+- [✓]  Kısayol Sistemi – Yazı Yazarken Global Shortcut Çakışması
+- [✓]  Arkadaşlık İsteği Sistemi – Bekleyen Listesi, Bildirim Rozetleri ve Kabul/Reddet Akışı
