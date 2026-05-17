@@ -900,10 +900,8 @@ function autoLogin(acc){
   document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});
   auth.signInWithEmailAndPassword(acc.email,acc.password).then(function(cred){
     var u=cred.user;
-    db.collection('users').doc(u.uid).get().then(function(doc){
-      if(doc.exists){var d=doc.data();hideLoading(function(){doLoginWith({id:u.uid,username:d.username,displayName:d.displayName,email:u.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||''})})}
-      else{hideLoading(function(){doLoginWith({id:u.uid,username:acc.username,displayName:acc.displayName,email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})}
-    }).catch(function(){hideLoading(function(){doLoginWith({id:u.uid,username:acc.username,displayName:acc.displayName,email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})})
+    // Use LOCAL account data (always up-to-date from settings saves)
+    hideLoading(function(){doLoginWith({id:u.uid,username:acc.username||u.email.split('@')[0],displayName:acc.displayName||u.displayName||u.email.split('@')[0],email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})
   }).catch(function(){
     _explicitLogin=false;
     hideLoading(function(){
@@ -2467,8 +2465,8 @@ async function testScreenShare(){
   }
 }
 
-async function pickSettingsAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===activeAccountId){a[i].avatar=r.thumb;ls('accounts',a);showSettingsCat('profile');var sa=$('sidebar-avatar');sa.innerHTML='<img src="'+r.thumb+'" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+esc((a[i].displayName||'?').charAt(0).toUpperCase())+'\'">';if(window.db)db.collection('users').doc(activeAccountId).update({avatar:r.thumb});break}}}}}catch(e){}}
-function saveProfileSettings(){var d=$('set-display').value.trim(),u=$('set-username').value.trim(),b=$('set-bio').value.trim();if(!d||!u)return;var accs=getAccounts();for(var i=0;i<accs.length;i++){if(accs[i].id===activeAccountId){accs[i].displayName=d;accs[i].username=u;accs[i].bio=b;var av=accs[i].avatar||null;ls('accounts',accs);if(window.db)db.collection('users').doc(activeAccountId).update({displayName:d,username:u,bio:b,avatar:av});$('sidebar-username').textContent=d;if(!$('sidebar-avatar').querySelector('img'))$('sidebar-avatar').textContent=d.charAt(0).toUpperCase();showSettingsCat('profile');break}}}
+async function pickSettingsAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===activeAccountId){a[i].avatar=r.thumb;ls('accounts',a);showSettingsCat('profile');var sa=$('sidebar-avatar');sa.innerHTML='<img src="'+r.thumb+'" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+esc((a[i].displayName||'?').charAt(0).toUpperCase())+'\'">';var fbUid=fbUserId();if(window.db&&fbUid)db.collection('users').doc(fbUid).update({avatar:r.thumb});break}}}}}catch(e){}}
+function saveProfileSettings(){var d=$('set-display').value.trim(),u=$('set-username').value.trim(),b=$('set-bio').value.trim();if(!d||!u)return;var accs=getAccounts();for(var i=0;i<accs.length;i++){if(accs[i].id===activeAccountId){accs[i].displayName=d;accs[i].username=u;accs[i].bio=b;var av=accs[i].avatar||null;ls('accounts',accs);var fbUid=fbUserId();if(window.db&&fbUid)db.collection('users').doc(fbUid).update({displayName:d,username:u,bio:b,avatar:av});$('sidebar-username').textContent=d;if(!$('sidebar-avatar').querySelector('img'))$('sidebar-avatar').textContent=d.charAt(0).toUpperCase();showSettingsCat('profile');break}}}
 function saveEmail(){showAlert('E-posta değiştirme şu anlık devre dışı. Yakında kullanıma sunulacak.')}
 function changePassword(){var cur=$('cur-pass').value,nu=$('new-pass').value,nu2=$('new-pass2').value;if(!cur||nu.length<6||nu!==nu2)return;if(!window.auth||!auth.currentUser){showAlert('Oturum bulunamadı.');return}if(cur===nu){showAlert('Yeni şifre, mevcut şifrenle aynı olamaz.');return}var email=auth.currentUser.email;var cred=firebase.auth.EmailAuthProvider.credential(email,cur);auth.currentUser.reauthenticateWithCredential(cred).then(function(){if(cur===nu){showAlert('Yeni şifre, mevcut şifrenle aynı olamaz.');return}auth.currentUser.updatePassword(nu).then(function(){$('save-pass-btn').textContent='✓ Değiştirildi';setTimeout(function(){$('save-pass-btn').textContent='Şifreyi Değiştir';$('cur-pass').value='';$('new-pass').value='';$('new-pass2').value='';$('save-pass-btn').disabled=true},2000)}).catch(function(e){showAlert('Şifre değiştirilemedi: '+e.message)})}).catch(function(){showAlert('Mevcut şifren yanlış.')})}
 
@@ -2507,7 +2505,7 @@ async function initE2E(){
     var privKey=await crypto.subtle.exportKey('pkcs8',keyPair.privateKey);
     await safeStore('e2e_private_'+activeAccountId,Array.from(new Uint8Array(privKey)));
     var pubB64=btoa(String.fromCharCode.apply(null,new Uint8Array(pubKey)));
-    if(window.db)db.collection('users').doc(activeAccountId).update({publicKey:pubB64}).catch(function(){});
+    if(window.db){var fbUid=fbUserId();if(fbUid)db.collection('users').doc(fbUid).update({publicKey:pubB64}).catch(function(){})};
     e2eKeys={privateKey:keyPair.privateKey};e2eReady=true
   }catch(e){}
 }
