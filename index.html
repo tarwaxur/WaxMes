@@ -1565,7 +1565,7 @@ function confirmClearConversation(){
   if(!id)return;
   if(messages[id]){delete messages[id]}
   var conv=findConv(id);
-  if(conv){conv.lastMsg='Sohbet temizlendi';conv.lastActivity=Date.now();conv.time=timeNow();conv.unread=0}
+  if(conv){conv.lastMsg='Sohbet temizlendi';conv.lastActivity=Date.now();conv.time=timeNow();conv.unread=0;conv._clearedAt=Date.now()}
   if(activeConvId===id){
     if(chatMsgs)chatMsgs.innerHTML='';
     renderMessages(id)
@@ -2728,8 +2728,8 @@ async function getRecipientPubKey(convId){
 async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!txt||!activeConvId)return;var conv=findConv(activeConvId);
   var finalText=txt;
   if(conv&&e2eReady&&window.db){var pubKeys=await getRecipientPubKey(activeConvId);if(pubKeys&&(Array.isArray(pubKeys)?pubKeys.length:1)){try{var enc=await e2eEncrypt(txt,pubKeys);if(enc&&enc.indexOf('🔒')===0)finalText=enc}catch(e){}}}
-  var uid=fbUserId();
-  var id=uid(),msg={id:id,type:'sent',senderId:uid,text:finalText,time:timeNow(),edited:false,deleted:false};if(replyToMsgId){msg.replyTo=replyToMsgId;msg.replyText=replyToMsgText&&replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt;conv.lastMsg='🔒 Mesaj'}if(!messages[activeConvId])messages[activeConvId]=[];messages[activeConvId].push(msg);renderMessages(activeConvId);inp.value='';$('chat-send').disabled=true;if(conv&&finalText===txt){conv.lastMsg=txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(activeConvId,msg);stopTyping()}
+  var myId=fbUserId();
+  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(replyToMsgId){msg.replyTo=replyToMsgId;msg.replyText=replyToMsgText&&replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt;conv.lastMsg='🔒 Mesaj'}if(!messages[activeConvId])messages[activeConvId]=[];messages[activeConvId].push(msg);renderMessages(activeConvId);inp.value='';$('chat-send').disabled=true;if(conv&&finalText===txt){conv.lastMsg=txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(activeConvId,msg);stopTyping()}
 
 
 
