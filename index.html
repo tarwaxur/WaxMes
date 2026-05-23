@@ -270,6 +270,7 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
 #emoji-body::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
 #emoji-cats::-webkit-scrollbar{height:2px}
 .conv-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:all .15s;margin-bottom:1px;animation:slideUp .25s ease both}
+.conversations.no-anim .conv-item{animation:none!important}
 .conv-item:hover{background:var(--hover)}
 .conv-item:nth-child(1){animation-delay:0s}
 .conv-item:nth-child(2){animation-delay:.02s}
@@ -582,8 +583,8 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
     <div class="app-sidebar">
       <div class="sidebar-header">
         <div class="sidebar-user" id="sidebar-user-btn" onclick="toggleAvatarMenu()">
-          <div class="sidebar-avatar" id="sidebar-avatar">W</div>
-          <div class="sidebar-user-info"><div class="sidebar-username" id="sidebar-username">waxur</div><div class="sidebar-status" id="sidebar-status"><span class="sd-dot sd-online"></span><span id="sidebar-status-text">Çevrimiçi</span></div></div>
+          <div class="sidebar-avatar" id="sidebar-avatar">?</div>
+          <div class="sidebar-user-info"><div class="sidebar-username" id="sidebar-username">Kullanıcı</div><div class="sidebar-status" id="sidebar-status"><span class="sd-dot sd-online"></span><span id="sidebar-status-text">Çevrimiçi</span></div></div>
           <div class="avatar-dropdown" id="avatar-dropdown">
             <div class="ad-status" onclick="cycleStatus()"><span class="sd-dot sd-online ad-dot" id="ad-dot"></span><span id="ad-status-text">Çevrimiçi</span></div>
             <div class="ad-sep"></div>
@@ -867,43 +868,223 @@ var goToRegister=function(){var accs=getAccounts();if(accs.length>=3){showAlert(
 
 // ===== SAVED ACCOUNTS =====
 function getAccounts(){return ls('accounts')||[]}
-function saveAccount(acc){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===acc.id){a[i]=acc;ls('accounts',a);return}}a.unshift(acc);ls('accounts',a)}
+function groupsStorageKey(){return activeAccountId?'groups_'+activeAccountId:'groups'}
+function groupBelongsToAccount(g,accountId){
+  if(!accountId||!g)return true;
+  if(g.creatorId===accountId)return true;
+  if(g.adminIds&&g.adminIds.indexOf(accountId)!==-1)return true;
+  if(g.memberIds&&g.memberIds.indexOf(accountId)!==-1)return true;
+  return !g.memberIds||g.memberIds.length===0
+}
+function getGroups(){
+  var scoped=ls(groupsStorageKey());
+  if(scoped)return scoped;
+  var legacy=ls('groups')||[];
+  var accountId=fbUserId()||activeAccountId;
+  if(accountId)legacy=legacy.filter(function(g){return groupBelongsToAccount(g,accountId)});
+  return legacy
+}
+function saveGroups(groups){ls(groupsStorageKey(),groups||[]);return groups||[]}
+function saveAccount(acc){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===acc.id){for(var k in acc){if(k!=='password'&&acc[k]!==undefined&&acc[k]!==null)a[i][k]=acc[k]}a[i].lastLogin=acc.lastLogin||a[i].lastLogin;if(a[i].password!==undefined)delete a[i].password;ls('accounts',a);return}}for(var i=0;i<a.length;i++){if(a[i].email===acc.email){for(var k in acc){if(k!=='password'&&acc[k]!==undefined&&acc[k]!==null)a[i][k]=acc[k]}a[i].lastLogin=acc.lastLogin||a[i].lastLogin;if(a[i].password!==undefined)delete a[i].password;ls('accounts',a);return}}if(acc.password!==undefined)delete acc.password;a.unshift(acc);ls('accounts',a)}
+function saveGroup(g){var grps=getGroups();for(var i=0;i<grps.length;i++){if(grps[i].id===g.id){grps[i]=g;saveGroups(grps);return}}grps.push(g);saveGroups(grps)}
 function removeAccount(id){var accs=getAccounts();var acc=null;for(var i=0;i<accs.length;i++){if(accs[i].id===id){acc=accs[i];break}}if(!acc)return;var body=$('modal-delete').querySelector('.modal-body');body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>'+
   '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Hesabı Kaldır</h4>'+
-  '<p style="color:var(--text4);font-size:12px">"'+esc(acc.displayName)+'" hesabı silinsin mi? Bu işlem geri alınamaz.</p>';
+  '<p style="color:var(--text4);font-size:12px">"'+esc(accountFallbackName(acc))+'" hesabı silinsin mi? Bu işlem geri alınamaz.</p>';
 $('delete-confirm-btn').textContent='Kaldır';
-$('delete-confirm-btn').onclick=function(){closeModal('modal-delete',function(){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===id){a.splice(i,1);break}}ls('accounts',a);renderSavedAccounts();hideDeleteModal()})};
+$('delete-confirm-btn').onclick=function(){closeModal('modal-delete',function(){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===id){forgetAccountPassword(a[i]);a.splice(i,1);break}}ls('accounts',a);renderSavedAccounts();hideDeleteModal()})};
 $('modal-delete').classList.add('active')}
 function setActiveAccount(id){ls('activeAccount',id)}
+function cleanAccountText(v){return (v===undefined||v===null?'':String(v)).trim()}
+function getAccountById(id){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===id)return a[i]}return null}
+function getAccountByEmail(email){email=cleanAccountText(email).toLowerCase();if(!email)return null;var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].email&&a[i].email.toLowerCase()===email)return a[i]}return null}
+function accountFallbackName(acc){var email=cleanAccountText(acc&&acc.email);return cleanAccountText(acc&&(acc.displayName||acc.username))||(email?email.split('@')[0]:'Kullanıcı')}
+function accountFallbackUsername(acc){var email=cleanAccountText(acc&&acc.email);return cleanAccountText(acc&&acc.username)||(email?email.split('@')[0]:accountFallbackName(acc))}
+function getActiveAccount(){return getAccountById(activeAccountId)}
+function accountPasswordKey(acc){return 'account_password_'+cleanAccountText(acc&&acc.id)}
+function accountPasswordEmailKey(email){return 'account_password_email_'+cleanAccountText(email).toLowerCase()}
+async function storeAccountSecret(key,password){
+  if(window.electronAPI&&electronAPI.safeEncrypt){
+    var enc=await electronAPI.safeEncrypt(JSON.stringify(password));
+    if(enc){localStorage.setItem('wm_'+key,enc);return true}
+  }
+  localStorage.removeItem('wm_'+key);
+  return false
+}
+async function loadAccountSecret(key){
+  var raw=localStorage.getItem('wm_'+key);if(!raw)return null;
+  if(window.electronAPI&&electronAPI.safeDecrypt){
+    var dec=await electronAPI.safeDecrypt(raw);
+    if(dec){try{return JSON.parse(dec)}catch(e){return dec}}
+  }
+  try{return JSON.parse(raw)}catch(e){return null}
+}
+function stripPlainPassword(acc){
+  if(!acc||acc.password===undefined)return;
+  var accs=getAccounts(),changed=false;
+  for(var i=0;i<accs.length;i++){
+    if((acc.id&&accs[i].id===acc.id)||(acc.email&&accs[i].email===acc.email)){
+      if(accs[i].password!==undefined){delete accs[i].password;changed=true}
+    }
+  }
+  if(changed)ls('accounts',accs);
+  delete acc.password
+}
+async function rememberAccountPassword(acc,password){
+  if(!acc||!password)return;
+  if(acc.id)await storeAccountSecret(accountPasswordKey(acc),password);
+  if(acc.email)await storeAccountSecret(accountPasswordEmailKey(acc.email),password);
+  stripPlainPassword(acc)
+}
+async function loadAccountPassword(acc){
+  if(!acc)return null;
+  var p=null;
+  if(acc.id)p=await loadAccountSecret(accountPasswordKey(acc));
+  if(!p&&acc.email)p=await loadAccountSecret(accountPasswordEmailKey(acc.email));
+  if(!p&&acc.password){p=acc.password;await rememberAccountPassword(acc,p)}
+  return p
+}
+async function migratePlainAccountPasswords(){
+  var accs=getAccounts();
+  for(var i=0;i<accs.length;i++){
+    var p=accs[i].password||await loadAccountPassword(accs[i]);
+    if(p)await rememberAccountPassword(accs[i],p)
+  }
+}
+function forgetAccountPassword(acc){
+  if(!acc)return;
+  if(acc.id)localStorage.removeItem('wm_'+accountPasswordKey(acc));
+  if(acc.email)localStorage.removeItem('wm_'+accountPasswordEmailKey(acc.email));
+  stripPlainPassword(acc)
+}
+function migrateAccountScopedStorage(oldId,newId){
+  if(!oldId||!newId||oldId===newId)return;
+  ['messages_','conversations_','status_','e2e_private_','friends_','groups_'].forEach(function(prefix){
+    var oldKey='wm_'+prefix+oldId,newKey='wm_'+prefix+newId;
+    if(localStorage.getItem(oldKey)!==null&&localStorage.getItem(newKey)===null)localStorage.setItem(newKey,localStorage.getItem(oldKey))
+  });
+  var oldPw='wm_'+accountPasswordKey({id:oldId}),newPw='wm_'+accountPasswordKey({id:newId});
+  if(localStorage.getItem(oldPw)!==null&&localStorage.getItem(newPw)===null)localStorage.setItem(newPw,localStorage.getItem(oldPw));
+  localStorage.removeItem(oldPw);
+  migrateGroupsOwnerIds(oldId,newId);
+  migrateConversationIdentity(oldId,newId)
+}
+function replaceIdInArray(arr,oldId,newId){
+  if(!arr)return arr;
+  for(var i=0;i<arr.length;i++){if(arr[i]===oldId)arr[i]=newId}
+  return arr
+}
+function migrateGroupIdentity(group,oldId,newId){
+  if(!group||!oldId||!newId||oldId===newId)return group;
+  if(group.creatorId===oldId)group.creatorId=newId;
+  replaceIdInArray(group.adminIds,oldId,newId);
+  replaceIdInArray(group.memberIds,oldId,newId);
+  normalizeGroupMembers(group);
+  group.memberIds=getGroupMemberIds(group);
+  return group
+}
+function migrateGroupsOwnerIds(oldId,newId){
+  var groups=getGroups(),changed=false;
+  for(var i=0;i<groups.length;i++){
+    var before=JSON.stringify(groups[i]);
+    migrateGroupIdentity(groups[i],oldId,newId);
+    if(JSON.stringify(groups[i])!==before)changed=true
+  }
+  if(changed)saveGroups(groups)
+}
+function migrateConversationIdentity(oldId,newId){
+  var key='conversations_'+newId,convs=ls(key),changed=false;
+  if(!convs)return;
+  for(var i=0;i<convs.length;i++){
+    if(convs[i].isGroup){
+      var before=JSON.stringify(convs[i]);
+      migrateGroupIdentity(convs[i],oldId,newId);
+      if(JSON.stringify(convs[i])!==before)changed=true
+    }else{
+      var beforeIds=JSON.stringify(convs[i].memberIds||[]);
+      replaceIdInArray(convs[i].memberIds,oldId,newId);
+      if(JSON.stringify(convs[i].memberIds||[])!==beforeIds)changed=true
+    }
+  }
+  if(changed)ls(key,convs)
+}
+function syncSidebarProfile(acc,status){
+  acc=acc||getActiveAccount();if(!acc)return;
+  var display=accountFallbackName(acc),initial=display.charAt(0).toUpperCase();
+  var nameEl=$('sidebar-username');if(nameEl)nameEl.textContent=display;
+  var avEl=$('sidebar-avatar');
+  if(avEl){
+    if(acc.avatar){
+      avEl.style.background='transparent';
+      avEl.innerHTML='<img src="'+esc(acc.avatar)+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.background=\'linear-gradient(135deg,#2563eb,#6d28d9)\';this.parentElement.textContent=\''+escJs(initial)+'\'">';
+    }else{
+      avEl.style.background='linear-gradient(135deg,#2563eb,#6d28d9)';
+      avEl.textContent=initial
+    }
+  }
+  updateStatusUI(status||currentStatus||'online')
+}
+function mergeAccountProfile(incoming){
+  incoming=incoming||{};
+  var email=cleanAccountText(incoming.email).toLowerCase();
+  var existing=incoming.id?getAccountById(incoming.id):null;
+  if(!existing&&email)existing=getAccountByEmail(email);
+  var acc=existing||{};
+  var oldId=acc.id||null;
+  if(incoming.id&&acc.id!==incoming.id){acc.id=incoming.id}
+  if(!acc.id)acc.id=uid();
+  if(oldId&&oldId!==acc.id)migrateAccountScopedStorage(oldId,acc.id);
+  if(email)acc.email=email;
+  var display=cleanAccountText(incoming.displayName||incoming.display||incoming.name)||accountFallbackName(acc)||accountFallbackName(incoming);
+  var username=cleanAccountText(incoming.username)||accountFallbackUsername(acc)||accountFallbackUsername(incoming);
+  acc.displayName=display;
+  acc.username=username;
+  if(incoming.avatar!==undefined)acc.avatar=incoming.avatar||null;
+  else if(acc.avatar===undefined)acc.avatar=null;
+  if(incoming.bio!==undefined)acc.bio=incoming.bio||'';
+  else if(acc.bio===undefined)acc.bio='';
+  if(incoming.status)acc.status=incoming.status;
+  acc.lastLogin=new Date().toISOString();
+  saveAccount(acc);
+  acc=getAccountById(acc.id)||getAccountByEmail(acc.email)||acc;
+  if(incoming.password)rememberAccountPassword(acc,incoming.password);
+  else stripPlainPassword(acc);
+  activeAccountId=acc.id;
+  setActiveAccount(acc.id);
+  return acc
+}
 
 function renderSavedAccounts(){
   var el=$('saved-accounts');if(!el)return;
-  var a=getAccounts();el.innerHTML='';
+  var a=getAccounts(),changed=false;for(var ai=0;ai<a.length;ai++){if(!a[ai].id){a[ai].id=uid();changed=true}}if(changed)ls('accounts',a);el.innerHTML='';
   for(var i=0;i<a.length;i++){(function(acc){
     var d=document.createElement('div');d.className='saved-account';
-    d.innerHTML='<div class="sa-avatar"'+(acc.avatar?' style="background:none"':'')+'>'+(acc.avatar?'<img src="'+escJs(acc.avatar)+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+esc(acc.displayName.charAt(0).toUpperCase())+'\';this.parentElement.textContent=\''+esc(acc.displayName.charAt(0).toUpperCase())+'\'">':esc(acc.displayName.charAt(0).toUpperCase()))+'</div><div class="sa-info"><div class="sa-name">'+esc(acc.displayName)+'</div><div class="sa-email" title="'+esc(acc.email)+'">'+esc(acc.email)+'</div></div><button class="sa-remove" onclick="event.stopPropagation();removeAccount(\''+escJs(acc.id)+'\')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
-    d.onclick=function(){
-      if(acc.password){
-        autoLogin(acc)
-      }else{
-        goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus()
-      }
-    };
+    var display=accountFallbackName(acc),initial=display.charAt(0).toUpperCase();
+    d.innerHTML='<div class="sa-avatar"'+(acc.avatar?' style="background:none"':'')+'>'+(acc.avatar?'<img src="'+esc(acc.avatar)+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.background=\'linear-gradient(135deg,#2563eb,#6d28d9)\';this.parentElement.textContent=\''+escJs(initial)+'\'">':esc(initial))+'</div><div class="sa-info"><div class="sa-name">'+esc(display)+'</div><div class="sa-email" title="'+esc(acc.email||'')+'">'+esc(acc.email||'')+'</div></div><button class="sa-remove" onclick="event.stopPropagation();removeAccount(\''+escJs(acc.id)+'\')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+    d.onclick=function(){autoLogin(acc)};
     el.appendChild(d)
   })(a[i])}
 }
 
-function autoLogin(acc){
+async function autoLogin(acc){
   if(!window.auth)return;
+  var password=await loadAccountPassword(acc);
+  if(!password){
+    goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
+    showAlert('Bu hesap için kayıtlı güvenli oturum bulunamadı. Lütfen şifreni gir.');
+    return
+  }
   _explicitLogin=true;
+  _authTransitioning=true;
   $('loading-screen').style.display='flex';
   document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});
-  auth.signInWithEmailAndPassword(acc.email,acc.password).then(function(cred){
+  auth.signInWithEmailAndPassword(acc.email,password).then(function(cred){
     var u=cred.user;
+    _authTransitioning=false;
     // Use LOCAL account data (always up-to-date from settings saves)
-    hideLoading(function(){doLoginWith({id:u.uid,username:acc.username||u.email.split('@')[0],displayName:acc.displayName||u.displayName||u.email.split('@')[0],email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})
+    hideLoading(function(){doLoginWith({id:u.uid,username:acc.username||u.email.split('@')[0],displayName:acc.displayName||u.displayName||u.email.split('@')[0],email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||'',password:password})})
   }).catch(function(){
     _explicitLogin=false;
+    _authTransitioning=false;
     hideLoading(function(){
       goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
       showAlert('Otomatik giriş başarısız. Lütfen şifreni gir.')
@@ -911,7 +1092,7 @@ function autoLogin(acc){
   })
 }
 
-function doLoginWith(acc){activeAccountId=acc.id;showApp(acc.username,acc.displayName,acc.email,acc.avatar,acc.status||'online',acc.bio||'')}
+function doLoginWith(acc){showApp(acc)}
 
 // ===== LOGIN =====
 function validateLogin(){var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value,ok=e.length>0&&p.length>0;$('fg-login-email').classList.toggle('invalid',e.length>0&&!e.endsWith('@gmail.com'));$('fg-login-pass').classList.toggle('invalid',p.length>0&&p.length<6);$('login-btn').disabled=!ok;return ok}
@@ -921,12 +1102,11 @@ function doLogin(){
   if(!e.endsWith('@gmail.com')){$('fg-login-email').classList.add('invalid');$('fg-login-email').querySelector('.field-error').textContent='Sadece @gmail.com hesapları kabul edilir';return}
   console.log('[Auth] Login started for', e);
   $('login-btn').disabled=true;
+  _pendingLoginPassword=p;
   auth.signInWithEmailAndPassword(e,p).then(function(cred){
     console.log('[Auth] Login success, uid:', cred.user.uid);
-    var accs=getAccounts();
-    for(var i=0;i<accs.length;i++){if(accs[i].email===e){accs[i].password=p;break}}
-    ls('accounts',accs);
   }).catch(function(err){
+    _pendingLoginPassword=null;
     console.error('[Auth] Login error:', err.code, err.message);
     $('login-btn').disabled=false;
     var msg='',field=$('fg-login-email');
@@ -950,10 +1130,11 @@ function regNext(){
   function dbError(label){if(btn)btn.disabled=false;showAlert(label+' kontrolü yapılamadı: servis şu anda kullanılamıyor. Lütfen daha sonra tekrar dene.')}
   function dbTimeout(label){if(btn)btn.disabled=false;showAlert(label+' kontrolü zaman aşımına uğradı. İnternet bağlantını kontrol et.')}
   if(regStep===0){
-    if(!window.db){showAlert('Veritabanı bağlantısı yok.');return}
     var u=$('reg-username').value.trim();
     if(!/^[a-zA-Z0-9_]+$/.test(u)){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı yalnızca harf, rakam ve alt çizgi içerebilir';showAlert('Kullanıcı adı yalnızca harf, rakam ve alt çizgi (_) içerebilir.');return}
     if(u.length<3){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı en az 3 karakter olmalı';return}
+    if(!window.auth||!auth.currentUser){advance();return}
+    if(!window.db){showAlert('Veritabanı bağlantısı yok.');return}
     if(btn)btn.disabled=true;
     var timedOut=false,timer=setTimeout(function(){timedOut=true;dbTimeout('Kullanıcı adı')},15000);
     db.collection('users').where('username','==',u).get().then(function(snap){
@@ -962,15 +1143,7 @@ function regNext(){
       advance()
     }).catch(function(err){clearTimeout(timer);if(!timedOut){console.error('[Reg] Username check error:', err&&err.code?err.code:'', err&&err.message?err.message:err);dbError('Kullanıcı adı')}})
   }else if(regStep===1){
-    if(!window.db){showAlert('Veritabanı bağlantısı yok.');return}
-    var em=$('reg-email').value.trim().toLowerCase();
-    if(btn)btn.disabled=true;
-    var timedOut2=false,timer2=setTimeout(function(){timedOut2=true;dbTimeout('E-posta')},15000);
-    db.collection('users').where('email','==',em).get().then(function(snap){
-      clearTimeout(timer2);if(timedOut2)return;
-      if(!snap.empty){$('fg-email').classList.add('invalid');$('fg-email').querySelector('.field-error').textContent='Bu e-posta adresi zaten kayıtlı';showAlert('Bu e-posta adresi zaten kayıtlı. Lütfen farklı bir e-posta adresi dene.');if(btn)btn.disabled=false;return}
-      advance()
-    }).catch(function(err){clearTimeout(timer2);if(!timedOut2){console.error('[Reg] Email check error:', err&&err.code?err.code:'', err&&err.message?err.message:err);dbError('E-posta')}})
+    advance()
   }else if(regStep<2){advance()}
   else completeRegistration()
 }
@@ -997,21 +1170,35 @@ function completeRegistration(){
   }
   if(!window.db){finishReg('Veritabanı bağlantısı yok.');return}
   var timedOut=false, timer=setTimeout(function(){timedOut=true;finishReg('Sunucu yanıt vermiyor. Lütfen tekrar dene.')},15000);
+  _explicitLogin=true;
+  _pendingLoginPassword=p;
   auth.createUserWithEmailAndPassword(e,p).then(function(cred){
     clearTimeout(timer);
     console.log('[Auth] Signup success, uid:', cred.user.uid);
     var uid=cred.user.uid;
-    db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()}).then(function(){
-      console.log('[Auth] User doc created');
-      var accs=getAccounts();
-      for(var i=0;i<accs.length;i++){if(accs[i].email===e){accs[i].password=p;break}}
-      ls('accounts',accs);
-      finishReg();
-      showApp(u,d,e,avatarDataUrl||null,'online','')
-    }).catch(function(){
-      console.warn('[Auth] User doc write failed, proceeding anyway');
-      finishReg();
-      showApp(u,d,e,avatarDataUrl||null,'online','')
+    function cancelCreatedAccount(msg){
+      _explicitLogin=false;
+      _pendingLoginPassword=null;
+      var deletePromise=auth.currentUser?auth.currentUser.delete().catch(function(){return null}):Promise.resolve();
+      deletePromise.then(function(){finishReg(msg)})
+    }
+    function writeUserDoc(){
+      db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()}).then(function(){
+        console.log('[Auth] User doc created');
+        _explicitLogin=false;
+        finishReg();
+        showApp({id:uid,username:u,displayName:d,email:e,avatar:avatarDataUrl||null,status:'online',bio:'',password:p})
+      }).catch(function(){
+        console.warn('[Auth] User doc write failed, rolling back auth account');
+        cancelCreatedAccount('Profil oluşturulamadı. Lütfen tekrar dene.')
+      })
+    }
+    db.collection('users').where('username','==',u).limit(1).get().then(function(snap){
+      if(!snap.empty){cancelCreatedAccount('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');return}
+      writeUserDoc()
+    }).catch(function(err){
+      console.error('[Reg] Username final check error:', err&&err.code?err.code:'', err&&err.message?err.message:err);
+      cancelCreatedAccount('Kullanıcı adı kontrolü yapılamadı. Lütfen tekrar dene.')
     })
   }).catch(function(err){
     clearTimeout(timer);
@@ -1023,6 +1210,8 @@ function completeRegistration(){
     else if(err.code==='auth/network-request-failed')msg='Ağ hatası. İnternet bağlantını kontrol et.';
     else if(err.code==='auth/invalid-email')msg='Geçersiz e-posta adresi.';
     else msg='Kayıt olunamadı: '+err.message;
+    _explicitLogin=false;
+    _pendingLoginPassword=null;
     finishReg(msg)
   })
 }
@@ -1245,7 +1434,7 @@ function acceptFriendRequest(reqId){
     var data=doc.data();
     var friendId=data.from===uid?data.to:data.from;
     var friendName=data.from===uid?data.toName:data.fromName;
-    var friendAvatar=data.fromAvatar||null;
+    var friendAvatar=data.from===uid?data.toAvatar||null:data.fromAvatar||null;
     var myAccs=getAccounts(),myAv=null;
     for(var ai=0;ai<myAccs.length;ai++){if(myAccs[ai].id===uid){myAv=myAccs[ai].avatar||null;break}}
     db.collection('friendRequests').doc(reqId).update({status:'accepted'}).then(function(){
@@ -1313,26 +1502,46 @@ function showFriendMenu(e,name,friendId){
   e.preventDefault();
   showContextMenu(e.clientX,e.clientY,[
     {label:'Sohbet Aç',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',action:function(){startConvWith(name,friendId)}},
-    {label:'Arkadaşlıktan Çıkar',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',action:function(){removeFriend(name)}},
+    {label:'Arkadaşlıktan Çıkar',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',action:function(){removeFriend(friendId,name)}},
   ])
 }
-function removeFriend(name){
+function removeFriend(friendId,name){
   if(!window.db)return;
   var uid=fbUserId();if(!uid)return;
+  function done(){switchFriendsTab('friends')}
+  if(friendId){
+    db.collection('friends').doc(uid).collection('list').doc(friendId).delete().then(function(){
+      db.collection('friends').doc(friendId).collection('list').doc(uid).delete().catch(function(){});
+      done()
+    }).catch(done);
+    return
+  }
   db.collection('friends').doc(uid).collection('list').where('name','==',name).get().then(function(snap){
     snap.forEach(function(doc){
       var fid=doc.id;
       doc.ref.delete().then(function(){
         db.collection('friends').doc(fid).collection('list').doc(uid).delete().catch(function(){});
-        switchFriendsTab('friends')
-      }).catch(function(){switchFriendsTab('friends')})
+        done()
+      }).catch(done)
     })
-  }).catch(function(){switchFriendsTab('friends')})
+  }).catch(done)
 }
 
 function showFriendsPanel(){
   $('modal-friends').classList.add('active');
   switchFriendsTab('friends')
+}
+function friendsCacheKey(){return 'friends_'+(fbUserId()||activeAccountId||'local')}
+function getCachedFriends(){return ls(friendsCacheKey())||[]}
+function setCachedFriends(friends){ls(friendsCacheKey(),friends||[])}
+function refreshFriendsCache(){
+  var uid=fbUserId();
+  if(!window.db||!uid)return Promise.resolve(getCachedFriends());
+  return db.collection('friends').doc(uid).collection('list').get().then(function(snap){
+    var friends=snap.docs.map(function(d){return d.data()});
+    setCachedFriends(friends);
+    return friends
+  }).catch(function(){return getCachedFriends()})
 }
 
 function switchFriendsTab(tab){
@@ -1345,6 +1554,7 @@ function switchFriendsTab(tab){
     if(!window.db||!uid){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Henüz arkadaşın yok.</div>';return}
     db.collection('friends').doc(uid).collection('list').get().then(function(snap){
       var friends=snap.docs.map(function(d){return d.data()});
+      setCachedFriends(friends);
       if(friends.length===0){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Henüz arkadaşın yok.</div>'}
       else{
         var html='<div style="font-size:11px;color:var(--text4);margin-bottom:8px">'+friends.length+' arkadaş</div>';
@@ -1392,6 +1602,64 @@ function switchFriendsTab(tab){
 function dmConvId(uid1,uid2){
   var s=[uid1,uid2].sort();return 'dm_'+s[0]+'_'+s[1]
 }
+function getConversationPeerId(conv){
+  var uid=fbUserId()||activeAccountId;if(!conv||conv.isGroup)return null;
+  var mids=conv.memberIds||[];
+  for(var i=0;i<mids.length;i++){if(mids[i]&&mids[i]!==uid)return mids[i]}
+  if(conv.id&&conv.id.indexOf('dm_')===0){
+    var p=conv.id.slice(3).split('_');
+    for(var j=0;j<p.length;j++){if(p[j]&&p[j]!==uid)return p[j]}
+  }
+  return conv.userId||conv.friendId||null
+}
+function makeGroupMemberFromConversation(conv){
+  var mid=getConversationPeerId(conv);if(!mid)return null;
+  return {id:mid,name:conv.name,avatar:conv.avatar||((conv.name||'?').charAt(0).toUpperCase()),color:conv.color||'var(--grad)',online:!!conv.online,isGroup:false}
+}
+function makeGroupMemberFromFriend(f,color){
+  if(!f||!f.id)return null;
+  return {id:f.id,name:f.name,avatar:f.avatar||((f.name||'?').charAt(0).toUpperCase()),color:color||'var(--grad)',online:true,isGroup:false}
+}
+function findFriendByIdOrName(id,name){
+  var fs=getCachedFriends();
+  for(var i=0;i<fs.length;i++){if((id&&fs[i].id===id)||(!id&&name&&fs[i].name===name))return fs[i]}
+  return null
+}
+function findConversationByPeerId(memberId){
+  for(var i=0;i<conversations.length;i++){
+    var c=conversations[i];if(c.isGroup)continue;
+    if(c.id===memberId||getConversationPeerId(c)===memberId)return c
+  }
+  return null
+}
+function normalizeGroupMembers(group){
+  if(!group||!group.isGroup)return group;
+  if(!group.members)group.members=[];
+  var seen={},clean=[];
+  for(var i=0;i<group.members.length;i++){
+    var m=group.members[i];if(!m)continue;
+    if(m.id&&m.id.indexOf('dm_')===0){var c=findConv(m.id);var cm=makeGroupMemberFromConversation(c);if(cm)m=cm}
+    if(m.id&&m.id.indexOf('gf_')===0){var f=findFriendByIdOrName(null,m.name);var fm=makeGroupMemberFromFriend(f,m.color);if(fm)m=fm}
+    if(!m.id||m.id.indexOf('friend_')===0){var f2=findFriendByIdOrName(m.id,m.name);var fm2=makeGroupMemberFromFriend(f2,m.color);if(fm2)m=fm2}
+    if(!m.id||seen[m.id])continue;
+    seen[m.id]=true;
+    m.avatar=m.avatar||((m.name||'?').charAt(0).toUpperCase());
+    m.color=m.color||'var(--grad)';
+    clean.push(m)
+  }
+  group.members=clean;
+  return group
+}
+function getGroupMemberIds(group){
+  normalizeGroupMembers(group);
+  var ids=[],seen={};
+  function add(id){if(id&&id.indexOf('dm_')!==0&&id.indexOf('gf_')!==0&&id.indexOf('friend_')!==0&&!seen[id]){seen[id]=true;ids.push(id)}}
+  var selfId=fbUserId()||activeAccountId;
+  add(group.creatorId||selfId);
+  add(selfId);
+  for(var i=0;i<(group.members||[]).length;i++)add(group.members[i].id);
+  return ids
+}
 function startConvWith(name,friendId){
   var uid=fbUserId();
   // Use deterministic conversation ID from sorted member UIDs
@@ -1438,13 +1706,12 @@ function pickGroupAvatar(){
             conv.avatarLetter=conv.name?conv.name.charAt(0).toUpperCase():'G';
             // Update saved groups in localStorage
             var gs=getGroups();
-            for(var gi=0;gi<gs.length;gi++){if(gs[gi].id==activeConvId){gs[gi].avatar=r.thumb;ls('groups',gs);break}}
+            for(var gi=0;gi<gs.length;gi++){if(gs[gi].id==activeConvId){gs[gi].avatar=r.thumb;saveGroups(gs);break}}
             // Update UI
             var headerAvatar=$('chat-header-avatar');
             if(headerAvatar&&activeConvId==conv.id)headerAvatar.innerHTML='<img src="'+r.thumb+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'">';
-            var sidebarAvatar=$('sidebar-avatar');
-            if(sidebarAvatar)$('sidebar-avatar').innerHTML='<img src="'+r.thumb+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'">';
             addGroupLog(conv.id,'👑 Grup fotoğrafı değiştirildi');
+            fbSyncMembers(conv.id);
             if(activeConvId)renderMessages(activeConvId);
             renderConversations();
             if(profilePanelOpen)showProfilePanel()
@@ -1500,10 +1767,44 @@ if(fc)fc.onclick=function(){$('modal-forward').classList.remove('active');forwar
 if(fcan)fcan.onclick=function(){$('modal-forward').classList.remove('active');forwardMsgData=null;forwardingLock=false};
 if(fsend)fsend.onclick=function(){forwardToSelected()};
 function validateGroup(){var n=$('group-name').value.trim(),items=$('group-member-list').querySelectorAll('.modal-member-item.selected');$('group-create-btn').disabled=!(n.length>=1&&items.length>=1)}
-function createGroup(){var name=$('group-name').value.trim();if(name.length<1)return;var items=$('group-member-list').querySelectorAll('.modal-member-item.selected');if(items.length<1)return;var initials=name.split(' ').map(function(w){return w.charAt(0).toUpperCase()}).join('').slice(0,2)||'G';var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];var gid=uid();var group={id:gid,name:name,avatar:groupAvatarDataUrl||initials,avatarLetter:initials,color:colors[Math.floor(Math.random()*colors.length)],isGroup:true,online:true,lastMsg:'Grup oluşturuldu',time:timeNow(),lastActivity:Date.now(),unread:0,members:[],adminIds:[activeAccountId],creatorId:activeAccountId};var allFriends=ls('friends')||[];for(var i=0;i<items.length;i++){var cid=items[i]._convId;var found=false;for(var j=0;j<conversations.length;j++){if(conversations[j].id===cid){group.members.push(conversations[j]);found=true;break}}if(!found&&typeof cid==='string'&&cid.indexOf('friend_')===0){var fi=parseInt(cid.split('_')[1],10);var f=allFriends[fi];if(f){var fc=colors[(fi+1)%colors.length];group.members.push({id:'gf_'+gid+'_'+fi,name:f.name,avatar:f.name.charAt(0).toUpperCase(),color:fc,online:true,isGroup:false})}}}groupAvatarDataUrl=null;conversations.unshift(group);saveGroup(group);saveMessages();
+function createGroup(){
+  var name=$('group-name').value.trim();if(name.length<1)return;
+  var items=$('group-member-list').querySelectorAll('.modal-member-item.selected');if(items.length<1)return;
+  var initials=name.split(' ').map(function(w){return w.charAt(0).toUpperCase()}).join('').slice(0,2)||'G';
+  var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
+  var gid=uid(),ownerId=fbUserId()||activeAccountId;
+  var group={id:gid,name:name,avatar:groupAvatarDataUrl||initials,avatarLetter:initials,color:colors[Math.floor(Math.random()*colors.length)],isGroup:true,online:true,lastMsg:'Grup oluşturuldu',time:timeNow(),lastActivity:Date.now(),unread:0,members:[],adminIds:[ownerId],creatorId:ownerId};
+  var seen={};
+  for(var i=0;i<items.length;i++){
+    var member=items[i]._memberData||null;
+    if(!member&&items[i]._convId)member=makeGroupMemberFromConversation(findConv(items[i]._convId));
+    if(!member&&items[i]._memberId)member=makeGroupMemberFromFriend(findFriendByIdOrName(items[i]._memberId,null),colors[(i+1)%colors.length]);
+    if(member&&member.id&&!seen[member.id]&&member.id!==ownerId){seen[member.id]=true;group.members.push(member)}
+  }
+  normalizeGroupMembers(group);
+  group.memberIds=getGroupMemberIds(group);
+  groupAvatarDataUrl=null;conversations.unshift(group);saveGroup(group);saveMessages();
   addGroupLog(gid,'Grup "'+name+'" oluşturuldu');
-  if(window.db&&fbUserId()){var mids=[fbUserId()];for(var mi=0;mi<group.members.length;mi++){if(group.members[mi].id.indexOf('gf_')!==0)mids.push(group.members[mi].id)}db.collection('conversations').doc(gid).set({type:'group',memberIds:mids,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(function(){})}
+  if(window.db&&fbUserId())db.collection('conversations').doc(gid).set({type:'group',name:group.name,avatar:group.avatar||null,avatarLetter:group.avatarLetter||null,color:group.color||null,creatorId:group.creatorId,adminIds:group.adminIds,memberIds:group.memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(function(){})
   renderConversations();selectConversation(gid);hideGroupModal()}
+
+function renderGroupMembers(selectedIds){
+  var ml=$('group-member-list');if(!ml)return;ml.innerHTML='';
+  var addedIds={},selected=selectedIds||[],gColors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
+  function addItem(member,convId,color){
+    if(!member||!member.id||member.id===fbUserId()||addedIds[member.id])return;
+    addedIds[member.id]=true;
+    var sel=selected.indexOf(member.id)>-1||(convId&&selected.indexOf(convId)>-1);
+    var d=document.createElement('div');d.className='modal-member-item'+(sel?' selected':'');
+    var av=member.avatar,html;if(av&&av.indexOf('data:')===0){html='<img src="'+av+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+(member.color||color||'var(--grad)')+'\';this.parentElement.textContent=\'?\'">'}else{html='<span>'+esc(av||((member.name||'?').charAt(0).toUpperCase()))+'</span>'}
+    d.innerHTML='<div class="mm-avatar" style="background:'+(member.color||color||'var(--grad)')+'">'+html+'</div><div class="mm-name">'+esc(member.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
+    d.onclick=function(){d.classList.toggle('selected');validateGroup()};
+    d._memberId=member.id;d._convId=convId||null;d._memberData=member;ml.appendChild(d)
+  }
+  for(var i=0;i<conversations.length;i++){if(!conversations[i].isGroup)addItem(makeGroupMemberFromConversation(conversations[i]),conversations[i].id,conversations[i].color)}
+  var gf=getCachedFriends();
+  for(var fi=0;fi<gf.length;fi++)addItem(makeGroupMemberFromFriend(gf[fi],gColors[fi%gColors.length]),null,gColors[fi%gColors.length])
+}
 
 function newGroup(){
   var curr=$('group-create-btn');
@@ -1518,7 +1819,8 @@ function newGroup(){
   editGroupState=null;
   renderGroupMembers([]);
   validateGroup();
-  $('modal-group').classList.add('active')
+  $('modal-group').classList.add('active');
+  refreshFriendsCache().then(function(){if(!editGroupState&&$('modal-group').classList.contains('active')){renderGroupMembers([]);validateGroup()}})
 }
 function hideGroupModal(){closeModal('modal-group')}
 
@@ -1675,6 +1977,7 @@ function resetSessionState(){
   conversations=[];
   activeConvId=null;
   activeAccountId=null;
+  _convListAnimatedOnce=false;
 
   // E2E encryption state
   e2eReady=false;
@@ -1748,26 +2051,32 @@ function resetSessionState(){
   var ce=$('chat-empty');var ca=$('chat-active');
   if(ce)ce.style.display='flex';
   if(ca)ca.style.display='none';
+  var cl=$('conv-list');if(cl){cl.innerHTML='';cl.classList.remove('no-anim')}
 }
 
-function doLogout(){resetSessionState();if(window.auth)auth.signOut();goToWelcome()}
+function doLogout(){resetSessionState();_authTransitioning=false;_pendingLoginPassword=null;if(window.auth)auth.signOut();goToWelcome()}
 function leaveGroup(convId){
   var conv=findConv(convId);if(!conv||!conv.isGroup)return;
+  if(window.db&&fbUserId()&&firebase&&firebase.firestore)db.collection('conversations').doc(convId).update({memberIds:firebase.firestore.FieldValue.arrayRemove(fbUserId()),adminIds:firebase.firestore.FieldValue.arrayRemove(fbUserId())}).catch(function(){});
   // Remove from conversations
   for(var lgi=0;lgi<conversations.length;lgi++){if(conversations[lgi].id===convId){conversations.splice(lgi,1);break}}
-  // Keep group in saved groups but user left
+  var gs=getGroups();
+  for(var sgi=gs.length-1;sgi>=0;sgi--){if(gs[sgi].id===convId)gs.splice(sgi,1)}
+  saveGroups(gs);
   if(activeConvId===convId){activeConvId=null;$('chat-empty').style.display='flex';$('chat-active').style.display='none'}
   closeProfilePanel();renderConversations()
 }
 
 function deleteGroup(convId){
   var conv=findConv(convId);if(!conv||!conv.isGroup)return;
+  if(conv.creatorId!==activeAccountId&&conv.creatorId!==fbUserId()){leaveGroup(convId);return}
+  if(window.db&&fbUserId()&&conv.creatorId===fbUserId())db.collection('conversations').doc(convId).delete().catch(function(){});
   // Remove from conversations
   for(var dgi=0;dgi<conversations.length;dgi++){if(conversations[dgi].id===convId){conversations.splice(dgi,1);break}}
   // Remove from saved groups
   var gs=getGroups();
   for(var dgi=0;dgi<gs.length;dgi++){if(gs[dgi].id===convId){gs.splice(dgi,1);break}}
-  ls('groups',gs);
+  saveGroups(gs);
   // Clear messages
   delete messages[convId];
   if(activeConvId===convId){activeConvId=null;$('chat-empty').style.display='flex';$('chat-active').style.display='none'}
@@ -1785,8 +2094,10 @@ function showConvContext(x,y,convId){var conv=findConv(convId);if(!conv)return;v
   items.push({label:'Sohbeti Temizle',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){clearConversation(convId)}});
   if(conv.isGroup){
     var isGroupAdmin=conv.adminIds&&conv.adminIds.indexOf(activeAccountId)!==-1;
+    var isGroupCreator=conv.creatorId===activeAccountId;
     if(isGroupAdmin)items.push({label:'Grubu Düzenle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',action:function(){editGroup(convId)}});
-    items.push({label:'Grubu Sil',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){showDeleteGroupConfirm(convId)}})
+    if(isGroupCreator)items.push({label:'Grubu Sil',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){showDeleteGroupConfirm(convId)}})
+    else items.push({label:'Gruptan Ayrıl',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',action:function(){leaveGroup(convId)}})
   }else{
     items.push({label:'Sohbeti Kapat',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',action:function(){closeConversation(convId)}})
   }
@@ -1811,19 +2122,8 @@ var _fbConvUnsub=null;
 var _convListenerActive=false;
 var _authTransitioning=false; // Prevents processing stale auth state changes
 var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
+var _pendingLoginPassword=null;
+var _authStateSeq=0;
 
 function fbListenConversations(uid){
   if(_fbConvUnsub){_fbConvUnsub();_fbConvUnsub=null}
@@ -1831,8 +2131,16 @@ function fbListenConversations(uid){
   _convListenerActive=true;
   _fbConvUnsub=db.collection('conversations').where('memberIds','array-contains',uid).onSnapshot(function(snap){
     snap.docChanges().forEach(function(change){
-      if(change.type==='added'){
-        var d=change.doc.data(),cid=change.doc.id;
+      var d=change.doc.data(),cid=change.doc.id;
+      if(change.type==='removed'){
+        for(var rci=conversations.length-1;rci>=0;rci--){if(conversations[rci].id===cid)conversations.splice(rci,1)}
+        var rgs=getGroups();for(var rgi=rgs.length-1;rgi>=0;rgi--){if(rgs[rgi].id===cid)rgs.splice(rgi,1)}saveGroups(rgs);
+        if(activeConvId===cid){activeConvId=null;$('chat-empty').style.display='flex';$('chat-active').style.display='none'}
+        renderConversations();
+        return
+      }
+      if(change.type==='added'||change.type==='modified'){
+        if(d.type==='group'){applyFirestoreGroupConversation(cid,d,uid);return}
         var exists=false;
         for(var ci=0;ci<conversations.length;ci++){if(conversations[ci].id===cid){exists=true;break}}
         if(!exists){
@@ -1879,16 +2187,38 @@ function fbStopConversations(){
 
 function fbUserId(){return auth&&auth.currentUser?auth.currentUser.uid:null}
 
+function applyFirestoreGroupConversation(gid,gd,uid){
+  var mids=gd.memberIds||[];
+  var memberFetches=mids.filter(function(mid){return mid!==uid}).map(function(mid){
+    return db.collection('users').doc(mid).get().then(function(uDoc){
+      var ud=uDoc.exists?uDoc.data():{};
+      var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
+      var nm=ud.displayName||ud.username||'Kullanıcı';
+      return {id:mid,name:nm,avatar:ud.avatar||nm.charAt(0).toUpperCase(),color:colors[Math.floor(Math.random()*colors.length)],online:!!ud.online,isGroup:false}
+    }).catch(function(){return null})
+  });
+  Promise.all(memberFetches).then(function(members){
+    var initials=(gd.name||'G').split(' ').map(function(w){return w.charAt(0).toUpperCase()}).join('').slice(0,2)||'G';
+    var group={id:gid,name:gd.name||'Grup',avatar:gd.avatar||initials,avatarLetter:gd.avatarLetter||initials,color:gd.color||'var(--grad)',isGroup:true,online:true,lastMsg:gd.lastMsg||'',time:gd.lastTime||'',lastActivity:gd.lastActivity||Date.now(),unread:0,members:members.filter(Boolean),memberIds:mids,adminIds:gd.adminIds||[gd.creatorId].filter(Boolean),creatorId:gd.creatorId||mids[0]};
+    normalizeGroupMembers(group);
+    var existing=findConv(gid);
+    if(existing){
+      existing.name=group.name;existing.avatar=group.avatar;existing.avatarLetter=group.avatarLetter;existing.color=group.color;existing.members=group.members;existing.memberIds=group.memberIds;existing.adminIds=group.adminIds;existing.creatorId=group.creatorId;existing.lastActivity=group.lastActivity;
+      saveGroup(existing);renderConversations();if(activeConvId===gid)renderMessages(gid)
+    }else{
+      convListenerAddConv(group);saveGroup(group)
+    }
+  })
+}
+
 function fbSyncMembers(convId){
   var conv=findConv(convId);if(!conv||!window.db||!fbUserId())return;
-  var mids=[fbUserId()];
-  if(conv.memberIds&&conv.memberIds.length>0){mids=conv.memberIds}
-  else if(conv.members&&conv.members.length>0){
-    for(var mi=0;mi<conv.members.length;mi++){
-      if(conv.members[mi].id&&conv.members[mi].id.indexOf('gf_')!==0)mids.push(conv.members[mi].id)
-    }
-  }
-  db.collection('conversations').doc(convId).set({memberIds:mids},{merge:true}).catch(function(){})
+  var mids=conv.isGroup?getGroupMemberIds(conv):(conv.memberIds&&conv.memberIds.length>0?conv.memberIds:[fbUserId()]);
+  conv.memberIds=mids;
+  if(conv.isGroup)saveGroup(conv);
+  var data={memberIds:mids};
+  if(conv.isGroup){data.type='group';data.name=conv.name;data.avatar=conv.avatar||null;data.avatarLetter=conv.avatarLetter||null;data.color=conv.color||null;data.creatorId=conv.creatorId||fbUserId();data.adminIds=conv.adminIds||[data.creatorId]}
+  db.collection('conversations').doc(convId).set(data,{merge:true}).catch(function(){})
 }
 function fbSendMessage(convId,msg){
   if(!window.db||!fbUserId())return;
@@ -2006,6 +2336,7 @@ if(window.db){
 }
 
 var conversations=[],activeConvId=null,activeAccountId=null;
+var _convListAnimatedOnce=false;
 var messages={};
 var _forceScrollBottom=false;
 var _hasNewMsg=false;
@@ -2095,9 +2426,10 @@ function showSettingsCat(cat){
   if(cat==='profile'){
     var accs=getAccounts(),acc=null;for(var i=0;i<accs.length;i++){if(accs[i].id===activeAccountId){acc=accs[i];break}}
     if(!acc){content.innerHTML='<div class="stitle">Profil</div><p style="color:var(--text4)">Hesap bulunamadı.</p>';return}
-    content.innerHTML='<div class="stitle">Profil Ayarları</div><div style="display:flex;align-items:center;gap:16px;margin-bottom:20px"><div id="settings-avatar" style="width:64px;height:64px;border-radius:50%;background:'+(acc.avatar?'none':(acc.displayName?acc.displayName.charAt(0).toUpperCase():'?'))+';overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;border:1px dashed var(--border2);background-size:cover;background-position:center" onclick="pickSettingsAvatar()">'+(acc.avatar?'<img src="'+acc.avatar+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+esc((acc.displayName||'?').charAt(0).toUpperCase())+'\';this.parentElement.style.fontSize=\'24px\'">':'<svg width="24" height="24" viewBox="0 0 24 24" stroke="rgba(255,255,255,.3)" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>')+'</div><div><div style="font-size:13px;font-weight:600;color:var(--text2)">'+esc(acc.displayName)+'</div><div style="font-size:11px;color:var(--text4)">Fotoğrafı değiştirmek için tıkla</div></div></div>'+
-    '<div class="field-group"><label>Kullanıcı Adı</label><input type="text" id="set-username" value="'+esc(acc.username)+'" maxlength="20"></div>'+
-    '<div class="field-group"><label>Görünen Ad</label><input type="text" id="set-display" value="'+esc(acc.displayName)+'" maxlength="30"></div>'+
+    var accName=accountFallbackName(acc),accUser=accountFallbackUsername(acc);
+    content.innerHTML='<div class="stitle">Profil Ayarları</div><div style="display:flex;align-items:center;gap:16px;margin-bottom:20px"><div id="settings-avatar" style="width:64px;height:64px;border-radius:50%;background:'+(acc.avatar?'none':'linear-gradient(135deg,#2563eb,#6d28d9)')+';overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;border:1px dashed var(--border2);background-size:cover;background-position:center" onclick="pickSettingsAvatar()">'+(acc.avatar?'<img src="'+esc(acc.avatar)+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\'linear-gradient(135deg,#2563eb,#6d28d9)\';this.parentElement.style.fontSize=\'24px\'">':'<svg width="24" height="24" viewBox="0 0 24 24" stroke="rgba(255,255,255,.3)" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>')+'</div><div><div style="font-size:13px;font-weight:600;color:var(--text2)">'+esc(accName)+'</div><div style="font-size:11px;color:var(--text4)">Fotoğrafı değiştirmek için tıkla</div></div></div>'+
+    '<div class="field-group"><label>Kullanıcı Adı</label><input type="text" id="set-username" value="'+esc(accUser)+'" maxlength="20"></div>'+
+    '<div class="field-group"><label>Görünen Ad</label><input type="text" id="set-display" value="'+esc(accName)+'" maxlength="30"></div>'+
     '<div class="field-group"><label>Biyografi</label><textarea id="set-bio" maxlength="150" placeholder="Kendinden bahset...">'+esc(acc.bio||'')+'</textarea><div class="field-hint">En fazla 150 karakter</div></div>'+
     '<button class="btn-primary" onclick="saveProfileSettings()" style="padding:10px 24px;font-size:12px;border-radius:10px">Kaydet</button>'+
     '<div style="margin-top:24px;padding:18px;border-radius:12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><svg width="20" height="20" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg><h4 style="font-size:13px;font-weight:600;color:#ef4444;margin:0">Hesabı Sil</h4></div><p style="font-size:11px;color:var(--text4);line-height:1.5;margin-bottom:12px">Bu hesabı ve tüm mesajlarını kalıcı olarak siler. Diğer hesapların etkilenmez.</p><button onclick="resetAllData()" style="padding:9px 20px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:#ef4444;color:#fff;transition:all .2s;box-shadow:0 3px 12px rgba(239,68,68,.25)" onmouseover="this.style.background=\'#dc2626\'" onmouseout="this.style.background=\'#ef4444\'">Hesabı Sil</button></div>'
@@ -2465,10 +2797,41 @@ async function testScreenShare(){
   }
 }
 
-async function pickSettingsAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===activeAccountId){a[i].avatar=r.thumb;ls('accounts',a);showSettingsCat('profile');var sa=$('sidebar-avatar');sa.innerHTML='<img src="'+r.thumb+'" alt="" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+esc((a[i].displayName||'?').charAt(0).toUpperCase())+'\'">';var fbUid=fbUserId();if(window.db&&fbUid)db.collection('users').doc(fbUid).update({avatar:r.thumb});break}}}}}catch(e){}}
-function saveProfileSettings(){var d=$('set-display').value.trim(),u=$('set-username').value.trim(),b=$('set-bio').value.trim();if(!d||!u)return;var accs=getAccounts();for(var i=0;i<accs.length;i++){if(accs[i].id===activeAccountId){accs[i].displayName=d;accs[i].username=u;accs[i].bio=b;var av=accs[i].avatar||null;ls('accounts',accs);var fbUid=fbUserId();if(window.db&&fbUid)db.collection('users').doc(fbUid).update({displayName:d,username:u,bio:b,avatar:av});$('sidebar-username').textContent=d;if(!$('sidebar-avatar').querySelector('img'))$('sidebar-avatar').textContent=d.charAt(0).toUpperCase();showSettingsCat('profile');break}}}
+async function pickSettingsAvatar(){
+  try{
+    if(window.electronAPI&&electronAPI.selectFile){
+      var r=await electronAPI.selectFile();
+      if(r&&r.thumb){
+        var a=getAccounts();
+        for(var i=0;i<a.length;i++){
+          if(a[i].id===activeAccountId){
+            a[i].avatar=r.thumb;ls('accounts',a);
+            syncSidebarProfile(a[i],currentStatus);
+            showSettingsCat('profile');
+            var fbUid=fbUserId();if(window.db&&fbUid)db.collection('users').doc(fbUid).update({avatar:r.thumb});
+            break
+          }
+        }
+      }
+    }
+  }catch(e){}
+}
+function saveProfileSettings(){
+  var d=$('set-display').value.trim(),u=$('set-username').value.trim(),b=$('set-bio').value.trim();if(!d||!u)return;
+  var accs=getAccounts();
+  for(var i=0;i<accs.length;i++){
+    if(accs[i].id===activeAccountId){
+      accs[i].displayName=d;accs[i].username=u;accs[i].bio=b;
+      var av=accs[i].avatar||null;ls('accounts',accs);
+      var fbUid=fbUserId();if(window.db&&fbUid)db.collection('users').doc(fbUid).update({displayName:d,username:u,bio:b,avatar:av});
+      syncSidebarProfile(accs[i],currentStatus);
+      showSettingsCat('profile');
+      break
+    }
+  }
+}
 function saveEmail(){showAlert('E-posta değiştirme şu anlık devre dışı. Yakında kullanıma sunulacak.')}
-function changePassword(){var cur=$('cur-pass').value,nu=$('new-pass').value,nu2=$('new-pass2').value;if(!cur||nu.length<6||nu!==nu2)return;if(!window.auth||!auth.currentUser){showAlert('Oturum bulunamadı.');return}if(cur===nu){showAlert('Yeni şifre, mevcut şifrenle aynı olamaz.');return}var email=auth.currentUser.email;var cred=firebase.auth.EmailAuthProvider.credential(email,cur);auth.currentUser.reauthenticateWithCredential(cred).then(function(){if(cur===nu){showAlert('Yeni şifre, mevcut şifrenle aynı olamaz.');return}auth.currentUser.updatePassword(nu).then(function(){$('save-pass-btn').textContent='✓ Değiştirildi';setTimeout(function(){$('save-pass-btn').textContent='Şifreyi Değiştir';$('cur-pass').value='';$('new-pass').value='';$('new-pass2').value='';$('save-pass-btn').disabled=true},2000)}).catch(function(e){showAlert('Şifre değiştirilemedi: '+e.message)})}).catch(function(){showAlert('Mevcut şifren yanlış.')})}
+function changePassword(){var cur=$('cur-pass').value,nu=$('new-pass').value,nu2=$('new-pass2').value;if(!cur||nu.length<6||nu!==nu2)return;if(!window.auth||!auth.currentUser){showAlert('Oturum bulunamadı.');return}if(cur===nu){showAlert('Yeni şifre, mevcut şifrenle aynı olamaz.');return}var email=auth.currentUser.email;var cred=firebase.auth.EmailAuthProvider.credential(email,cur);auth.currentUser.reauthenticateWithCredential(cred).then(function(){if(cur===nu){showAlert('Yeni şifre, mevcut şifrenle aynı olamaz.');return}auth.currentUser.updatePassword(nu).then(function(){rememberAccountPassword(getActiveAccount()||{id:activeAccountId,email:email},nu);$('save-pass-btn').textContent='✓ Değiştirildi';setTimeout(function(){$('save-pass-btn').textContent='Şifreyi Değiştir';$('cur-pass').value='';$('new-pass').value='';$('new-pass2').value='';$('save-pass-btn').disabled=true},2000)}).catch(function(e){showAlert('Şifre değiştirilemedi: '+e.message)})}).catch(function(){showAlert('Mevcut şifren yanlış.')})}
 
 // ===== E2E Encryption =====
 var e2eKeys=null;
@@ -2683,16 +3046,23 @@ function resetAllData(){
     '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Hesabı Sil</h4>'+
     '<p style="color:var(--text4);font-size:12px">Bu hesap kalıcı olarak silinsin mi? Diğer hesapların etkilenmez.</p>';
   $('delete-confirm-btn').textContent='Hesabı Sil';
-  $('delete-confirm-btn').onclick=function(){
+  $('delete-confirm-btn').onclick=async function(){
     hideDeleteModal();
-    var uid=activeAccountId;
+    var localId=activeAccountId,fbUid=fbUserId(),email=window.auth&&auth.currentUser?auth.currentUser.email:null;
+    var acc=getAccountById(localId)||getAccountById(fbUid)||getAccountByEmail(email);
     if(window.auth&&auth.currentUser){
-      db.collection('users').doc(uid).delete().catch(function(){});
-      var email=auth.currentUser.email;
-      firebase.auth().signInWithEmailAndPassword(email,prompt('Şifreni gir:')||'').then(function(){auth.currentUser.delete().catch(function(){})}).catch(function(){showAlert('Doğrulama başarısız. Hesap silinemedi.')})
+      try{
+        var pass=prompt('Şifreni gir:')||'';
+        if(!pass){showAlert('Hesap silme iptal edildi.');return}
+        var cred=firebase.auth.EmailAuthProvider.credential(email,pass);
+        await auth.currentUser.reauthenticateWithCredential(cred);
+        if(window.db&&fbUid)await db.collection('users').doc(fbUid).delete().catch(function(){});
+        await auth.currentUser.delete()
+      }catch(e){showAlert('Doğrulama başarısız. Hesap silinemedi.');return}
     }
+    forgetAccountPassword(acc||{id:localId,email:email});
     var accs=getAccounts();
-    for(var ri=0;ri<accs.length;ri++){if(accs[ri].id===uid){accs.splice(ri,1);break}}
+    for(var ri=accs.length-1;ri>=0;ri--){if(accs[ri].id===localId||accs[ri].id===fbUid||(email&&accs[ri].email===email)){accs.splice(ri,1)}}
     ls('accounts',accs);
     conversations=[];messages={};activeConvId=null;activeAccountId=null;avatarDataUrl=null;
     hideSettings();showScreen('screen-welcome');renderSavedAccounts()
@@ -2701,57 +3071,61 @@ function resetAllData(){
 }
 
 // ===== MAIN APP =====
-async function showApp(username,display,email,avatar,status,bio){
+async function showApp(profileOrUsername,display,email,avatar,status,bio,password){
+  var profile=(profileOrUsername&&typeof profileOrUsername==='object')?profileOrUsername:{username:profileOrUsername,displayName:display,email:email,avatar:avatar,status:status,bio:bio,password:password};
   resetSessionState();
-  status=status||'online';currentStatus=status;
-  var accs=getAccounts(),existing=null;
-  for(var i=0;i<accs.length;i++){if(accs[i].email===email){existing=accs[i];break}}
-  if(existing&&!existing.id){existing.id=uid()}
-  if(existing){existing.displayName=display;existing.username=username;existing.avatar=avatar||existing.avatar;existing.bio=bio||existing.bio;existing.lastLogin=new Date().toISOString();saveAccount(existing);activeAccountId=existing.id;setActiveAccount(existing.id)}
-  else{var acc={id:uid(),username:username,displayName:display,email:email,avatar:avatar||null,bio:bio||'',lastLogin:new Date().toISOString()};saveAccount(acc);activeAccountId=acc.id;setActiveAccount(acc.id)}
-  await loadMessages();
-  showScreen(null);$('app-main').classList.add('active');$('app-layout').classList.add('active');
-  $('sidebar-username').textContent=display;updateStatusUI(status);
-  var sa=$('sidebar-avatar');if(avatar){sa.innerHTML='<img src="'+avatar+'" alt="">'}else{sa.textContent=display.charAt(0).toUpperCase();sa.style.background='linear-gradient(135deg,#2563eb,#6d28d9)'}
-  var savedStatus=ls('status_'+activeAccountId);if(savedStatus)updateStatusUI(savedStatus);
-  // Load conversations: merge encrypted + localStorage data
-  var localConvs=loadConversations();
-  if(localConvs&&localConvs.length>0){
-    for(var lci=0;lci<localConvs.length;lci++){
-      var exists=false;
-      for(var eci=0;eci<conversations.length;eci++){if(conversations[eci].id===localConvs[lci].id){exists=true;break}}
-      if(!exists)conversations.push(localConvs[lci])
+  status=profile.status||'online';currentStatus=status;
+  try{
+    var acc=mergeAccountProfile(profile);
+    status=acc.status||status||'online';currentStatus=status;
+    showScreen(null);
+    var appMain=$('app-main');if(appMain)appMain.classList.add('active');
+    syncSidebarProfile(acc,status);
+    await loadMessages();
+    var savedStatus=ls('status_'+activeAccountId);if(savedStatus)updateStatusUI(savedStatus);
+    // Load conversations: merge encrypted + localStorage data
+    var localConvs=loadConversations();
+    if(localConvs&&localConvs.length>0){
+      for(var lci=0;lci<localConvs.length;lci++){
+        var exists=false;
+        for(var eci=0;eci<conversations.length;eci++){if(conversations[eci].id===localConvs[lci].id){exists=true;break}}
+        if(!exists)conversations.push(localConvs[lci])
+      }
     }
-  }
-  var savedGroups=getGroups();
-  for(var i=0;i<savedGroups.length;i++){
-    var exists=false;
-    for(var gci=0;gci<conversations.length;gci++){if(conversations[gci].id===savedGroups[i].id){exists=true;break}}
-    if(!exists)conversations.unshift(savedGroups[i])
-  }
-  // Restore unread counts and last activity
-  var savedUnread=ls('unreadCounts')||{};
-  var savedActivity=ls('lastActivity')||{};
-  for(var uci=0;uci<conversations.length;uci++){
-    var cid=conversations[uci].id;
-    if(savedUnread[cid]!==undefined)conversations[uci].unread=savedUnread[cid];
-    if(savedActivity[cid]!==undefined)conversations[uci].lastActivity=savedActivity[cid]
-  }
-  // Initialize lastActivity for conversations that don't have it
-  for(var lai=0;lai<conversations.length;lai++){
-    if(!conversations[lai].lastActivity){conversations[lai].lastActivity=Date.now()-conversations.length*1000+lai*100}
-  }
-  // Recalculate conversation previews from actual messages
-  for(var sci=0;sci<conversations.length;sci++){
-    updateConvPreview(conversations[sci].id)
-  }
-  activeConvId=null;
-  // Start listening to conversation updates from Firestore
-  if(window.db&&fbUserId())fbListenConversations(fbUserId());
-  // Init background mode
-  if(ls('backgroundMode')&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
-  initE2E();
-  // Render sidebar: wait for DOM to be fully ready
+    var savedGroups=getGroups();
+    for(var i=0;i<savedGroups.length;i++){
+      normalizeGroupMembers(savedGroups[i]);savedGroups[i].memberIds=getGroupMemberIds(savedGroups[i]);
+      var exists=false;
+      for(var gci=0;gci<conversations.length;gci++){if(conversations[gci].id===savedGroups[i].id){exists=true;break}}
+      if(!exists)conversations.unshift(savedGroups[i])
+    }
+    if(savedGroups.length)saveGroups(savedGroups);
+    // Restore unread counts and last activity
+    var savedUnread=ls('unreadCounts')||{};
+    var savedActivity=ls('lastActivity')||{};
+    for(var uci=0;uci<conversations.length;uci++){
+      var cid=conversations[uci].id;
+      if(savedUnread[cid]!==undefined)conversations[uci].unread=savedUnread[cid];
+      if(savedActivity[cid]!==undefined)conversations[uci].lastActivity=savedActivity[cid]
+    }
+    // Initialize lastActivity for conversations that don't have it
+    for(var lai=0;lai<conversations.length;lai++){
+      if(!conversations[lai].lastActivity){conversations[lai].lastActivity=Date.now()-conversations.length*1000+lai*100}
+    }
+    // Recalculate conversation previews from actual messages
+    for(var sci=0;sci<conversations.length;sci++){
+      updateConvPreview(conversations[sci].id)
+    }
+    activeConvId=null;
+    // Start listening to conversation updates from Firestore
+    var currentFbUid=fbUserId();
+    if(window.db&&currentFbUid){fbListenConversations(currentFbUid);startPendingListener(currentFbUid)}
+    // Init background mode
+    if(ls('backgroundMode')&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
+    initE2E();
+  }catch(e){console.error('[showApp] Error:',e)}
+  // Always render and finalize, even on error
+  _pendingLoginPassword=null;
   _authTransitioning=false;
   function tryRender(){
     var el=$('conv-list');
@@ -2762,16 +3136,13 @@ async function showApp(username,display,email,avatar,status,bio){
       setTimeout(tryRender,150)
     }
   }
-  setTimeout(tryRender,100);
-  setTimeout(function(){renderConversations()},500);
-  setTimeout(function(){renderConversations()},1500);
-  setTimeout(function(){
-    // Start on the chat selection screen
-  },300)
+  tryRender();
 }
 
 function renderConversations(list){
   var el=$('conv-list');if(!el)return;var data=(list||conversations).slice();
+  var animateList=!_convListAnimatedOnce&&!list;
+  el.classList.toggle('no-anim',!animateList);
   // Sort: pinned first (alphabetically), then by most recent activity
   data.sort(function(a,b){
     if(isPinned(a.id)&&!isPinned(b.id))return -1;
@@ -2802,7 +3173,7 @@ function renderConversations(list){
     else archBadge.style.display='none'
   }
   el.innerHTML='';
-  if(_showArchived&&data.length===0){el.innerHTML='<div style="text-align:center;padding:40px 10px;font-size:11px;color:var(--text4)">📦 Arşiv boş.</div>';return}
+  if(_showArchived&&data.length===0){el.innerHTML='<div style="text-align:center;padding:40px 10px;font-size:11px;color:var(--text4)">📦 Arşiv boş.</div>';_convListAnimatedOnce=true;return}
   for(var i=0;i<data.length;i++){(function(c){
     var muted=isMuted(c.id);var pinned=isPinned(c.id);
     var div=document.createElement('div');div.className='conv-item'+(c.id===activeConvId?' active':'')+(muted?' muted':'');
@@ -2823,6 +3194,7 @@ function renderConversations(list){
     div.oncontextmenu=function(e){e.preventDefault();showConvContext(e.clientX,e.clientY,c.id)};
     el.appendChild(div)
   })(data[i])}
+  _convListAnimatedOnce=true;
 }
 
 function filterConversations(q){_searchQuery=q;renderConversations()}
@@ -2848,7 +3220,7 @@ async function getRecipientPubKey(convId){
   // 1-on-1
   if(!conv.isGroup){
     var memberIds=conv.memberIds||[];
-    if(conv.members)memberIds=conv.members.map(function(m){return m.id}).filter(function(id){return id&&id.indexOf('gf_')!==0});
+    if(conv.members)memberIds=conv.members.map(function(m){return m.id}).filter(function(id){return id&&id.indexOf('gf_')!==0&&id.indexOf('friend_')!==0&&id.indexOf('dm_')!==0});
     if(memberIds.length<1)return null;
     var recId=memberIds[0]===curId?memberIds[1]:memberIds[0];
     if(!recId)return null;
@@ -2861,7 +3233,7 @@ async function getRecipientPubKey(convId){
   }
   // Group: get all non-self member public keys
   var memberIds=conv.memberIds||[];
-  if(!memberIds.length&&conv.members)memberIds=conv.members.map(function(m){return m.id}).filter(function(id){return id&&id.indexOf('gf_')!==0});
+  if(!memberIds.length&&conv.members)memberIds=conv.members.map(function(m){return m.id}).filter(function(id){return id&&id.indexOf('gf_')!==0&&id.indexOf('friend_')!==0&&id.indexOf('dm_')!==0});
   var keys=[];
   for(var gmi=0;gmi<memberIds.length;gmi++){
     if(memberIds[gmi]===curId)continue;
@@ -2884,19 +3256,25 @@ async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!tx
 
 
 
-function addToGroup(groupId,userId){hideContextMenu();for(var gi=0;gi<conversations.length;gi++){if(conversations[gi].id==groupId){var group=conversations[gi],already=false;for(var mj=0;mj<group.members.length;mj++){if(group.members[mj].id==userId){already=true;break}}if(!already){for(var uk=0;uk<conversations.length;uk++){if(conversations[uk].id==userId){
-  var addedName=conversations[uk].name;
-  group.members.push(conversations[uk]);
-  var gs=getGroups();for(var ggi=0;ggi<gs.length;ggi++){if(gs[ggi].id==groupId){gs[ggi].members=group.members;ls('groups',gs);break}}
-  addGroupLog(groupId,addedName+' gruba eklendi');
+function addToGroup(groupId,userId){
+  hideContextMenu();
+  var group=findConv(groupId);if(!group||!group.isGroup)return;
+  normalizeGroupMembers(group);
+  var conv=findConv(userId),member=makeGroupMemberFromConversation(conv)||makeGroupMemberFromFriend(findFriendByIdOrName(userId,null),null);
+  if(!member)return;
+  for(var mj=0;mj<group.members.length;mj++){if(group.members[mj].id===member.id){selectConversation(groupId);return}}
+  group.members.push(member);group.memberIds=getGroupMemberIds(group);
+  saveGroup(group);addGroupLog(groupId,member.name+' gruba eklendi');
   saveMessages();fbSyncMembers(groupId);
   if(activeConvId==groupId){var se=$('chat-header-status');if(se)se.textContent=memberCount(group)+' üye'}
-  break}}}selectConversation(groupId)}}}
+  selectConversation(groupId)
+}
 
 // Global edit state
 var editGroupState=null; // {groupId, originalName, addedIds:[], removedIds:[]}
 
 function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!conv||!conv.isGroup)return;
+  normalizeGroupMembers(conv);
   editGroupState={groupId:groupId,originalName:conv.name,addedIds:[],removedIds:[]};
   var ml=$('group-member-list');ml.innerHTML='';
   // Add existing members
@@ -2908,28 +3286,28 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
     d._cid=m.id;ml.appendChild(d)
   })(conv.members[i])}
   // Add non-member contacts (including friends not in conversations)
-  var addedNames={};for(var mi=0;mi<conv.members.length;mi++)addedNames[conv.members[mi].name]=true;
+  var addedNames={};for(var mi=0;mi<conv.members.length;mi++)addedNames[conv.members[mi].id]=true;
   for(var i=0;i<conversations.length;i++){(function(c){
     if(c.isGroup||c.id===groupId)return;
-    if(addedNames[c.name])return;
-    addedNames[c.name]=true;
+    var member=makeGroupMemberFromConversation(c);if(!member||addedNames[member.id])return;
+    addedNames[member.id]=true;
     var d=document.createElement('div');d.className='modal-member-item';
     var cAv=c.avatar;var cAvHtml;if(cAv&&cAv.indexOf('data:')===0){cAvHtml='<img src="'+cAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+c.color+'\';this.parentElement.textContent=\'?\'">'}else{cAvHtml='<span>'+(cAv||'?')+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+c.color+'">'+cAvHtml+'</div><div class="mm-name">'+esc(c.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
     d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){editGroupState.addedIds.push(ci)}else{var idx=editGroupState.addedIds.indexOf(ci);if(idx>-1)editGroupState.addedIds.splice(idx,1)}validateGroup()};
-    d._cid=c.id;ml.appendChild(d)
+    d._cid=member.id;d._memberData=member;ml.appendChild(d)
   })(conversations[i])}
   // Also add friends not in conversations
-  var editFriends=ls('friends')||[];var eColors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
+  var editFriends=getCachedFriends();var eColors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
   for(var efi=0;efi<editFriends.length;efi++){(function(f){
-    if(addedNames[f.name])return;
-    addedNames[f.name]=true;
-    var fid='friend_'+efi;
+    var fm=makeGroupMemberFromFriend(f,eColors[efi%eColors.length]);if(!fm||addedNames[fm.id])return;
+    addedNames[fm.id]=true;
+    var fid=fm.id;
     var d=document.createElement('div');d.className='modal-member-item';
     var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+fAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+eColors[efi%eColors.length]+'\';this.parentElement.textContent=\'?\'">'}else{fAvHtml='<span>'+esc(f.name.charAt(0).toUpperCase())+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+eColors[efi%eColors.length]+'">'+fAvHtml+'</div><div class="mm-name">'+esc(f.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
     d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){editGroupState.addedIds.push(ci)}else{var idx=editGroupState.addedIds.indexOf(ci);if(idx>-1)editGroupState.addedIds.splice(idx,1)}validateGroup()};
-    d._cid=fid;ml.appendChild(d)
+    d._cid=fid;d._memberData=fm;ml.appendChild(d)
   })(editFriends[efi])}
   $('group-name').value=conv.name;
   // Change modal header to "Grubu Düzenle"
@@ -2955,33 +3333,28 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
           break
         }
       }
+      if(conv.adminIds){var rai=conv.adminIds.indexOf(editGroupState.removedIds[ri]);if(rai>-1)conv.adminIds.splice(rai,1)}
     }
     
     for(var ai=0;ai<editGroupState.addedIds.length;ai++){
       var added=false;
-      for(var x=0;x<conversations.length;x++){
-        if(conversations[x].id==editGroupState.addedIds[ai]&&!conversations[x].isGroup){
-          conv.members.push(conversations[x]);
-          logs.push(conversations[x].name+' gruba eklendi');
-          added=true;
-          break
-        }
+      var cm=makeGroupMemberFromConversation(findConversationByPeerId(editGroupState.addedIds[ai]));
+      if(cm){
+        conv.members.push(cm);
+        logs.push(cm.name+' gruba eklendi');
+        added=true
       }
-      if(!added&&typeof editGroupState.addedIds[ai]==='string'&&editGroupState.addedIds[ai].indexOf('friend_')===0){
-        var allFriends=ls('friends')||[];
-        var fi=parseInt(editGroupState.addedIds[ai].split('_')[1],10);
-        var f=allFriends[fi];
-        if(f){
-          var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
-          conv.members.push({id:'gf_'+conv.id+'_'+fi,name:f.name,avatar:f.name.charAt(0).toUpperCase(),color:colors[(fi+1)%colors.length],online:true,isGroup:false});
-          logs.push(f.name+' gruba eklendi');added=true
-        }
+      if(!added){
+        var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
+        var fm=makeGroupMemberFromFriend(findFriendByIdOrName(editGroupState.addedIds[ai],null),colors[ai%colors.length]);
+        if(fm){conv.members.push(fm);logs.push(fm.name+' gruba eklendi');added=true}
       }
     }
     
     conv.lastMsg='Grup güncellendi';
+    normalizeGroupMembers(conv);conv.memberIds=getGroupMemberIds(conv);
     var gs=getGroups();
-    for(var i=0;i<gs.length;i++){if(gs[i].id===groupId){gs[i].members=conv.members;ls('groups',gs);break}}
+    for(var i=0;i<gs.length;i++){if(gs[i].id===groupId){gs[i].members=conv.members;gs[i].memberIds=conv.memberIds;gs[i].adminIds=conv.adminIds;saveGroups(gs);break}}
     
     for(var li=0;li<logs.length;li++){addGroupLog(groupId,logs[li])}
     
@@ -3841,7 +4214,8 @@ function toggleAdmin(memberId,convId){
       if(idx>-1){g.adminIds.splice(idx,1);addGroupLog(convId,memberName+' yöneticilikten alındı')}
       else{g.adminIds.push(memberId);addGroupLog(convId,'👑 '+memberName+' yönetici yapıldı')}
       var gs=getGroups();
-      for(var tgi=0;tgi<gs.length;tgi++){if(gs[tgi].id==convId){gs[tgi].adminIds=g.adminIds;ls('groups',gs);break}}
+      for(var tgi=0;tgi<gs.length;tgi++){if(gs[tgi].id==convId){gs[tgi].adminIds=g.adminIds;saveGroups(gs);break}}
+      fbSyncMembers(convId);
       renderMessages(convId);
       if(profilePanelOpen)showProfilePanel();
       return
@@ -3891,10 +4265,13 @@ function removeFromGroupConfirm(){
           g.members.splice(mi,1);break
         }
       }
+      if(g.adminIds){var ai=g.adminIds.indexOf(memberId);if(ai>-1)g.adminIds.splice(ai,1)}
+      g.memberIds=getGroupMemberIds(g);
       var gs=getGroups();
-      for(var i=0;i<gs.length;i++){if(gs[i].id==convId){gs[i].members=g.members;ls('groups',gs);break}}
+      for(var i=0;i<gs.length;i++){if(gs[i].id==convId){gs[i].members=g.members;gs[i].memberIds=g.memberIds;gs[i].adminIds=g.adminIds;saveGroups(gs);break}}
       // Add group log
       addGroupLog(convId,removedName+' gruptan çıkarıldı');
+      fbSyncMembers(convId);
       renderMessages(convId);
       // Update chat header member count
       var hs=$('chat-header-status');
@@ -4903,9 +5280,11 @@ function hideLoading(cb){
 
 function initWelcome(){
   hideLoading(function(){
-    var accs=getAccounts();
-    if(accs.length===1){showScreen('screen-login');$('login-email').value=accs[0].email;validateLogin();$('login-pass').focus()}
-    else{renderSavedAccounts();showScreen('screen-welcome');setTimeout(renderSavedAccounts,100)}
+    migratePlainAccountPasswords().then(function(){
+      var accs=getAccounts();
+      if(accs.length===1){showScreen('screen-login');$('login-email').value=accs[0].email;validateLogin();$('login-pass').focus()}
+      else{renderSavedAccounts();showScreen('screen-welcome');setTimeout(renderSavedAccounts,100)}
+    })
   })
 }
 
@@ -4928,26 +5307,33 @@ loadFirebase(function(){
   try{firebase.initializeApp(firebaseConfig);window.db=firebase.firestore();window.auth=firebase.auth();window.storage=firebase.storage()}catch(e){}
   if(window.auth){
     auth.onAuthStateChanged(function(user){
+      var authSeq=++_authStateSeq;
+      function staleAuthEvent(){return authSeq!==_authStateSeq||!auth.currentUser||auth.currentUser.uid!==user.uid}
       if(user){
         // Skip if autoLogin is handling this login (prevents double showApp call)
         if(_explicitLogin){_explicitLogin=false;return}
         // Find local account by email - use LOCAL data (always up-to-date from settings saves)
         var accs=getAccounts(),acc=null;
-        for(var ai=0;ai<accs.length;ai++){if(accs[ai].email===user.email){acc=accs[ai];break}}
-        startPendingListener(user.uid);
+        var loginEmail=(user.email||'').toLowerCase();for(var ai=0;ai<accs.length;ai++){if(accs[ai].email&&accs[ai].email.toLowerCase()===loginEmail){acc=accs[ai];break}}
+        var pendingPassword=_pendingLoginPassword;
         if(acc){
-          hideLoading(function(){doLoginWith({id:user.uid,username:acc.username||user.email.split('@')[0],displayName:acc.displayName||user.displayName||user.email.split('@')[0],email:user.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||''})})
+          if(acc.password)rememberAccountPassword(acc,acc.password);
+          hideLoading(function(){if(staleAuthEvent())return;doLoginWith({id:user.uid,username:acc.username||user.email.split('@')[0],displayName:acc.displayName||user.displayName||user.email.split('@')[0],email:user.email,avatar:acc.avatar||null,status:acc.status||'online',bio:acc.bio||'',password:pendingPassword||null})})
         }else{
           // No local account found, fall back to Firestore
           db.collection('users').doc(user.uid).get().then(function(doc){
-            if(doc.exists){var d=doc.data();hideLoading(function(){doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||''})})}
-            else{initWelcome()}
-          }).catch(function(){initWelcome()})
+            if(staleAuthEvent())return;
+            if(doc.exists){var d=doc.data();hideLoading(function(){if(staleAuthEvent())return;doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||'',password:pendingPassword||null})})}
+            else{_pendingLoginPassword=null;initWelcome()}
+          }).catch(function(){if(!staleAuthEvent()){_pendingLoginPassword=null;initWelcome()}})
         }
       }else{
         // Only reset if not in the middle of an account switch
         // (account switch triggers null -> newUser in quick succession)
-        if(!_authTransitioning){resetSessionState()}
+        if(_authTransitioning)return;
+        resetSessionState();
+        _authTransitioning=false;
+        _pendingLoginPassword=null;
         initWelcome()
       }
     })

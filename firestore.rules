@@ -7,7 +7,7 @@ service cloud.firestore {
     // Write: sadece kendisi
     // online/publicKey güncellemelerine izin ver
     match /users/{uid} {
-      allow read: if true;
+      allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == uid;
       allow update: if request.auth != null && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()
@@ -17,10 +17,9 @@ service cloud.firestore {
 
     // ===== Arkadaşlık İstekleri =====
     match /friendRequests/{reqId} {
-      allow get: if request.auth != null
+      allow read: if request.auth != null
         && (resource.data.from == request.auth.uid
           || resource.data.to == request.auth.uid);
-      allow list: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.from == request.auth.uid;
       allow update: if request.auth != null
