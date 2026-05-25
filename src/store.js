@@ -168,24 +168,32 @@ var store = (function(){
     if(arr) for(var i=0;i<arr.length;i++) arr[i](_data[k]);
   };
 
+  // Resolve dot-notation paths (e.g. 'editGroupState.removedIds')
+  function _resolve(key){
+    var parts = key.split('.');
+    var obj = _data[parts[0]];
+    for(var i=1;i<parts.length;i++) obj = obj[parts[i]];
+    return obj;
+  }
+
   // Array mutation helpers — mutate + emit
   api.push = function(key){
-    var a = _data[key];
-    if(!a) return 0;
+    var a = _resolve(key);
+    if(!a || !a.push) return 0;
     var r = Array.prototype.push.apply(a, Array.prototype.slice.call(arguments, 1));
-    api.emit(key);
+    api.emit(key.split('.')[0]);
     return r;
   };
   api.unshift = function(key){
-    var a = _data[key];
-    if(!a) return 0;
+    var a = _resolve(key);
+    if(!a || !a.unshift) return 0;
     var r = Array.prototype.unshift.apply(a, Array.prototype.slice.call(arguments, 1));
-    api.emit(key);
+    api.emit(key.split('.')[0]);
     return r;
   };
   api.splice = function(key, start, delCount){
-    var a = _data[key];
-    if(!a) return [];
+    var a = _resolve(key);
+    if(!a || !a.splice) return [];
     var args = [start, delCount].concat(Array.prototype.slice.call(arguments, 3));
     var r = Array.prototype.splice.apply(a, args);
     api.emit(key);
