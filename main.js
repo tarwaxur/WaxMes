@@ -3,8 +3,6 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
-process.env.ELECTRON_DISABLE_GPU = '1';
-
 const APP_NAME = 'WaxMes';
 let mainWindow;
 const winStatePath = path.join(app.getPath('userData'), 'window-state.json');
@@ -14,9 +12,30 @@ function loadWinState() {
 function saveWinState() {
   if (!mainWindow) return;
   try {
-    const bounds = mainWindow.getBounds();
-    fs.writeFileSync(winStatePath, JSON.stringify({ width: bounds.width, height: bounds.height }));
+    var tmp = winStatePath + '.tmp';
+    var bounds = mainWindow.getBounds();
+    fs.writeFileSync(tmp, JSON.stringify({ width: bounds.width, height: bounds.height }));
+    fs.renameSync(tmp, winStatePath);
   } catch(e) {}
+}
+var _saveWinStateTimer = null;
+function saveWinStateDebounced() {
+  if (_saveWinStateTimer) clearTimeout(_saveWinStateTimer);
+  _saveWinStateTimer = setTimeout(saveWinState, 500);
+}
+
+// Single instance lock
+var gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', function() {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 }
 let tray = null;
 let backgroundMode = false;
@@ -67,7 +86,7 @@ function createWindow() {
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, cb) => {
     cb({ responseHeaders: {
       ...details.responseHeaders,
-      'Content-Security-Policy': ["default-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app https://www.gstatic.com 'unsafe-inline' 'unsafe-eval' blob: data: mediastream:"]
+      'Content-Security-Policy': ["default-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app https://www.gstatic.com 'unsafe-inline' blob: data: mediastream:"]
     }});
   });
 
@@ -95,7 +114,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => { mainWindow.show() });
   mainWindow.on('maximize', () => mainWindow?.webContents?.send('window-maximized', true));
   mainWindow.on('unmaximize', () => mainWindow?.webContents?.send('window-maximized', false));
-  mainWindow.on('resize', () => saveWinState());
+  mainWindow.on('resize', () => saveWinStateDebounced());
   mainWindow.on('close', (e) => {
     saveWinState();
     if (!forceQuit && backgroundMode) {

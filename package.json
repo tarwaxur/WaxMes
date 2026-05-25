@@ -25,7 +25,8 @@
       "preload.js",
       "index.html",
       "package.json",
-      "assets/**/*"
+      "assets/**/*",
+      "src/**/*"
     ],
     "win": {
       "icon": "assets/app.ico",
@@ -76,7 +77,6 @@
     "sharp": "^0.34.5"
   },
   "dependencies": {
-    "electron-updater": "^6.8.3",
-    "firebase": "^12.13.0"
+    "electron-updater": "^6.8.3"
   }
 }
