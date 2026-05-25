@@ -1,10 +1,11 @@
 // ===== VOICE RECORDER =====
 
-function startVoice(){
+async function startVoice(){
   if(!store.activeConvId)return;
   if(store.mediaRecorder&&store.mediaRecorder.state==='recording'){stopVoice();return}
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert('Ses kaydı desteklenmiyor.');return}
-  try{navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+  try {
+    var stream=await navigator.mediaDevices.getUserMedia({audio:true});
     store.audioChunks=[];store.voiceStart=Date.now();
     try{store.mediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm;codecs=opus'})}catch(e){store.mediaRecorder=new MediaRecorder(stream)}
     store.mediaRecorder.ondataavailable=function(e){if(e.data.size>0)store.push('audioChunks', e.data)};
@@ -43,7 +44,7 @@ function startVoice(){
       var m=Math.floor(elapsed/60),s=elapsed%60;
       $('vr-time').textContent=m+':'+(s<10?'0':'')+s
     },200)
-  }).catch(function(){alert('Mikrofon erişimi reddedildi.')})}catch(e){alert('Ses kaydı başlatılamadı.')}
+  }catch(e){alert('Mikrofon erişimi reddedildi.')}
 }
 
 function stopVoice(){
@@ -64,7 +65,7 @@ function sendVoice(){
   var dur=Math.floor((Date.now()-store.voiceStart)/1000);
   var blob=new Blob(store.audioChunks,{type:'audio/webm'});
   var reader=new FileReader();
-  reader.onloadend=function(){
+  reader.onloadend=async function(){
     var dataUrl=reader.result;
     var id=uid();
     if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
@@ -77,9 +78,7 @@ function sendVoice(){
     // Upload to Firebase Storage and sync via Firestore
     if(window.storage&&dataUrl&&dataUrl.indexOf('data:')===0){
       var path='voice/'+store.activeConvId+'/'+Date.now()+'_'+id+'.webm';
-      fbUploadFile(dataUrl,path).then(function(url){
-        msg.audio=url;fbSendMessage(store.activeConvId,msg);saveMessages()
-      }).catch(console.error)
+      try{var url=await fbUploadFile(dataUrl,path);msg.audio=url;fbSendMessage(store.activeConvId,msg);saveMessages()}catch(e){console.error(e)}
     }else{fbSendMessage(store.activeConvId,msg)}
     $('voice-recorder').style.display='none';$('chat-input').style.display='';$('chat-send').style.display='';$('voice-btn').style.display='';
   };

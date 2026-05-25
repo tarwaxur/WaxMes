@@ -143,7 +143,7 @@ async function startLocalStream(){
   }catch(e){alert('Mikrofon erişimi gerekli');endCall()}
 }
 
-function createOffer(callId){
+async function createOffer(callId){
   var config={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'}]};
   store.callPeerConn=new RTCPeerConnection(config);
   store.callLocalStream.getTracks().forEach(function(t){store.callPeerConn.addTrack(t,store.callLocalStream)});
@@ -186,21 +186,25 @@ function createOffer(callId){
     var c=store.pendingIceCandidates.shift();
     try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(c))}catch(e){}
   }
-  store.callPeerConn.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:false}).then(function(offer){
+  try {
+    var offer=await store.callPeerConn.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:false});
     store.callPeerConn.setLocalDescription(offer);
     $('call-bar-status').textContent='Bağlanıyor...';
     if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'offer',sdp:offer,callId:callId,callerName:$('sidebar-username').textContent||'Birisi'})
-  }).catch(console.error)
+  }catch(e){console.error(e)}
 }
 
 // ===== FIRESTORE CALL SIGNALING =====
 
 
-function fbSendCallSignal(convId,data){
+async function fbSendCallSignal(convId,data){
   if(!window.db||!fbUserId()||!convId)return;
   data.from=fbUserId();
   data.timestamp=firebase.firestore.FieldValue.serverTimestamp();
-  return db.collection('conversations').doc(convId).collection('call_signals').add(data).then(function(ref){return ref.id}).catch(function(){return null})
+  try {
+    var ref=await db.collection('conversations').doc(convId).collection('call_signals').add(data);
+    return ref.id
+  }catch(e){return null}
 }
 
 function fbListenCallSignals(convId){
@@ -237,7 +241,7 @@ function fbListenCallSignals(convId){
       if(store.callState==='calling'||store.callState==='connected'){
         // Incoming answer (we are the caller)
         if(d.action==='answer'&&d.sdp&&store.callPeerConn&&store.callPeerConn.localDescription&&store.callPeerConn.localDescription.type==='offer'){
-          store.callPeerConn.setRemoteDescription(new RTCSessionDescription(d.sdp)).then(function(){
+          (async function(){try{await store.callPeerConn.setRemoteDescription(new RTCSessionDescription(d.sdp));
             $('call-bar-status').textContent='Bağlandı';
             $('call-bar-timer').style.display='inline';
             store.callState='connected';
@@ -249,7 +253,7 @@ function fbListenCallSignals(convId){
               var m=Math.floor(sec/60),s=sec%60;
               $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
             },500)
-          }).catch(console.error)
+          }catch(e){console.error(e)}})()
         }
         // Incoming call end
         if(d.action==='end'){
@@ -424,7 +428,7 @@ function closeCallVideo(){
   if(el)document.body.removeChild(el)
 }
 
-function toggleCallCamera(){
+async function toggleCallCamera(){
   if(!store.callState)return;
   var videoEl=$('call-local-video-el');
   var container=$('call-local-video');
@@ -437,17 +441,18 @@ function toggleCallCamera(){
     $('call-cam-btn').style.color='var(--text3)';
     return
   }
-  try{navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(stream){
+  try {
+    var stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
     store.callCamStream=stream;
     videoEl.srcObject=stream;
     container.style.display='block';
     videoEl.play().catch(console.error);
     $('call-cam-btn').style.background='rgba(34,197,94,.15)';
     $('call-cam-btn').style.color='#22c55e'
-  }).catch(function(e){console.error('Camera error:',e)})}catch(e){console.error('Camera error:',e)}
+  }catch(e){console.error('Camera error:',e)}
 }
 
-function toggleCallScreen(){
+async function toggleCallScreen(){
   if(!store.callState)return;
   var videoEl=$('call-local-video-el');
   var container=$('call-local-video');
@@ -461,7 +466,8 @@ function toggleCallScreen(){
     return
   }
   // Native picker shows window/screen/tab options automatically
-  try{navigator.mediaDevices.getDisplayMedia({video:true,audio:false}).then(function(stream){
+  try {
+    var stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
     store.callScreenStream=stream;
     videoEl.srcObject=stream;
     container.style.display='';
@@ -475,7 +481,7 @@ function toggleCallScreen(){
       $('call-screen-btn').style.background='rgba(255,255,255,.04)';
       $('call-screen-btn').style.color='var(--text3)'
     }
-  }).catch(function(e){console.error('Screen share error:',e)})}catch(e){console.error('Screen share error:',e)}
+  }catch(e){console.error('Screen share error:',e)}
 }
 
 function toggleCallSpeaker(){

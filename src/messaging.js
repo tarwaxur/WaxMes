@@ -435,7 +435,7 @@ async function confirmSendMedia(){
     try{var enc=await e2eEncrypt(text,pubKeys);if(enc&&enc.indexOf('🔒')===0)return enc}catch(e){}
     return text
   }
-  (function processMedia(idx){
+  (async function processMedia(idx){
     if(idx>=store.pendingMediaFiles.length){
       renderMessages(store.activeConvId);renderConversations();
       saveMessages();
@@ -449,7 +449,8 @@ async function confirmSendMedia(){
     var path='media/'+store.activeConvId+'/'+Date.now()+'_'+idx+'.'+ext;
     var dataUrl=file.dataUrl;
     if(dataUrl&&dataUrl.indexOf('data:')===0&&window.storage){
-      fbUploadFile(dataUrl,path).then(async function(url){
+      try {
+        var url=await fbUploadFile(dataUrl,path);
         var id=uid();
         if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
         var txt=file.type==='image'||file.type==='video'?caption:'📎 '+file.name+(caption?' — '+caption:'');
@@ -463,13 +464,13 @@ async function confirmSendMedia(){
         if(conv){conv.lastMsg=encTxt!==txt?'🔒 Mesaj':(file.type==='image'?'📷 '+(caption||file.name):(file.type==='video'?'🎬 '+(caption||file.name):'📎 '+file.name));conv.lastActivity=Date.now();conv.time=timeNow()}
         fbSendMessage(store.activeConvId,msg);
         processMedia(idx+1)
-      }).catch(function(){
+      }catch(e){
         var id=uid();
         if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
         var msg={id:id,type:'sent',senderId:fbUserId(),text:caption,time:timeNow(),edited:false,deleted:false,image:dataUrl};
         store.messages[store.activeConvId].push(msg);store.emit('messages');
         processMedia(idx+1)
-      })
+      }
     }else{
       var id=uid();
       if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
@@ -1200,7 +1201,7 @@ function removeFromGroupConfirm(){
 renderMessages=function(convId){
   var el=$('chat-messages');if(!el)return;var raw=store.messages[convId]||[];el.innerHTML='';
   var conv=findConv(convId);var isGroupChat=conv&&conv.isGroup;
-  for(var di=0;di<raw.length;di++){if(raw[di].text&&raw[di].text.indexOf('🔒')===0&&!raw[di]._decrypted&&!raw[di]._decrypting){raw[di]._decrypting=true;(function(m){e2eDecrypt(m.text).then(function(d){if(d){m._decrypted=d;m._decrypting=false}else{m._decrypting=false;m._decrypted='🔒 [Çözülemedi]'}if(store.activeConvId===convId)renderMessages(convId)}).catch(function(){m._decrypting=false;m._decrypted='🔒 [Çözülemedi]';if(store.activeConvId===convId)renderMessages(convId)})})(raw[di])}}
+  for(var di=0;di<raw.length;di++){if(raw[di].text&&raw[di].text.indexOf('🔒')===0&&!raw[di]._decrypted&&!raw[di]._decrypting){raw[di]._decrypting=true;(async function(m){try{var d=await e2eDecrypt(m.text);if(d){m._decrypted=d;m._decrypting=false}else{m._decrypting=false;m._decrypted='🔒 [Çözülemedi]'}if(store.activeConvId===convId)renderMessages(convId)}catch(e){m._decrypting=false;m._decrypted='🔒 [Çözülemedi]';if(store.activeConvId===convId)renderMessages(convId)}})(raw[di])}}
   var groups=[];var ci=0;
   while(ci<raw.length){
     var msg=raw[ci];

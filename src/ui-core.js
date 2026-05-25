@@ -151,13 +151,13 @@ async function acceptFriendRequest(reqId){
     switchFriendsTab('friends')
   }catch(e){switchFriendsTab('friends')}
 }
-function withdrawRequest(reqId){
+async function withdrawRequest(reqId){
   if(!window.db)return;
-  db.collection('friendRequests').doc(reqId).delete().then(function(){switchFriendsTab('pending')}).catch(function(){switchFriendsTab('pending')})
+  try{await db.collection('friendRequests').doc(reqId).delete();switchFriendsTab('pending')}catch(e){switchFriendsTab('pending')}
 }
-function declineFriendRequest(reqId){
+async function declineFriendRequest(reqId){
   if(!window.db)return;
-  db.collection('friendRequests').doc(reqId).delete().then(function(){switchFriendsTab('pending')}).catch(function(){switchFriendsTab('pending')})
+  try{await db.collection('friendRequests').doc(reqId).delete();switchFriendsTab('pending')}catch(e){switchFriendsTab('pending')}
 }
 function updatePendingBadge(count){
   if(count<0)count=0;
@@ -211,26 +211,29 @@ function showFriendMenu(e,name,friendId){
     {label:'Arkadaşlıktan Çıkar',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',action:function(){removeFriend(friendId,name)}},
   ])
 }
-function removeFriend(friendId,name){
+async function removeFriend(friendId,name){
   if(!window.db)return;
   var uid=fbUserId();if(!uid)return;
   function done(){switchFriendsTab('friends')}
   if(friendId){
-    db.collection('friends').doc(uid).collection('list').doc(friendId).delete().then(function(){
+    try {
+      await db.collection('friends').doc(uid).collection('list').doc(friendId).delete();
       db.collection('friends').doc(friendId).collection('list').doc(uid).delete().catch(console.error);
       done()
-    }).catch(done);
+    }catch(e){done()}
     return
   }
-  db.collection('friends').doc(uid).collection('list').where('name','==',name).get().then(function(snap){
-    snap.forEach(function(doc){
+  try {
+    var snap=await db.collection('friends').doc(uid).collection('list').where('name','==',name).get();
+    snap.forEach(async function(doc){
       var fid=doc.id;
-      doc.ref.delete().then(function(){
+      try {
+        await doc.ref.delete();
         db.collection('friends').doc(fid).collection('list').doc(uid).delete().catch(console.error);
         done()
-      }).catch(done)
+      }catch(e){done()}
     })
-  }).catch(done)
+  }catch(e){done()}
 }
 
 function showFriendsPanel(){
@@ -240,18 +243,19 @@ function showFriendsPanel(){
 function friendsCacheKey(){return 'friends_'+(fbUserId()||store.activeAccountId||'local')}
 function getCachedFriends(){return ls(friendsCacheKey())||[]}
 function setCachedFriends(friends){ls(friendsCacheKey(),friends||[])}
-function refreshFriendsCache(){
+async function refreshFriendsCache(){
   var uid=fbUserId();
-  if(!window.db||!uid)return Promise.resolve(getCachedFriends());
-  return db.collection('friends').doc(uid).collection('list').get().then(function(snap){
+  if(!window.db||!uid)return getCachedFriends();
+  try {
+    var snap=await db.collection('friends').doc(uid).collection('list').get();
     var friends=snap.docs.map(function(d){return d.data()});
     setCachedFriends(friends);
     return friends
-  }).catch(function(){return getCachedFriends()})
+  }catch(e){return getCachedFriends()}
 }
 
 
-function switchFriendsTab(tab){
+async function switchFriendsTab(tab){
   store._currentFriendsTab=tab;
   document.querySelectorAll('.friends-tab').forEach(function(t){t.style.color='var(--text4)';t.style.background='transparent'});
   var el=document.querySelector('.friends-tab[data-tab="'+tab+'"]');
@@ -260,7 +264,8 @@ function switchFriendsTab(tab){
   var uid=fbUserId();
   if(tab==='friends'){
     if(!window.db||!uid){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Henüz arkadaşın yok.</div>';return}
-    db.collection('friends').doc(uid).collection('list').get().then(function(snap){
+    try {
+      var snap=await db.collection('friends').doc(uid).collection('list').get();
       if(store._currentFriendsTab!==tab)return;
       var friends=snap.docs.map(function(d){return d.data()});
       setCachedFriends(friends);
@@ -274,14 +279,15 @@ function switchFriendsTab(tab){
         html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><button class="btn-primary" onclick="$(\'modal-friends\').classList.remove(\'active\');setTimeout(newGroup,300)" style="padding:8px 16px;font-size:11px;border-radius:8px;width:100%">Grup Oluştur</button></div>';
         content.innerHTML=html
       }
-    }).catch(function(){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Henüz arkadaşın yok.</div>'})
+    }catch(e){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Henüz arkadaşın yok.</div>'}
   }else if(tab==='pending'){
     updatePendingBadge(0);
     if(!window.db||!uid){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>';return}
-    Promise.all([
-      db.collection('friendRequests').where('to','==',uid).get(),
-      db.collection('friendRequests').where('from','==',uid).get()
-    ]).then(function(results){
+    try {
+      var results=await Promise.all([
+        db.collection('friendRequests').where('to','==',uid).get(),
+        db.collection('friendRequests').where('from','==',uid).get()
+      ]);
       if(store._currentFriendsTab!==tab)return;
       var incoming=[]; results[0].forEach(function(d){if(d.data().status==='pending')incoming.push({id:d.id,data:d.data()})});
       var sent=[]; results[1].forEach(function(d){if(d.data().status==='pending')sent.push({id:d.id,data:d.data()})});
@@ -303,7 +309,7 @@ function switchFriendsTab(tab){
       }
       if(!html)html='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>';
       content.innerHTML=html
-    }).catch(function(){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>'})
+    }catch(e){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>'}
   }else if(tab==='add'){
     content.innerHTML='<div style="margin-bottom:14px"><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Kullanıcı Adıyla Ekle</label><input type="text" id="add-friend-input" placeholder="Örn: waxur" style="width:100%;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:10px;font-family:inherit;font-size:13px;color:var(--text2);outline:none;margin-bottom:8px" onkeydown="if(event.key===\'Enter\')sendFriendRequest()"><button class="btn-primary" onclick="sendFriendRequest()" style="padding:8px 16px;font-size:11px;border-radius:8px;width:100%">Arkadaşlık İsteği Gönder</button><div id="add-friend-result" style="margin-top:8px;font-size:11px;color:var(--text4)"></div></div>'
   }
@@ -390,7 +396,7 @@ function startConvWith(name,friendId){
   var color=colors[Math.floor(Math.random()*colors.length)];
   var memberIds=[uid,friendId];
   var newConv={id:convId,name:name,avatar:name.charAt(0).toUpperCase(),color:color,online:true,lastMsg:'',time:'',unread:0,isGroup:false,memberIds:memberIds};
-  if(window.db&&friendId)db.collection('users').doc(friendId).get().then(function(snap){if(snap.exists&&snap.data().avatar){newConv.avatar=snap.data().avatar;renderConversations()}}).catch(console.error);
+  (async function(){if(window.db&&friendId)try{var snap=await db.collection('users').doc(friendId).get();if(snap.exists&&snap.data().avatar){newConv.avatar=snap.data().avatar;renderConversations()}}catch(e){console.error(e)}})();
   store.unshift('conversations', newConv);
   saveConversations();
   // Create/update Firestore conversation with members (idempotent)
@@ -401,9 +407,9 @@ function startConvWith(name,friendId){
 }
 
 
-function pickGroupAvatar(){
+async function pickGroupAvatar(){
   if(window.electronAPI&&electronAPI.selectFile){
-    electronAPI.selectFile().then(function(r){
+    try{var r=await electronAPI.selectFile();
       if(r&&r.thumb){
         store.groupAvatarDataUrl=r.thumb;
         var picker=$('group-avatar-picker');
@@ -428,7 +434,7 @@ function pickGroupAvatar(){
           }
         }
       }
-    })
+    }catch(e){console.error(e)}
   }
 }
 
@@ -516,7 +522,7 @@ function renderGroupMembers(selectedIds){
   for(var fi=0;fi<gf.length;fi++)addItem(makeGroupMemberFromFriend(gf[fi],gColors[fi%gColors.length]),null,gColors[fi%gColors.length])
 }
 
-function newGroup(){
+async function newGroup(){
   var curr=$('group-create-btn');
   if(curr)curr.textContent='Oluştur';
   var mh=$('modal-group').querySelector('.modal-header h3');
@@ -530,7 +536,8 @@ function newGroup(){
   renderGroupMembers([]);
   validateGroup();
   $('modal-group').classList.add('active');
-  refreshFriendsCache().then(function(){if(!store.editGroupState&&$('modal-group').classList.contains('active')){renderGroupMembers([]);validateGroup()}})
+  await refreshFriendsCache();
+  if(!store.editGroupState&&$('modal-group').classList.contains('active')){renderGroupMembers([]);validateGroup()}
 }
 function hideGroupModal(){closeModal('modal-group')}
 
@@ -608,12 +615,13 @@ function confirmClearConversation(){
   // Delete Firestore messages permanently
   fbClearConversationMessages(id)
 }
-function fbClearConversationMessages(convId){
+async function fbClearConversationMessages(convId){
   if(!window.db||!fbUserId())return;
   var ts=Date.now();
   var conv=findConv(convId);
   if(conv)conv._clearedAt=ts;
-  db.collection('conversations').doc(convId).collection('messages').get().then(function(snap){
+  try {
+    var snap=await db.collection('conversations').doc(convId).collection('messages').get();
     var batch=db.batch();
     var count=0;
     snap.forEach(function(doc){
@@ -623,7 +631,7 @@ function fbClearConversationMessages(convId){
     });
     if(count>0)batch.commit().catch(console.error);
     db.collection('conversations').doc(convId).update({clearedAt:firebase.firestore.FieldValue.serverTimestamp(),lastMsg:'Sohbet temizlendi',lastActivity:Date.now()}).catch(console.error)
-  }).catch(console.error)
+  }catch(e){console.error(e)}
 }
 
 function closeConversation(id){

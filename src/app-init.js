@@ -122,7 +122,7 @@ if(chatMsgs)chatMsgs.addEventListener('scroll',function(){
 // ===== INIT =====
 if(!ls('version')){localStorage.clear();ls('version','0.5.0')}
 applyTheme(getTheme());
-if(window.electronAPI&&electronAPI.getAppVersion)electronAPI.getAppVersion().then(function(v){setAppVersion(v)}).catch(console.error);
+(async function(){if(window.electronAPI&&electronAPI.getAppVersion)try{var v=await electronAPI.getAppVersion();setAppVersion(v)}catch(e){console.error(e)}})();
 
 function hideLoading(cb){
   var ls=$('loading-screen');
@@ -133,9 +133,9 @@ function hideLoading(cb){
   }else{if(cb)cb()}
 }
 
-function initWelcome(){
-  hideLoading(function(){
-    migratePlainAccountPasswords().then(function(){
+async function initWelcome(){
+  hideLoading(async function(){
+    await migratePlainAccountPasswords();
       var accs=getAccounts();
       if(accs.length===1){showScreen('screen-login');$('login-email').value=accs[0].email;validateLogin();$('login-pass').focus()}
       else{renderSavedAccounts();showScreen('screen-welcome');setTimeout(renderSavedAccounts,100)}
@@ -171,11 +171,7 @@ loadFirebase(function(){
           if(acc.password)rememberAccountPassword(acc,acc.password);
           store._pendingLoginPassword=null;hideLoading(function(){if(staleAuthEvent())return;doLoginWith({id:user.uid,username:acc.username||user.email.split('@')[0],displayName:acc.displayName||user.displayName||user.email.split('@')[0],email:user.email,avatar:acc.avatar||null,status:acc.status||'online',bio:acc.bio||'',password:pendingPassword||null})})
         }else{
-          db.collection('users').doc(user.uid).get().then(function(doc){
-            if(staleAuthEvent())return;
-            if(doc.exists){var d=doc.data();store._pendingLoginPassword=null;hideLoading(function(){if(staleAuthEvent())return;doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||'',password:pendingPassword||null})})}
-            else{store._pendingLoginPassword=null;initWelcome()}
-          }).catch(function(){if(!staleAuthEvent()){store._pendingLoginPassword=null;initWelcome()}})
+          (async function(){try{var doc=await db.collection('users').doc(user.uid).get();if(staleAuthEvent())return;if(doc.exists){var d=doc.data();store._pendingLoginPassword=null;hideLoading(function(){if(staleAuthEvent())return;doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||'online',bio:d.bio||'',password:pendingPassword||null})})}else{store._pendingLoginPassword=null;initWelcome()}}catch(e){if(!staleAuthEvent()){store._pendingLoginPassword=null;initWelcome()}}})()
         }
       }else{
         if(store._authTransitioning)return;

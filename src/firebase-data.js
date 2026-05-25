@@ -29,15 +29,16 @@ function fbListenConversations(uid){
               if(!cv.isGroup&&cv.memberIds&&cv.memberIds.length===2&&cv.memberIds.indexOf(uid)!==-1&&cv.memberIds.indexOf(otherId)!==-1){alreadyHas=true;break}
             }
             if(!alreadyHas){
-            (function(oid,cid2){
-              db.collection('users').doc(oid).get().then(function(uDoc){
+            (async function(oid,cid2){
+              try {
+                var uDoc=await db.collection('users').doc(oid).get();
                 if(!uDoc.exists)return;
                 var ud=uDoc.data();
                 var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
                 var color=colors[Math.floor(Math.random()*colors.length)];
                 var newConv={id:cid2,name:ud.displayName||ud.username||'Kullanıcı',avatar:ud.avatar||(ud.displayName||'?').charAt(0).toUpperCase(),color:color,online:ud.online||false,lastMsg:'',time:'',unread:0,isGroup:false,memberIds:[uid,oid]};
                 convListenerAddConv(newConv)
-              }).catch(console.error)
+              }catch(e){console.error(e)}
             })(otherId,cid)
             }
           }
@@ -62,17 +63,19 @@ function fbStopConversations(){
 
 
 
-function applyFirestoreGroupConversation(gid,gd,uid){
+async function applyFirestoreGroupConversation(gid,gd,uid){
   var mids=gd.memberIds||[];
-  var memberFetches=mids.filter(function(mid){return mid!==uid}).map(function(mid){
-    return db.collection('users').doc(mid).get().then(function(uDoc){
+  var memberFetches=mids.filter(function(mid){return mid!==uid}).map(async function(mid){
+    try {
+      var uDoc=await db.collection('users').doc(mid).get();
       var ud=uDoc.exists?uDoc.data():{};
       var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
       var nm=ud.displayName||ud.username||'Kullanıcı';
       return {id:mid,name:nm,avatar:ud.avatar||nm.charAt(0).toUpperCase(),color:colors[Math.floor(Math.random()*colors.length)],online:!!ud.online,isGroup:false}
-    }).catch(function(){return null})
+    }catch(e){return null}
   });
-  Promise.all(memberFetches).then(function(members){
+  try {
+    var members=await Promise.all(memberFetches);
     var initials=(gd.name||'G').split(' ').map(function(w){return w.charAt(0).toUpperCase()}).join('').slice(0,2)||'G';
     var group={id:gid,name:gd.name||'Grup',avatar:gd.avatar||initials,avatarLetter:gd.avatarLetter||initials,color:gd.color||'var(--grad)',isGroup:true,online:true,lastMsg:gd.lastMsg||'',time:gd.lastTime||'',lastActivity:gd.lastActivity||Date.now(),unread:0,members:members.filter(Boolean),memberIds:mids,adminIds:gd.adminIds||[gd.creatorId].filter(Boolean),creatorId:gd.creatorId||mids[0]};
     normalizeGroupMembers(group);
@@ -83,7 +86,7 @@ function applyFirestoreGroupConversation(gid,gd,uid){
     }else{
       convListenerAddConv(group);saveGroup(group)
     }
-  })
+  }catch(e){console.error(e)}
 }
 
 function fbSyncMembers(convId){
@@ -95,7 +98,7 @@ function fbSyncMembers(convId){
   if(conv.isGroup){data.type='group';data.name=conv.name;data.avatar=conv.avatar||null;data.avatarLetter=conv.avatarLetter||null;data.color=conv.color||null;data.creatorId=conv.creatorId||fbUserId();data.adminIds=conv.adminIds||[data.creatorId]}
   db.collection('conversations').doc(convId).set(data,{merge:true}).catch(console.error)
 }
-function fbSendMessage(convId,msg){
+async function fbSendMessage(convId,msg){
   if(!window.db||!fbUserId())return;
   var sendData={
     type:msg.type,text:msg.text||'',time:msg.time,edited:!!msg.edited,deleted:!!msg.deleted,
@@ -111,12 +114,13 @@ function fbSendMessage(convId,msg){
   else if(msg.video)displayMsg='🎬 Video';
   else if(msg.audio)displayMsg='🎤 Ses';
   else displayMsg=msg.text||'';
-  db.collection('conversations').doc(convId).collection('messages').add(sendData).then(function(docRef){
+  try {
+    var docRef=await db.collection('conversations').doc(convId).collection('messages').add(sendData);
     if(docRef&&docRef.id&&msg._fbId===undefined){
       msg._fbId=docRef.id;
       saveMessages()
     }
-  }).catch(console.error);
+  }catch(e){console.error(e)}
   db.collection('conversations').doc(convId).set({lastActivity:Date.now(),lastMsg:displayMsg,lastTime:msg.time},{merge:true}).catch(console.error);
   fbSyncMembers(convId)
 }

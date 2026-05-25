@@ -1,8 +1,8 @@
 const fs = require('fs');
 const html = fs.readFileSync('index.html', 'utf8');
 const m = html.match(/<script[^>]*>([\s\S]*?)<\/script>/);
-if (!m) process.exit(1);
 const js = m[1];
+const lines = js.split('\n');
 let braces = 0, parens = 0;
 let inS = false, inD = false, inBT = false, inLC = false, inBC = false;
 for (let i = 0; i < js.length; i++) {
@@ -21,5 +21,18 @@ for (let i = 0; i < js.length; i++) {
   else if (ch === ')') parens--;
   else if (ch === '{') braces++;
   else if (ch === '}') braces--;
+  if (braces < 0) {
+    // Find line number
+    const lineNum = js.substring(0, i).split('\n').length;
+    console.log('Extra } at position', i, 'line', lineNum);
+    console.log('Context:', js.substring(Math.max(0,i-40), i+40));
+    break;
+  }
+  if (parens < 0) {
+    const lineNum = js.substring(0, i).split('\n').length;
+    console.log('Extra ) at position', i, 'line', lineNum);
+    console.log('Context:', js.substring(Math.max(0,i-40), i+40));
+    break;
+  }
 }
-console.log('Braces: ' + braces + ', Parens: ' + parens + ' => ' + (braces === 0 && parens === 0 ? 'OK' : 'BROKEN'));
+console.log('Final braces:', braces, 'parens:', parens);

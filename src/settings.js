@@ -7,7 +7,7 @@ var themes={
 function showSettings(){hideAvatarMenu();$('chat-empty').style.display='none';$('chat-active').style.display='none';$('settings-page').classList.add('active');showSettingsCat('profile')}
 function hideSettings(){$('settings-page').classList.remove('active');if(store.activeConvId){$('chat-empty').style.display='none';$('chat-active').style.display='flex'}else $('chat-empty').style.display='flex'}
 
-function showSettingsCat(cat){
+async function showSettingsCat(cat){
   document.querySelectorAll('.settings-cat').forEach(function(c){c.classList.remove('active')});
   var el=document.querySelector('.settings-cat[data-cat="'+cat+'"]');if(el)el.classList.add('active');
   var content=$('settings-content');content.classList.remove('settings-content-anim');
@@ -29,8 +29,8 @@ function showSettingsCat(cat){
   }else if(cat==='privacy'){
     var notifChecked=ls('notifications')!==false?'checked':'';
     var autoStartChecked='';var bgChecked='';
-    if(window.electronAPI&&electronAPI.getAutoStart){electronAPI.getAutoStart().then(function(v){$('autostart-toggle').checked=v})}
-    if(window.electronAPI&&electronAPI.getBackgroundMode){electronAPI.getBackgroundMode().then(function(v){$('background-toggle').checked=v})}
+    if(window.electronAPI&&electronAPI.getAutoStart){try{var as=await electronAPI.getAutoStart();$('autostart-toggle').checked=as}catch(e){}}
+    if(window.electronAPI&&electronAPI.getBackgroundMode){try{var bg=await electronAPI.getBackgroundMode();$('background-toggle').checked=bg}catch(e){}}
     content.innerHTML='<div class="stitle">Gizlilik & Güvenlik</div>'+
       '<div style="margin-bottom:20px;padding:16px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:12px">'+
         '<label class="toggle"><input type="checkbox" id="notif-toggle" '+notifChecked+' onchange="ls(\'notifications\',this.checked)"><span class="toggle-track"></span><span class="toggle-label" style="font-size:12px;color:var(--text2)">Bildirimler</span></label>'+
@@ -57,14 +57,14 @@ function showSettingsCat(cat){
       '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15)"><svg width="16" height="16" viewBox="0 0 24 24" fill="#22c55e"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span id="e2e-status" style="font-size:11px;color:#22c55e">✓ Aktif</span></div></div>'
   }else if(cat==='media'){
     var micOptions='<option value="">Varsayılan</option>',spkOptions='<option value="">Varsayılan</option>';
-    try{navigator.mediaDevices.enumerateDevices().then(function(devices){
+    try{var devices=await navigator.mediaDevices.enumerateDevices();
       devices.forEach(function(d){
         if(d.kind==='audioinput')micOptions+='<option value="'+d.deviceId+'">'+esc(d.label||'Mikrofon '+(micOptions.match(/option value=/g)||[]).length)+'</option>';
         if(d.kind==='audiooutput')spkOptions+='<option value="'+d.deviceId+'">'+esc(d.label||'Hoparlör '+(spkOptions.match(/option value=/g)||[]).length)+'</option>'
       });
       var ms=$('media-mic-select');if(ms)ms.innerHTML=micOptions;
       var ss=$('media-spk-select');if(ss)ss.innerHTML=spkOptions
-    }).catch(console.error)}catch(e){}
+    }catch(e){console.error(e)}}catch(e){}
     
     content.innerHTML='<div class="stitle">Ses ve Görüntü</div>'+
       '<div class="stitle-sub" style="margin-bottom:18px">Mikrofon, hoparlör, kamera ve ekran ayarlarını yönet</div>'+
@@ -165,7 +165,7 @@ function showSettingsCat(cat){
       '<b style="color:var(--text3)">Geliştirici:</b><br>• Waxur tarafından geliştiriliyor</div>'+
       '<div style="margin-top:16px">'+updateBtn+'</div>'+updateBar;
     var appVer = 'v0.1.0';
-    if(window.electronAPI && electronAPI.getAppVersion) electronAPI.getAppVersion().then(function(v){appVer='v'+v;var el=$('about-version');if(el)el.textContent=appVer;var wel=$('welcome-version');if(wel)wel.textContent=appVer}).catch(console.error);
+    try{if(window.electronAPI && electronAPI.getAppVersion){var ver=await electronAPI.getAppVersion();appVer='v'+ver;var el=$('about-version');if(el)el.textContent=appVer;var wel=$('welcome-version');if(wel)wel.textContent=appVer}}catch(e){console.error(e)}
     var el=$('about-version');if(el)el.textContent=appVer;
   }
   requestAnimationFrame(function(){content.classList.add('settings-content-anim')})
@@ -250,7 +250,7 @@ function setAppVersion(ver){
 }
 
 if(window.electronAPI){
-  electronAPI.getAppVersion().then(function(v){setAppVersion(v)}).catch(console.error);
+  (async function(){try{var ver=await electronAPI.getAppVersion();setAppVersion(ver)}catch(e){console.error(e)}})();
   window.electronAPI.onUpdateAvailable(function(version){
     var btn = $('update-btn');
     if(btn && !btn.dataset.downloaded) { btn.textContent = 'v'+version+' İndir'; btn.dataset.found = '1'; btn.disabled = false; }

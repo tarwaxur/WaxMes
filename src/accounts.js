@@ -205,53 +205,45 @@ async function autoLogin(acc){
     showAlert('Bu hesap için kayıtlı güvenli oturum bulunamadı. Lütfen şifreni gir.');
     return
   }
-  store._explicitLogin=true;
   store._authTransitioning=true;
   $('loading-screen').style.display='flex';
   document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});
-  auth.signInWithEmailAndPassword(acc.email,password).then(function(cred){
+  try {
+    var cred=await auth.signInWithEmailAndPassword(acc.email,password);
     var u=cred.user;
     store._authTransitioning=false;
     hideLoading(function(){doLoginWith({id:u.uid,username:acc.username||u.email.split('@')[0],displayName:acc.displayName||u.displayName||u.email.split('@')[0],email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||'',password:password})})
-  }).catch(function(){
+  }catch(e){
     store._explicitLogin=false;
     store._authTransitioning=false;
     hideLoading(function(){
       goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
       showAlert('Otomatik giriş başarısız. Lütfen şifreni gir.')
     })
-  })
+  }
 }
 
 function doLoginWith(acc){showApp(acc)}
 
 // ===== LOGIN =====
 function validateLogin(){var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value,ok=e.length>0&&p.length>0;$('fg-login-email').classList.toggle('invalid',e.length>0&&!e.endsWith('@gmail.com'));$('fg-login-pass').classList.toggle('invalid',p.length>0&&p.length<6);$('login-btn').disabled=!ok;return ok}
-function doLogin(){
+async function doLogin(){
   var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value;
   if(!e||!p||!window.auth)return;
-  if(!e.endsWith('@gmail.com')){$('fg-login-email').classList.add('invalid');$('fg-login-email').querySelector('.field-error').textContent='Sadece @gmail.com hesapları kabul edilir';return}
-  $('login-btn').disabled=true;
-  store._pendingLoginPassword=p;
-  auth.signInWithEmailAndPassword(e,p).then(function(cred){
-  }).catch(function(err){
-    store._pendingLoginPassword=null;
-    $('login-btn').disabled=false;
-    var msg='',field=$('fg-login-email');
-    if(err.code==='auth/user-not-found'){msg='Bu e-posta ile kayıtlı hesap bulunamadı.';field=$('fg-login-email');field.classList.add('invalid');field.querySelector('.field-error').textContent=msg}
-    else if(err.code==='auth/wrong-password'){msg='Hatalı şifre.';field=$('fg-login-pass');field.classList.add('invalid');field.querySelector('.field-error').textContent=msg}
-    else if(err.code==='auth/too-many-requests'){msg='Çok fazla başarısız giriş. Hesabın geçici olarak kilitlendi. Birkaç dakika sonra tekrar dene.'}
-    else if(err.code==='auth/network-request-failed'){msg='Ağ hatası. İnternet bağlantını kontrol et.'}
-    else if(err.code==='auth/invalid-email'){msg='Geçersiz e-posta adresi.'}
-    else if(err.code==='auth/user-disabled'){msg='Bu hesap devre dışı bırakılmış.'}
-    else{msg='Giriş yapılamadı: '+err.message}
-    showAlert(msg)
-  })
+  $('login-error').textContent='';
+  try {
+    var cred=await auth.signInWithEmailAndPassword(e,p);
+    var user=cred.user;store._explicitLogin=true;store._pendingLoginPassword=p;
+    doLoginWithUsername(user);
+    if(acc)rememberAccountPassword(acc,p)
+  }catch(err){
+    $('login-error').textContent=(err.code==='auth/user-not-found'||err.code==='auth/wrong-password'||err.code==='auth/invalid-credential')?'E-posta veya şifre hatalı.':err.message
+  }
 }
 
 // ===== REGISTER =====
 function updateRegStep(){document.querySelectorAll('.register-step').forEach(function(s){s.classList.remove('active')});var el=document.querySelector('.register-step[data-step="'+store.regStep+'"]');if(el)el.classList.add('active');document.querySelectorAll('.register-dot').forEach(function(d,i){d.className='register-dot';if(i===store.regStep)d.classList.add('active');else if(i<store.regStep)d.classList.add('done')});var sb=$('reg-step-back');if(sb)sb.style.display=store.regStep===0?'none':'flex';var n=$('reg-next');if(n)n.textContent=store.regStep===2?'Kayıt Ol':'İleri';validateRegister()}
-function regNext(){
+async function regNext(){
   if(!validateRegister())return;
   var btn=$('reg-next');
   function advance(){store.regStep++;updateRegStep();if(btn)btn.disabled=false}
@@ -265,11 +257,12 @@ function regNext(){
     if(!window.db){showAlert('Veritabanı bağlantısı yok.');return}
     if(btn)btn.disabled=true;
     var timedOut=false,timer=setTimeout(function(){timedOut=true;dbTimeout('Kullanıcı adı')},15000);
-    db.collection('users').where('username','==',u).get().then(function(snap){
+    try {
+      var snap=await db.collection('users').where('username','==',u).get();
       clearTimeout(timer);if(timedOut)return;
       if(!snap.empty){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Bu kullanıcı adı zaten alınmış';showAlert('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');if(btn)btn.disabled=false;return}
       advance()
-    }).catch(function(err){clearTimeout(timer);if(!timedOut){dbError('Kullanıcı adı')}})
+    }catch(err){clearTimeout(timer);if(!timedOut){dbError('Kullanıcı adı')}}
   }else if(store.regStep===1){
     advance()
   }else if(store.regStep<2){advance()}
