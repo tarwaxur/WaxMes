@@ -41,9 +41,9 @@ async function toggleMicTest(){
   try{
     var stream=await navigator.mediaDevices.getUserMedia({audio:true});
     store.testMicStream=stream;
-    var store.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    store.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     var source=store.audioCtx.createMediaStreamSource(stream);
-    var store.analyser=store.audioCtx.createAnalyser();store.analyser.fftSize=256;
+    store.analyser=store.audioCtx.createAnalyser();store.analyser.fftSize=256;
     source.connect(store.analyser);
     var data=new Uint8Array(store.analyser.frequencyBinCount);
     $('mic-toggle-btn').textContent='Durdur';

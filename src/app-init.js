@@ -141,7 +141,6 @@ async function initWelcome(){
       if(accs.length===1){showScreen('screen-login');$('login-email').value=accs[0].email;validateLogin();$('login-pass').focus()}
       else{renderSavedAccounts();showScreen('screen-welcome');setTimeout(renderSavedAccounts,100)}
     })
-  })
 }
 
 $('loading-screen').style.display='flex';
