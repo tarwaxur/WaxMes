@@ -190,3 +190,4 @@ loadFirebase(function(){
 
 // Wire up store events for reactive UI
 store.on('conversations', renderConversations);
+store.on('messages', function(){ if(store.activeConvId) renderMessages(store.activeConvId); });

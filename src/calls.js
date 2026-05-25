@@ -236,7 +236,7 @@ function fbListenCallSignals(convId){
         if(store.callPeerConn){
           try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(d.candidate))}catch(e){}
         }else{
-          store.pendingIceCandidates.push(d.candidate)
+          store.push('pendingIceCandidates', d.candidate)
         }
       }
       if(store.callState==='calling'||store.callState==='connected'){

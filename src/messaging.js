@@ -205,7 +205,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
     var d=document.createElement('div');d.className='modal-member-item selected';
     var eAv=m.avatar;var eAvHtml;if(eAv&&eAv.indexOf('data:')===0){eAvHtml='<img src="'+eAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+m.color+'\';this.parentElement.textContent=\'?\'">'}else{eAvHtml='<span>'+(eAv||'?')+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+m.color+'">'+eAvHtml+'</div><div class="mm-name">'+esc(m.name)+'</div><div class="mm-check mm-remove"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>';
-    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(!d.classList.contains('selected')){store.editGroupState.removedIds.push(ci)}else{var idx=store.editGroupState.removedIds.indexOf(ci);if(idx>-1)store.editGroupState.removedIds.splice(idx,1)}validateGroup()};
+    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(!d.classList.contains('selected')){store.editGroupState.removedIds.push(ci);store.emit('editGroupState')}else{var idx=store.editGroupState.removedIds.indexOf(ci);if(idx>-1)store.editGroupState.removedIds.splice(idx,1);store.emit('editGroupState')}validateGroup()};
     d._cid=m.id;ml.appendChild(d)
   })(conv.members[i])}
   // Add non-member contacts (including friends not in conversations)
@@ -217,7 +217,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
     var d=document.createElement('div');d.className='modal-member-item';
     var cAv=c.avatar;var cAvHtml;if(cAv&&cAv.indexOf('data:')===0){cAvHtml='<img src="'+cAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+c.color+'\';this.parentElement.textContent=\'?\'">'}else{cAvHtml='<span>'+(cAv||'?')+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+c.color+'">'+cAvHtml+'</div><div class="mm-name">'+esc(c.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
-    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){store.editGroupState.addedIds.push(ci)}else{var idx=store.editGroupState.addedIds.indexOf(ci);if(idx>-1)store.editGroupState.addedIds.splice(idx,1)}validateGroup()};
+    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){store.editGroupState.addedIds.push(ci);store.emit('editGroupState')}else{var idx=store.editGroupState.addedIds.indexOf(ci);if(idx>-1)store.editGroupState.addedIds.splice(idx,1);store.emit('editGroupState')}validateGroup()};
     d._cid=member.id;d._memberData=member;ml.appendChild(d)
   })(store.conversations[i])}
   // Also add friends not in conversations
@@ -229,7 +229,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
     var d=document.createElement('div');d.className='modal-member-item';
     var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+fAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+eColors[efi%eColors.length]+'\';this.parentElement.textContent=\'?\'">'}else{fAvHtml='<span>'+esc(f.name.charAt(0).toUpperCase())+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+eColors[efi%eColors.length]+'">'+fAvHtml+'</div><div class="mm-name">'+esc(f.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
-    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){store.editGroupState.addedIds.push(ci)}else{var idx=store.editGroupState.addedIds.indexOf(ci);if(idx>-1)store.editGroupState.addedIds.splice(idx,1)}validateGroup()};
+    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){store.editGroupState.addedIds.push(ci);store.emit('editGroupState')}else{var idx=store.editGroupState.addedIds.indexOf(ci);if(idx>-1)store.editGroupState.addedIds.splice(idx,1);store.emit('editGroupState')}validateGroup()};
     d._cid=fid;d._memberData=fm;ml.appendChild(d)
   })(editFriends[efi])}
   $('group-name').value=conv.name;
