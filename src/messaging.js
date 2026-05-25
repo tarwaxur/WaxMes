@@ -17,7 +17,7 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
       for(var lci=0;lci<localConvs.length;lci++){
         var exists=false;
         for(var eci=0;eci<store.conversations.length;eci++){if(store.conversations[eci].id===localConvs[lci].id){exists=true;break}}
-        if(!exists)store.conversations.push(localConvs[lci])
+        if(!exists)store.push('conversations', localConvs[lci])
       }
     }
     var savedGroups=getGroups();
@@ -25,7 +25,7 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
       normalizeGroupMembers(savedGroups[i]);savedGroups[i].memberIds=getGroupMemberIds(savedGroups[i]);
       var exists=false;
       for(var gci=0;gci<store.conversations.length;gci++){if(store.conversations[gci].id===savedGroups[i].id){exists=true;break}}
-      if(!exists)store.conversations.unshift(savedGroups[i])
+      if(!exists)store.unshift('conversations', savedGroups[i])
     }
     if(savedGroups.length)saveGroups(savedGroups);
     // Restore unread counts and last activity
@@ -178,7 +178,7 @@ async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!tx
   var finalText=txt;
   if(conv&&store.e2eReady&&window.db){var pubKeyResult=await getRecipientPubKey(store.activeConvId);if(pubKeyResult&&pubKeyResult.keys&&pubKeyResult.keys.length>0){if(pubKeyResult.missing&&pubKeyResult.missing.length>0){showAlert(pubKeyResult.missing.length+' kullanıcı henüz E2E\'yi etkinleştirmemiş. Mesaj E2E şifrelenmeden gönderiliyor.')}else{try{var enc=await e2eEncrypt(txt,pubKeyResult.keys);if(enc&&enc.indexOf('🔒')===0)finalText=enc}catch(e){}}}}
   var myId=fbUserId();
-  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);renderMessages(store.activeConvId);inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
+  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);store.emit('messages');renderMessages(store.activeConvId);inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
 
 function addToGroup(groupId,userId){
   hideContextMenu();
@@ -374,7 +374,7 @@ function showImage(src){
   if(store.activeConvId&&store.messages[store.activeConvId]){
     for(var vi=0;vi<store.messages[store.activeConvId].length;vi++){
       if(store.messages[store.activeConvId][vi].image){
-        store.imageViewerMsgs.push(store.messages[store.activeConvId][vi].image);
+        store.push('imageViewerMsgs', store.messages[store.activeConvId][vi].image);
         if(store.messages[store.activeConvId][vi].image===src)store.imageViewerIdx=store.imageViewerMsgs.length-1
       }
     }
@@ -458,7 +458,7 @@ async function confirmSendMedia(){
         if(file.type==='image')msg.image=url;
         else if(file.type==='video')msg.video=url;
         if(encTxt!==txt)msg.e2e=true;
-        store.messages[store.activeConvId].push(msg);
+        store.messages[store.activeConvId].push(msg);store.emit('messages');
         var conv=findConv(store.activeConvId);
         if(conv){conv.lastMsg=encTxt!==txt?'🔒 Mesaj':(file.type==='image'?'📷 '+(caption||file.name):(file.type==='video'?'🎬 '+(caption||file.name):'📎 '+file.name));conv.lastActivity=Date.now();conv.time=timeNow()}
         fbSendMessage(store.activeConvId,msg);
@@ -467,7 +467,7 @@ async function confirmSendMedia(){
         var id=uid();
         if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
         var msg={id:id,type:'sent',senderId:fbUserId(),text:caption,time:timeNow(),edited:false,deleted:false,image:dataUrl};
-        store.messages[store.activeConvId].push(msg);
+        store.messages[store.activeConvId].push(msg);store.emit('messages');
         processMedia(idx+1)
       })
     }else{
@@ -480,7 +480,7 @@ async function confirmSendMedia(){
         if(file.type==='image')msg.image=dataUrl;
         else if(file.type==='video')msg.video=dataUrl;
         if(encTxt!==txt)msg.e2e=true;
-        store.messages[store.activeConvId].push(msg);
+        store.messages[store.activeConvId].push(msg);store.emit('messages');
         var conv=findConv(store.activeConvId);
         if(conv){conv.lastMsg=encTxt!==txt?'🔒 Mesaj':(file.type==='image'?'📷 '+(caption||file.name):(file.type==='video'?'🎬 '+(caption||file.name):'📎 '+file.name));conv.lastActivity=Date.now();conv.time=timeNow()}
         fbSendMessage(store.activeConvId,msg);
@@ -1150,7 +1150,7 @@ function removeFromGroup(memberId,convId){
 }
 function addGroupLog(convId,text){
   if(!store.messages[convId])store.messages[convId]=[];
-  store.messages[convId].push({id:uid(),type:'log',text:text,time:timeNow()});
+  store.messages[convId].push({id:uid(),type:'log',text:text,time:timeNow()});store.emit('messages');
   var conv=findConv(convId);
   if(conv){conv.lastMsg=text;conv.lastActivity=Date.now();conv.time=timeNow()}
   saveMessages();
@@ -1310,7 +1310,7 @@ renderMessages=function(convId){
           items.push({label:'Medyaları Düzenle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',action:function(){
             store.pendingMediaFiles=[];
             for(var ci=0;ci<imgs.length;ci++){
-              store.pendingMediaFiles.push({path:'',dataUrl:imgs[ci].image,name:'image '+(ci+1),type:'image',caption:imgs[ci].text||'',_editId:imgs[ci].id})
+              store.push('pendingMediaFiles', {path:'',dataUrl:imgs[ci].image,name:'image '+(ci+1),type:'image',caption:imgs[ci].text||'',_editId:imgs[ci].id})
             }
             store.mediaIndex=0;store.mediaThumbCount=0;
             showMediaPreview()

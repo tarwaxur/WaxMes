@@ -7,7 +7,7 @@ function startVoice(){
   try{navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
     store.audioChunks=[];store.voiceStart=Date.now();
     try{store.mediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm;codecs=opus'})}catch(e){store.mediaRecorder=new MediaRecorder(stream)}
-    store.mediaRecorder.ondataavailable=function(e){if(e.data.size>0)store.audioChunks.push(e.data)};
+    store.mediaRecorder.ondataavailable=function(e){if(e.data.size>0)store.push('audioChunks', e.data)};
     store.mediaRecorder.onstop=function(){stream.getTracks().forEach(function(t){t.stop()})};
     store.mediaRecorder.start(100);
     
@@ -69,7 +69,7 @@ function sendVoice(){
     var id=uid();
     if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
     var msg={id:id,type:'sent',senderId:fbUserId(),text:'',time:timeNow(),edited:false,deleted:false,audio:dataUrl,duration:dur};
-    store.messages[store.activeConvId].push(msg);
+    store.messages[store.activeConvId].push(msg);store.emit('messages');
     renderMessages(store.activeConvId);
     var conv=findConv(store.activeConvId);
     if(conv){conv.lastMsg='🎤 Sesli mesaj';conv.lastActivity=Date.now();conv.time=timeNow();renderConversations()}

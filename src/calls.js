@@ -84,7 +84,7 @@ function startCall(){
     avatarContainer.appendChild(a)
   }
   // Add call log
-  if(store.messages[store.activeConvId]){var logTxt='📞 '+(conv.isGroup?'Grup araması':'Sesli arama')+' başlatıldı';var logMsg={id:uid(),type:'log',text:logTxt,time:timeNow(),senderId:fbUserId()};store.messages[store.activeConvId].push(logMsg);conv.lastMsg=logTxt;conv.lastActivity=Date.now();conv.time=timeNow();fbSendMessage(store.activeConvId,logMsg);saveMessages();renderMessages(store.activeConvId);renderConversations()}
+  if(store.messages[store.activeConvId]){var logTxt='📞 '+(conv.isGroup?'Grup araması':'Sesli arama')+' başlatıldı';var logMsg={id:uid(),type:'log',text:logTxt,time:timeNow(),senderId:fbUserId()};store.messages[store.activeConvId].push(logMsg);store.emit('messages');conv.lastMsg=logTxt;conv.lastActivity=Date.now();conv.time=timeNow();fbSendMessage(store.activeConvId,logMsg);saveMessages();renderMessages(store.activeConvId);renderConversations()}
   store.callState='calling';
   playRingtone();
   
@@ -92,7 +92,7 @@ function startCall(){
   var callId=uid();
   store.pendingCallMsgId=callId;
   if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
-  store.messages[store.activeConvId].push({id:callId,type:'call',action:'offer',time:timeNow(),sender:$('sidebar-username').textContent,status:'calling'});
+  store.messages[store.activeConvId].push({id:callId,type:'call',action:'offer',time:timeNow(),sender:$('sidebar-username').textContent,status:'calling'});store.emit('messages');
   saveMessages();
   
   // Start local stream and create offer
@@ -290,7 +290,7 @@ function acceptCall(){
   // Add call accepted log
   if(store.activeConvId&&store.messages[store.activeConvId]){
     var acceptLogTxt='📞 Arama kabul edildi';
-    store.messages[store.activeConvId].push({id:uid(),type:'log',text:acceptLogTxt,time:timeNow()});
+    store.messages[store.activeConvId].push({id:uid(),type:'log',text:acceptLogTxt,time:timeNow()});store.emit('messages');
     fbSendMessage(store.activeConvId,{id:uid(),type:'log',text:acceptLogTxt,time:timeNow(),senderId:fbUserId()});
     saveMessages();
     renderMessages(store.activeConvId);
@@ -382,7 +382,7 @@ function endCall(){
     var dm=Math.floor(dur/60),ds=dur%60;
     var endLogTxt='📞 Arama sonlandı · '+(dm<10?'0':'')+dm+':'+(ds<10?'0':'')+ds;
     var endLogMsg={id:uid(),type:'log',text:endLogTxt,time:timeNow(),senderId:fbUserId()};
-    store.messages[store.activeConvId].push(endLogMsg);
+    store.messages[store.activeConvId].push(endLogMsg);store.emit('messages');
     fbSendMessage(store.activeConvId,endLogMsg);
     var conv2=findConv(store.activeConvId);if(conv2){conv2.lastMsg=endLogTxt;conv2.lastActivity=Date.now();conv2.time=timeNow()}
     saveMessages();

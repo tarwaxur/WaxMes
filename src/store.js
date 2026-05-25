@@ -168,6 +168,30 @@ var store = (function(){
     if(arr) for(var i=0;i<arr.length;i++) arr[i](_data[k]);
   };
 
+  // Array mutation helpers — mutate + emit
+  api.push = function(key){
+    var a = _data[key];
+    if(!a) return 0;
+    var r = Array.prototype.push.apply(a, Array.prototype.slice.call(arguments, 1));
+    api.emit(key);
+    return r;
+  };
+  api.unshift = function(key){
+    var a = _data[key];
+    if(!a) return 0;
+    var r = Array.prototype.unshift.apply(a, Array.prototype.slice.call(arguments, 1));
+    api.emit(key);
+    return r;
+  };
+  api.splice = function(key, start, delCount){
+    var a = _data[key];
+    if(!a) return [];
+    var args = [start, delCount].concat(Array.prototype.slice.call(arguments, 3));
+    var r = Array.prototype.splice.apply(a, args);
+    api.emit(key);
+    return r;
+  };
+
   // Define getter/setter for every property
   Object.keys(_data).forEach(function(k){
     (function(key){

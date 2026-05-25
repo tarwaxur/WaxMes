@@ -76,7 +76,7 @@ document.addEventListener('paste',function(e){
     imageBlobs.forEach(function(blob){
       var reader=new FileReader();
       reader.onload=function(ev){
-        store.pendingMediaFiles.push({path:'Pasted image',dataUrl:ev.target.result,name:'Pasted image '+loaded,type:'image'});
+        store.push('pendingMediaFiles', {path:'Pasted image',dataUrl:ev.target.result,name:'Pasted image '+loaded,type:'image'});
         loaded++;
         if(loaded===imageBlobs.length){
           store.mediaIndex=0;

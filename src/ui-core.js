@@ -393,7 +393,7 @@ function startConvWith(name,friendId){
   var memberIds=[uid,friendId];
   var newConv={id:convId,name:name,avatar:name.charAt(0).toUpperCase(),color:color,online:true,lastMsg:'',time:'',unread:0,isGroup:false,memberIds:memberIds};
   if(window.db&&friendId)db.collection('users').doc(friendId).get().then(function(snap){if(snap.exists&&snap.data().avatar){newConv.avatar=snap.data().avatar;renderConversations()}}).catch(console.error);
-  store.conversations.unshift(newConv);
+  store.unshift('conversations', newConv);
   saveConversations();
   // Create/update Firestore conversation with members (idempotent)
   if(window.db&&uid)db.collection('conversations').doc(convId).set({type:'dm',memberIds:memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(console.error);
@@ -464,7 +464,7 @@ async function forwardToSelected(){
       forwardComment:caption||null,sender:($('sidebar-username')&&$('sidebar-username').textContent||'')
     };
     if(fwdTxt!==(store.forwardMsgData.text||'')){fwd.e2e=true;conv.lastMsg='🔒 Mesaj'}else{conv.lastMsg=fwd.text||(fwd.image?'📷 Fotoğraf':(fwd.video?'🎬 Video':(fwd.audio?'🎤 Ses':'')))}if(!store.messages[cid])store.messages[cid]=[];
-    store.messages[cid].push(fwd);
+    store.messages[cid].push(fwd);store.emit('messages');
     conv.lastActivity=Date.now();conv.time=timeNow();
     fbSendMessage(cid,fwd)
   }
@@ -495,7 +495,7 @@ function createGroup(){
   }
   normalizeGroupMembers(group);
   group.memberIds=getGroupMemberIds(group);
-  store.groupAvatarDataUrl=null;store.conversations.unshift(group);saveGroup(group);saveMessages();
+  store.groupAvatarDataUrl=null;store.unshift('conversations', group);saveGroup(group);saveMessages();
   addGroupLog(gid,'Grup "'+name+'" oluşturuldu');
   if(window.db&&fbUserId())db.collection('conversations').doc(gid).set({type:'group',name:group.name,avatar:group.avatar||null,avatarLetter:group.avatarLetter||null,color:group.color||null,creatorId:group.creatorId,adminIds:group.adminIds,memberIds:group.memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(console.error)
   renderConversations();selectConversation(gid);hideGroupModal()}

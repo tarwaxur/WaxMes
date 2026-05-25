@@ -49,7 +49,7 @@ function fbListenConversations(uid){
 
 function convListenerAddConv(newConv){
   for(var ci=0;ci<store.conversations.length;ci++){if(store.conversations[ci].id===newConv.id)return}
-  store.conversations.push(newConv);
+  store.push('conversations', newConv);
   saveConversations();
   renderConversations();
   fbListenMessages(newConv.id)
@@ -155,7 +155,7 @@ function fbListenMessages(convId){
           var msgType=d.senderId!==undefined?(d.senderId===curUid?'sent':'received'):'received';
           var m={id:uid(),type:msgType,senderId:d.senderId||null,text:d.text||'',time:d.time||timeNow(),edited:!!d.edited,deleted:!!d.deleted,sender:d.sender||null,image:d.image||null,video:d.video||null,audio:d.audio||null,duration:d.duration||0,replyTo:d.replyTo||null,replyText:d.replyText||null,isForwarded:!!d.isForwarded,forwardComment:d.forwardComment||null,originalSender:d.originalSender||null,_fbId:mid};
           if(d.e2e||(d.text&&d.text.indexOf('🔒')===0))m.e2e=true;
-          store.messages[convId].push(m);
+          store.messages[convId].push(m);store.emit('messages');
           if(store.activeConvId===convId){
             var el=$('chat-messages'),nearBottom=el&&el.scrollHeight-el.scrollTop-el.clientHeight<200;
             if(!nearBottom&&m.type==='received'){store._hasNewMsg=true;var cv=findConv(convId);if(cv){cv.unread=(cv.unread||0)+1;saveUnreadCounts()}}
