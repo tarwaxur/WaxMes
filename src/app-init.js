@@ -187,3 +187,6 @@ loadFirebase(function(){
     })
   }else{initWelcome()}
 });
+
+// Wire up store events for reactive UI
+store.on('conversations', renderConversations);
