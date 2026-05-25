@@ -5,3 +5,14 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+scripts/*.js
+ext*.js
+extracted*.js
+inline_check.js
+tmp_js_snippet.js
+display.txt
+calls.txt
+debug.log
+defs.txt
+\!deep/fix.txt
+\!deep/important.txt
