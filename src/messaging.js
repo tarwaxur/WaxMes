@@ -549,7 +549,7 @@ function copyImage(dataUrl){
     var canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;
     var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0);
     canvas.toBlob(function(blob){
-      if(blob){try{navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).catch(function(){})}catch(e){}}
+      if(blob){try{navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).catch(console.error)}catch(e){}}
     })
   };
   img.src=dataUrl
@@ -720,13 +720,13 @@ function startTyping(){
   if(!activeConvId||!window.db||!fbUserId())return;
   var h=$('chat-header-status');
   if(!h)return;
-  db.collection('conversations').doc(activeConvId).update({typing:fbUserId(),typingAt:Date.now()}).catch(function(){});
+  db.collection('conversations').doc(activeConvId).update({typing:fbUserId(),typingAt:Date.now()}).catch(console.error);
   if(typingTimer)clearTimeout(typingTimer);
   typingTimer=setTimeout(stopTyping,2500)
 }
 function stopTyping(){
   if(!activeConvId||!window.db||!fbUserId())return;
-  db.collection('conversations').doc(activeConvId).update({typing:firebase.firestore.FieldValue.delete(),typingAt:firebase.firestore.FieldValue.delete()}).catch(function(){});
+  db.collection('conversations').doc(activeConvId).update({typing:firebase.firestore.FieldValue.delete(),typingAt:firebase.firestore.FieldValue.delete()}).catch(console.error);
   if(typingTimer){clearTimeout(typingTimer);typingTimer=null}
 }
 function fbListenTyping(convId,otherUserId){

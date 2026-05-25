@@ -64,7 +64,7 @@ function showSettingsCat(cat){
       });
       var ms=$('media-mic-select');if(ms)ms.innerHTML=micOptions;
       var ss=$('media-spk-select');if(ss)ss.innerHTML=spkOptions
-    }).catch(function(){})}catch(e){}
+    }).catch(console.error)}catch(e){}
     
     content.innerHTML='<div class="stitle">Ses ve Görüntü</div>'+
       '<div class="stitle-sub" style="margin-bottom:18px">Mikrofon, hoparlör, kamera ve ekran ayarlarını yönet</div>'+
@@ -165,7 +165,7 @@ function showSettingsCat(cat){
       '<b style="color:var(--text3)">Geliştirici:</b><br>• Waxur tarafından geliştiriliyor</div>'+
       '<div style="margin-top:16px">'+updateBtn+'</div>'+updateBar;
     var appVer = 'v0.1.0';
-    if(window.electronAPI && electronAPI.getAppVersion) electronAPI.getAppVersion().then(function(v){appVer='v'+v;var el=$('about-version');if(el)el.textContent=appVer;var wel=$('welcome-version');if(wel)wel.textContent=appVer}).catch(function(){});
+    if(window.electronAPI && electronAPI.getAppVersion) electronAPI.getAppVersion().then(function(v){appVer='v'+v;var el=$('about-version');if(el)el.textContent=appVer;var wel=$('welcome-version');if(wel)wel.textContent=appVer}).catch(console.error);
     var el=$('about-version');if(el)el.textContent=appVer;
   }
   requestAnimationFrame(function(){content.classList.add('settings-content-anim')})
@@ -248,7 +248,7 @@ function setAppVersion(ver){
 }
 
 if(window.electronAPI){
-  electronAPI.getAppVersion().then(function(v){setAppVersion(v)}).catch(function(){});
+  electronAPI.getAppVersion().then(function(v){setAppVersion(v)}).catch(console.error);
   window.electronAPI.onUpdateAvailable(function(version){
     var btn = $('update-btn');
     if(btn && !btn.dataset.downloaded) { btn.textContent = 'v'+version+' İndir'; btn.dataset.found = '1'; btn.disabled = false; }

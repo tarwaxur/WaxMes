@@ -37,7 +37,7 @@ function statusText(conv){
   return conv.online?'Çevrimiçi':'Çevrimdışı'
 }
 function cycleStatus(){var o=['online','idle','dnd'],i=o.indexOf(currentStatus);if(i===-1)i=0;setStatus(o[(i+1)%3])}
-function setStatus(s,skipSave){updateStatusUI(s);if(!skipSave)ls('status_'+activeAccountId,s);hideAvatarMenu();fbUpdateOnlineStatus(true,s);if(window.db&&fbUserId()){db.collection('users').doc(fbUserId()).update({status:s}).catch(function(){})}}
+function setStatus(s,skipSave){updateStatusUI(s);if(!skipSave)ls('status_'+activeAccountId,s);hideAvatarMenu();fbUpdateOnlineStatus(true,s);if(window.db&&fbUserId()){db.collection('users').doc(fbUserId()).update({status:s}).catch(console.error)}}
 
 // ===== AVATAR DROPDOWN =====
 function toggleAvatarMenu(){
@@ -219,7 +219,7 @@ function removeFriend(friendId,name){
   function done(){switchFriendsTab('friends')}
   if(friendId){
     db.collection('friends').doc(uid).collection('list').doc(friendId).delete().then(function(){
-      db.collection('friends').doc(friendId).collection('list').doc(uid).delete().catch(function(){});
+      db.collection('friends').doc(friendId).collection('list').doc(uid).delete().catch(console.error);
       done()
     }).catch(done);
     return
@@ -228,7 +228,7 @@ function removeFriend(friendId,name){
     snap.forEach(function(doc){
       var fid=doc.id;
       doc.ref.delete().then(function(){
-        db.collection('friends').doc(fid).collection('list').doc(uid).delete().catch(function(){});
+        db.collection('friends').doc(fid).collection('list').doc(uid).delete().catch(console.error);
         done()
       }).catch(done)
     })
@@ -392,11 +392,11 @@ function startConvWith(name,friendId){
   var color=colors[Math.floor(Math.random()*colors.length)];
   var memberIds=[uid,friendId];
   var newConv={id:convId,name:name,avatar:name.charAt(0).toUpperCase(),color:color,online:true,lastMsg:'',time:'',unread:0,isGroup:false,memberIds:memberIds};
-  if(window.db&&friendId)db.collection('users').doc(friendId).get().then(function(snap){if(snap.exists&&snap.data().avatar){newConv.avatar=snap.data().avatar;renderConversations()}}).catch(function(){});
+  if(window.db&&friendId)db.collection('users').doc(friendId).get().then(function(snap){if(snap.exists&&snap.data().avatar){newConv.avatar=snap.data().avatar;renderConversations()}}).catch(console.error);
   conversations.unshift(newConv);
   saveConversations();
   // Create/update Firestore conversation with members (idempotent)
-  if(window.db&&uid)db.collection('conversations').doc(convId).set({type:'dm',memberIds:memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(function(){});
+  if(window.db&&uid)db.collection('conversations').doc(convId).set({type:'dm',memberIds:memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(console.error);
   renderConversations();
   $('modal-friends').classList.remove('active');
   selectConversation(convId)
@@ -497,7 +497,7 @@ function createGroup(){
   group.memberIds=getGroupMemberIds(group);
   groupAvatarDataUrl=null;conversations.unshift(group);saveGroup(group);saveMessages();
   addGroupLog(gid,'Grup "'+name+'" oluşturuldu');
-  if(window.db&&fbUserId())db.collection('conversations').doc(gid).set({type:'group',name:group.name,avatar:group.avatar||null,avatarLetter:group.avatarLetter||null,color:group.color||null,creatorId:group.creatorId,adminIds:group.adminIds,memberIds:group.memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(function(){})
+  if(window.db&&fbUserId())db.collection('conversations').doc(gid).set({type:'group',name:group.name,avatar:group.avatar||null,avatarLetter:group.avatarLetter||null,color:group.color||null,creatorId:group.creatorId,adminIds:group.adminIds,memberIds:group.memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(console.error)
   renderConversations();selectConversation(gid);hideGroupModal()}
 
 function renderGroupMembers(selectedIds){
@@ -623,9 +623,9 @@ function fbClearConversationMessages(convId){
       if(cd.createdAt&&cd.createdAt.toMillis&&cd.createdAt.toMillis()<ts){return}
       batch.delete(doc.ref);count++
     });
-    if(count>0)batch.commit().catch(function(){});
-    db.collection('conversations').doc(convId).update({clearedAt:firebase.firestore.FieldValue.serverTimestamp(),lastMsg:'Sohbet temizlendi',lastActivity:Date.now()}).catch(function(){})
-  }).catch(function(){})
+    if(count>0)batch.commit().catch(console.error);
+    db.collection('conversations').doc(convId).update({clearedAt:firebase.firestore.FieldValue.serverTimestamp(),lastMsg:'Sohbet temizlendi',lastActivity:Date.now()}).catch(console.error)
+  }).catch(console.error)
 }
 
 function closeConversation(id){
@@ -769,7 +769,7 @@ function resetSessionState(){
 function doLogout(){resetSessionState();_authTransitioning=false;_pendingLoginPassword=null;if(window.auth)auth.signOut();goToWelcome()}
 function leaveGroup(convId){
   var conv=findConv(convId);if(!conv||!conv.isGroup)return;
-  if(window.db&&fbUserId()&&firebase&&firebase.firestore)db.collection('conversations').doc(convId).update({memberIds:firebase.firestore.FieldValue.arrayRemove(fbUserId()),adminIds:firebase.firestore.FieldValue.arrayRemove(fbUserId())}).catch(function(){});
+  if(window.db&&fbUserId()&&firebase&&firebase.firestore)db.collection('conversations').doc(convId).update({memberIds:firebase.firestore.FieldValue.arrayRemove(fbUserId()),adminIds:firebase.firestore.FieldValue.arrayRemove(fbUserId())}).catch(console.error);
   // Remove from conversations
   for(var lgi=0;lgi<conversations.length;lgi++){if(conversations[lgi].id===convId){conversations.splice(lgi,1);break}}
   var gs=getGroups();
@@ -782,7 +782,7 @@ function leaveGroup(convId){
 function deleteGroup(convId){
   var conv=findConv(convId);if(!conv||!conv.isGroup)return;
   if(conv.creatorId!==activeAccountId&&conv.creatorId!==fbUserId()){leaveGroup(convId);return}
-  if(window.db&&fbUserId()&&conv.creatorId===fbUserId())db.collection('conversations').doc(convId).delete().catch(function(){});
+  if(window.db&&fbUserId()&&conv.creatorId===fbUserId())db.collection('conversations').doc(convId).delete().catch(console.error);
   // Remove from conversations
   for(var dgi=0;dgi<conversations.length;dgi++){if(conversations[dgi].id===convId){conversations.splice(dgi,1);break}}
   // Remove from saved groups

@@ -83,7 +83,7 @@ async function testScreenShare(){
     video.style.cssText='width:100%;height:100%;object-fit:contain;border-radius:10px';
     preview.innerHTML='';
     preview.appendChild(video);
-    video.play().catch(function(){});
+    video.play().catch(console.error);
     stream.getVideoTracks()[0].onended=function(){
       preview.innerHTML='<span style="font-size:11px;color:var(--text4);opacity:.6">Paylaşım durduruldu</span>'
     }

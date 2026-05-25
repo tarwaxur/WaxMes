@@ -184,7 +184,7 @@ function createOffer(callId){
     audioEl.playsinline=true;
     audioEl.style.display='none';
     document.body.appendChild(audioEl);
-    audioEl.play().catch(function(){})
+    audioEl.play().catch(console.error)
   };
   // Process any pending ICE candidates collected before PeerConnection was ready
   while(pendingIceCandidates.length>0){
@@ -195,7 +195,7 @@ function createOffer(callId){
     callPeerConn.setLocalDescription(offer);
     $('call-bar-status').textContent='Bağlanıyor...';
     if(activeConvId)fbSendCallSignal(activeConvId,{action:'offer',sdp:offer,callId:callId,callerName:$('sidebar-username').textContent||'Birisi'})
-  }).catch(function(){})
+  }).catch(console.error)
 }
 
 // ===== FIRESTORE CALL SIGNALING =====
@@ -254,7 +254,7 @@ function fbListenCallSignals(convId){
               var m=Math.floor(sec/60),s=sec%60;
               $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
             },500)
-          }).catch(function(){})
+          }).catch(console.error)
         }
         // Incoming call end
         if(d.action==='end'){
@@ -335,7 +335,7 @@ function acceptCall(){
           audioEl.autoplay=true;audioEl.playsinline=true;
           audioEl.style.display='none';
           document.body.appendChild(audioEl);
-          audioEl.play().catch(function(){})
+          audioEl.play().catch(console.error)
         };
         // Process pending ICE candidates collected before PeerConnection was ready
         while(pendingIceCandidates.length>0){
@@ -425,7 +425,7 @@ function enlargeCallVideo(){
   video.autoplay=true;video.muted=true;
   video.style.cssText='max-width:90vw;max-height:85vh;border-radius:12px;object-fit:contain';
   overlay.appendChild(video);
-  video.play().catch(function(){});
+  video.play().catch(console.error);
   var closeBtn=document.createElement('button');
   closeBtn.innerHTML='✕';
   closeBtn.style.cssText='position:absolute;top:16px;right:16px;width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center';
@@ -455,7 +455,7 @@ function toggleCallCamera(){
     callCamStream=stream;
     videoEl.srcObject=stream;
     container.style.display='block';
-    videoEl.play().catch(function(){});
+    videoEl.play().catch(console.error);
     $('call-cam-btn').style.background='rgba(34,197,94,.15)';
     $('call-cam-btn').style.color='#22c55e'
   }).catch(function(e){console.error('Camera error:',e)})}catch(e){console.error('Camera error:',e)}
@@ -479,7 +479,7 @@ function toggleCallScreen(){
     callScreenStream=stream;
     videoEl.srcObject=stream;
     container.style.display='';
-    videoEl.play().catch(function(){});
+    videoEl.play().catch(console.error);
     $('call-screen-btn').style.background='rgba(34,197,94,.15)';
     $('call-screen-btn').style.color='#22c55e';
     stream.getVideoTracks()[0].onended=function(){

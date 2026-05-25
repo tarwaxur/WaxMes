@@ -37,7 +37,7 @@ function fbListenConversations(uid){
                 var color=colors[Math.floor(Math.random()*colors.length)];
                 var newConv={id:cid2,name:ud.displayName||ud.username||'Kullanıcı',avatar:ud.avatar||(ud.displayName||'?').charAt(0).toUpperCase(),color:color,online:ud.online||false,lastMsg:'',time:'',unread:0,isGroup:false,memberIds:[uid,oid]};
                 convListenerAddConv(newConv)
-              }).catch(function(){})
+              }).catch(console.error)
             })(otherId,cid)
             }
           }
@@ -93,7 +93,7 @@ function fbSyncMembers(convId){
   if(conv.isGroup)saveGroup(conv);
   var data={memberIds:mids};
   if(conv.isGroup){data.type='group';data.name=conv.name;data.avatar=conv.avatar||null;data.avatarLetter=conv.avatarLetter||null;data.color=conv.color||null;data.creatorId=conv.creatorId||fbUserId();data.adminIds=conv.adminIds||[data.creatorId]}
-  db.collection('conversations').doc(convId).set(data,{merge:true}).catch(function(){})
+  db.collection('conversations').doc(convId).set(data,{merge:true}).catch(console.error)
 }
 function fbSendMessage(convId,msg){
   if(!window.db||!fbUserId())return;
@@ -116,8 +116,8 @@ function fbSendMessage(convId,msg){
       msg._fbId=docRef.id;
       saveMessages()
     }
-  }).catch(function(){});
-  db.collection('conversations').doc(convId).set({lastActivity:Date.now(),lastMsg:displayMsg,lastTime:msg.time},{merge:true}).catch(function(){});
+  }).catch(console.error);
+  db.collection('conversations').doc(convId).set({lastActivity:Date.now(),lastMsg:displayMsg,lastTime:msg.time},{merge:true}).catch(console.error);
   fbSyncMembers(convId)
 }
 
@@ -196,7 +196,7 @@ function fbUpdateOnlineStatus(online,status){
   if(!window.db||!fbUserId())return;
   var data={online:online,lastSeen:Date.now()};
   if(status!==undefined)data.status=status;
-  db.collection('users').doc(fbUserId()).update(data).catch(function(){})
+  db.collection('users').doc(fbUserId()).update(data).catch(console.error)
 }
 function fbSyncOnlineStatus(convId){
   if(!window.db||!fbUserId())return;

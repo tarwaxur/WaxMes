@@ -79,7 +79,7 @@ function sendVoice(){
       var path='voice/'+activeConvId+'/'+Date.now()+'_'+id+'.webm';
       fbUploadFile(dataUrl,path).then(function(url){
         msg.audio=url;fbSendMessage(activeConvId,msg);saveMessages()
-      }).catch(function(){})
+      }).catch(console.error)
     }else{fbSendMessage(activeConvId,msg)}
     $('voice-recorder').style.display='none';$('chat-input').style.display='';$('chat-send').style.display='';$('voice-btn').style.display='';
   };
@@ -104,7 +104,7 @@ function playAudio(msgId){
   
   // Resume if paused same message
   if(currentAudioId===msgId&&currentAudio&&currentAudio.paused){
-    currentAudio.play().catch(function(){});
+    currentAudio.play().catch(console.error);
     updateAudioUI(msgId,'playing');
     startAudioProgress(msgId,msg);
     return
@@ -126,7 +126,7 @@ function playAudio(msgId){
   
   audio.addEventListener('canplay',function(){
     if(hasSeek)audio.currentTime=seekPct*audio.duration;
-    audio.play().catch(function(){});
+    audio.play().catch(console.error);
     startAudioProgress(msgId,msg)
   },{once:true});
   

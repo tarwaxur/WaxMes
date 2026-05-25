@@ -125,7 +125,7 @@ if(chatMsgs)chatMsgs.addEventListener('scroll',function(){
 // ===== INIT =====
 if(!ls('version')){localStorage.clear();ls('version','0.5.0')}
 applyTheme(getTheme());
-if(window.electronAPI&&electronAPI.getAppVersion)electronAPI.getAppVersion().then(function(v){setAppVersion(v)}).catch(function(){});
+if(window.electronAPI&&electronAPI.getAppVersion)electronAPI.getAppVersion().then(function(v){setAppVersion(v)}).catch(console.error);
 
 function hideLoading(cb){
   var ls=$('loading-screen');
