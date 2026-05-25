@@ -24,7 +24,7 @@ function stopRingtone(){
   try{if(store.ringtoneOsc){store.ringtoneOsc.stop();store.ringtoneOsc=null}if(store.ringtoneCtx){store.ringtoneCtx.close();store.ringtoneCtx=null}}catch(e){}
 }
 
-function startCall(){
+async function startCall(){
   if(!store.activeConvId){return}
   var conv=findConv(store.activeConvId);if(!conv)return;
   if(store.callState){return}
@@ -96,16 +96,15 @@ function startCall(){
   saveMessages();
   
   // Start local stream and create offer
-  startLocalStream(function(){
-    createOffer(callId)
-  })
+  await startLocalStream();
+  createOffer(callId)
 }
 
 
-function startLocalStream(cb){
-  try{navigator.mediaDevices.getUserMedia({audio:true,video:false}).then(function(stream){
+async function startLocalStream(){
+  try {
+    var stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
     store.callLocalStream=stream;
-    // Voice activity detection for self avatar
     if(store.vadTimer){clearInterval(store.vadTimer)}
     try{
       var vCtx=new(window.AudioContext||window.webkitAudioContext)();
@@ -113,19 +112,17 @@ function startLocalStream(cb){
       var vAna=vCtx.createAnalyser();vAna.fftSize=128;
       vSrc.connect(vAna);
       var vData=new Uint8Array(vAna.frequencyBinCount);
-      // Auto-calibrate noise floor
       var vadNoiseFloor=0,vadCalibCount=0,vadSilenceFrames=0;
       var vadSpeaking=false;
       store.vadTimer=setInterval(function(){
         vAna.getByteFrequencyData(vData);
         var avg=0;for(var vi=0;vi<vData.length;vi++){avg+=vData[vi]}
         avg/=vData.length;
-        // Calibrate noise floor (first 20 frames of silence)
         if(vadCalibCount<20){vadNoiseFloor+=avg;vadCalibCount++;
           if(vadCalibCount===20)vadNoiseFloor/=20;
           return
         }
-        var threshold=vadNoiseFloor+8; // 8dB above noise floor
+        var threshold=vadNoiseFloor+8;
         var selfEl=$('call-self-avatar');
         if(selfEl){
           if(avg>threshold){
@@ -134,19 +131,17 @@ function startLocalStream(cb){
             selfEl.style.outline='2.5px solid #22c55e';selfEl.style.outlineOffset='-2.5px'
           }else{
             vadSilenceFrames++;
-            // Require 4 consecutive silence frames (~600ms) before turning off
             if(vadSilenceFrames>4&&vadSpeaking){
               vadSpeaking=false;
               selfEl.style.outline='';selfEl.style.outlineOffset=''
             }
           }
         }
-        // Adaptive threshold: slowly track noise floor
         if(!vadSpeaking)vadNoiseFloor=vadNoiseFloor*0.95+avg*0.05
       },150)
     }catch(e){}
-    if(cb)cb()
-  }).catch(function(){alert('Mikrofon erişimi gerekli');endCall()})}catch(e){endCall()}}
+  }catch(e){alert('Mikrofon erişimi gerekli');endCall()}
+}
 
 function createOffer(callId){
   var config={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'}]};
@@ -272,7 +267,7 @@ function fbStopCallSignals(){
 
 function checkIncomingCalls(){} // Replaced by fbListenCallSignals
 
-function acceptCall(){
+async function acceptCall(){
   if(store.callState!=='ringing'||!store.pendingCallMsgId)return;
   stopRingtone();$('incoming-call').style.display='none';
   $('call-bar').style.display='flex';
@@ -287,7 +282,6 @@ function acceptCall(){
   $('call-bar-timer').style.display='none';
   store.callState='calling';
   
-  // Add call accepted log
   if(store.activeConvId&&store.messages[store.activeConvId]){
     var acceptLogTxt='📞 Arama kabul edildi';
     store.messages[store.activeConvId].push({id:uid(),type:'log',text:acceptLogTxt,time:timeNow()});store.emit('messages');
@@ -297,70 +291,62 @@ function acceptCall(){
     renderConversations()
   }
   
-  // Get offer from Firestore
-  var offer=null,fcallId=null;
-  if(window.db&&store.activeConvId&&store._callSigOfferId){
-    db.collection('conversations').doc(store.activeConvId).collection('call_signals').doc(store._callSigOfferId).get().then(function(odoc){
-      if(odoc.exists){var od=odoc.data();offer=od.sdp;fcallId=od.callId}
-      if(!offer){endCall();return}
-      startLocalStream(function(){
-        var config={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'}]};
-        store.callPeerConn=new RTCPeerConnection(config);
-        store.callLocalStream.getTracks().forEach(function(t){store.callPeerConn.addTrack(t,store.callLocalStream)});
-        store.callPeerConn.onicecandidate=function(e){
-          if(e.candidate&&store.activeConvId){
-            fbSendCallSignal(store.activeConvId,{action:'ice',candidate:e.candidate,callId:fcallId})
-          }
-        };
-        store.callPeerConn.oniceconnectionstatechange=function(){
-          if(!store.callPeerConn)return;
-          if(store.callPeerConn.iceConnectionState==='connected'||store.callPeerConn.iceConnectionState==='completed'){
-            if(store.callState!=='connected'){
-              store.callState='connected';store.callStartTime=Date.now();
-              $('call-bar-status').textContent='Bağlandı';
-              $('call-bar-timer').style.display='inline';
-              if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
-              store.callTimerInterval=setInterval(function(){
-                var sec=Math.floor((Date.now()-store.callStartTime)/1000);
-                var m=Math.floor(sec/60),s=sec%60;
-                $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
-              },500)
-            }
-          }
-          if(store.callPeerConn.iceConnectionState==='disconnected'||store.callPeerConn.iceConnectionState==='failed'){endCall()}
-        };
-        store.callPeerConn.ontrack=function(e){
-          var audioEl=document.createElement('audio');
-          audioEl.srcObject=e.streams[0];
-          audioEl.autoplay=true;audioEl.playsinline=true;
-          audioEl.style.display='none';
-          document.body.appendChild(audioEl);
-          audioEl.play().catch(console.error)
-        };
-        // Process pending ICE candidates collected before PeerConnection was ready
-        while(store.pendingIceCandidates.length>0){
-          var c=store.pendingIceCandidates.shift();
-          try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(c))}catch(e){}
+  try {
+    if(!window.db||!store.activeConvId||!store._callSigOfferId){endCall();return}
+    var odoc=await db.collection('conversations').doc(store.activeConvId).collection('call_signals').doc(store._callSigOfferId).get();
+    if(!odoc.exists){endCall();return}
+    var offer=(odoc.data()).sdp,fcallId=(odoc.data()).callId;
+    if(!offer){endCall();return}
+    await startLocalStream();
+    var config={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'}]};
+    store.callPeerConn=new RTCPeerConnection(config);
+    store.callLocalStream.getTracks().forEach(function(t){store.callPeerConn.addTrack(t,store.callLocalStream)});
+    store.callPeerConn.onicecandidate=function(e){
+      if(e.candidate&&store.activeConvId) fbSendCallSignal(store.activeConvId,{action:'ice',candidate:e.candidate,callId:fcallId})
+    };
+    store.callPeerConn.oniceconnectionstatechange=function(){
+      if(!store.callPeerConn)return;
+      if(store.callPeerConn.iceConnectionState==='connected'||store.callPeerConn.iceConnectionState==='completed'){
+        if(store.callState!=='connected'){
+          store.callState='connected';store.callStartTime=Date.now();
+          $('call-bar-status').textContent='Bağlandı';
+          $('call-bar-timer').style.display='inline';
+          if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
+          store.callTimerInterval=setInterval(function(){
+            var sec=Math.floor((Date.now()-store.callStartTime)/1000);
+            var m=Math.floor(sec/60),s=sec%60;
+            $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
+          },500)
         }
-        store.callPeerConn.setRemoteDescription(new RTCSessionDescription(offer)).then(function(){
-          return store.callPeerConn.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:false})
-        }).then(function(answer){
-          return store.callPeerConn.setLocalDescription(answer).then(function(){
-            store.callState='connected';store.callStartTime=Date.now();
-            $('call-bar-status').textContent='Bağlandı';
-            $('call-bar-timer').style.display='inline';
-            if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
-            store.callTimerInterval=setInterval(function(){
-              var sec=Math.floor((Date.now()-store.callStartTime)/1000);
-              var m=Math.floor(sec/60),s=sec%60;
-              $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
-            },500);
-            if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'answer',sdp:answer,callId:fcallId})
-          })
-        }).catch(function(){endCall()})
-      })
-    }).catch(function(){endCall()})
-  }else{endCall()}
+      }
+      if(store.callPeerConn.iceConnectionState==='disconnected'||store.callPeerConn.iceConnectionState==='failed'){endCall()}
+    };
+    store.callPeerConn.ontrack=function(e){
+      var audioEl=document.createElement('audio');
+      audioEl.srcObject=e.streams[0];
+      audioEl.autoplay=true;audioEl.playsinline=true;
+      audioEl.style.display='none';
+      document.body.appendChild(audioEl);
+      audioEl.play().catch(console.error)
+    };
+    while(store.pendingIceCandidates.length>0){
+      var c=store.pendingIceCandidates.shift();
+      try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(c))}catch(e){}
+    }
+    await store.callPeerConn.setRemoteDescription(new RTCSessionDescription(offer));
+    var answer=await store.callPeerConn.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:false});
+    await store.callPeerConn.setLocalDescription(answer);
+    store.callState='connected';store.callStartTime=Date.now();
+    $('call-bar-status').textContent='Bağlandı';
+    $('call-bar-timer').style.display='inline';
+    if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
+    store.callTimerInterval=setInterval(function(){
+      var sec=Math.floor((Date.now()-store.callStartTime)/1000);
+      var m=Math.floor(sec/60),s=sec%60;
+      $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
+    },500);
+    if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'answer',sdp:answer,callId:fcallId})
+  }catch(e){endCall()}
 }
 
 function declineCall(){stopRingtone();$('incoming-call').style.display='none';if(store.pendingCallMsgId){store.pendingCallMsgId=null}store.callState=null}

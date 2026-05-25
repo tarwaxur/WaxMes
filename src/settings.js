@@ -173,7 +173,7 @@ function showSettingsCat(cat){
 
 // ===== AUTO-UPDATE =====
 store._updateCheckLock = false;
-function checkUpdate(){
+async function checkUpdate(){
   if(store._updateCheckLock) return;
   var btn = $('update-btn');
   if(!btn) return;
@@ -187,7 +187,8 @@ function checkUpdate(){
       return;
     }
     showUpdateBar('Güncelleme kontrol ediliyor...', 'info');
-    electronAPI.checkForUpdates().then(function(result){
+    try {
+      var result = await electronAPI.checkForUpdates();
       store._updateCheckLock = false;
       if(result && result.error){
         btn.textContent = 'Güncellemeleri Kontrol Et';
@@ -200,32 +201,33 @@ function checkUpdate(){
         btn.dataset.found = '1';
         btn.disabled = false;
         showUpdateBar('Yeni sürüm v'+result.version+' mevcut (mevcut: v'+result.currentVersion+'). İndirmek için tıkla.', 'info');
-        btn.onclick = function(){
+        btn.onclick = async function(){
           btn.textContent = 'İndiriliyor...';
           btn.disabled = true;
-          electronAPI.startDownload().then(function(resp){
+          try {
+            var resp = await electronAPI.startDownload();
             if(!resp || !resp.success){
               btn.textContent = 'Güncellemeleri Kontrol Et';
               btn.disabled = false;
               showUpdateBar('İndirme hatası: '+(resp&&resp.error?resp.error:'Bilinmeyen hata'), 'error');
             }
-          }).catch(function(err){
+          } catch(err) {
             btn.textContent = 'Güncellemeleri Kontrol Et';
             btn.disabled = false;
             showUpdateBar('İndirme başarısız: '+(err&&err.message?err.message:err), 'error');
-          });
+          }
         };
       } else {
         btn.textContent = 'Güncellemeleri Kontrol Et';
         btn.disabled = false;
         showUpdateBar('Zaten en son sürümü kullanıyorsun.', 'info');
       }
-    }).catch(function(err){
+    } catch(err) {
       store._updateCheckLock = false;
       btn.textContent = 'Güncellemeleri Kontrol Et';
       btn.disabled = false;
       showUpdateBar('Kontrol başarısız: '+(err&&err.message?err.message:err), 'error');
-    });
+    }
   } else {
     store._updateCheckLock = false;
     showUpdateBar('Güncelleme kontrolü sadece masaüstü uygulamasında çalışır.', 'error');
@@ -253,20 +255,21 @@ if(window.electronAPI){
     var btn = $('update-btn');
     if(btn && !btn.dataset.downloaded) { btn.textContent = 'v'+version+' İndir'; btn.dataset.found = '1'; btn.disabled = false; }
     showUpdateBar('Yeni sürüm v'+version+' mevcut. İndirmek için tıkla.', 'info');
-    if(btn) btn.onclick = function(){
+    if(btn) btn.onclick = async function(){
       btn.textContent = 'İndiriliyor...';
       btn.disabled = true;
-      electronAPI.startDownload().then(function(resp){
+      try {
+        var resp = await electronAPI.startDownload();
         if(!resp || !resp.success){
           btn.textContent = 'Güncellemeleri Kontrol Et';
           btn.disabled = false;
           showUpdateBar('İndirme hatası: '+(resp&&resp.error?resp.error:'Bilinmeyen hata'), 'error');
         }
-      }).catch(function(err){
+      } catch(err) {
         btn.textContent = 'Güncellemeleri Kontrol Et';
         btn.disabled = false;
         showUpdateBar('İndirme başarısız: '+(err&&err.message?err.message:err), 'error');
-      });
+      }
     };
   });
   window.electronAPI.onUpdateProgress(function(percent){

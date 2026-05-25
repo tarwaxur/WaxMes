@@ -220,14 +220,13 @@ function fbSyncOnlineStatus(convId){
   }
 }
 
-function fbUploadFile(dataUrl,path){
-  return new Promise(function(resolve,reject){
-    if(!window.storage){resolve(dataUrl);return}
+async function fbUploadFile(dataUrl,path){
+  if(!window.storage) return dataUrl;
+  try {
     var ref=storage.ref(path);
-    ref.putString(dataUrl,'data_url').then(function(snapshot){
-      ref.getDownloadURL().then(function(url){resolve(url)}).catch(function(){resolve(dataUrl)})
-    }).catch(function(){resolve(dataUrl)})
-  })
+    await ref.putString(dataUrl,'data_url');
+    return await ref.getDownloadURL()
+  }catch(e){return dataUrl}
 }
 
 // Update online status on app focus/blur (only on actual close, not tab switch)

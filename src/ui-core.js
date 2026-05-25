@@ -83,7 +83,7 @@ function filterForwardContacts(q){
 }
 
 
-function sendFriendRequest(){
+async function sendFriendRequest(){
   if(Date.now()-store._frCooldown<10000){$('add-friend-result').textContent='⏳ 10 saniye bekleyin.';$('add-friend-result').style.color='#ef4444';return}
   var name=$('add-friend-input').value.trim();
   if(!name||!window.db){$('add-friend-result').textContent='Lütfen bir kullanıcı adı gir.';return}
@@ -92,7 +92,7 @@ function sendFriendRequest(){
   var opTimer=setTimeout(function(){$('add-friend-result').textContent='Zaman aşımı. İnternet bağlantını kontrol et.';$('add-friend-result').style.color='#ef4444'},30000);
   function fail(msg){clearTimeout(opTimer);$('add-friend-result').textContent=msg;$('add-friend-result').style.color='#ef4444'}
   function ok(msg){clearTimeout(opTimer);$('add-friend-input').value='';$('add-friend-result').textContent=msg;$('add-friend-result').style.color='var(--accent)';setTimeout(function(){$('add-friend-result').textContent='';$('add-friend-result').style.color='var(--text4)'},2500)}
-  function step(next){clearTimeout(opTimer);opTimer=setTimeout(function(){$('add-friend-result').textContent='Zaman aşımı. İnternet bağlantını kontrol et.';$('add-friend-result').style.color='#ef4444'},30000);next()}
+  function resetTimer(){clearTimeout(opTimer);opTimer=setTimeout(function(){$('add-friend-result').textContent='Zaman aşımı. İnternet bağlantını kontrol et.';$('add-friend-result').style.color='#ef4444'},30000)}
   function catchErr(label,err){
     clearTimeout(opTimer);
     console.error('[FriendReq] '+label+':', err&&err.code?err.code:'', err&&err.message?err.message:err);
@@ -100,58 +100,56 @@ function sendFriendRequest(){
     if(err&&err.code==='unavailable'){fail('Sunucuya bağlanılamadı.');return}
     fail('Hata ('+(err&&err.code?err.code:'?')+'): '+(err&&err.message?err.message:'Bilinmeyen hata'))
   }
-  // Step 1: Search user
-  db.collection('users').where('username','==',name).limit(1).get().then(function(snap){
+  try {
+    // Step 1: Search user
+    resetTimer();
+    var snap=await db.collection('users').where('username','==',name).limit(1).get();
     if(snap.empty){fail('Bu kullanıcı adıyla kayıtlı hesap bulunamadı.');return}
     var targetUser=snap.docs[0];
     if(targetUser.id===fbUid){fail('Kendine istek gönderemezsin.');return}
     // Step 2: Check already friends
-    step(function(){
-      db.collection('friends').doc(fbUid).collection('list').where('id','==',targetUser.id).get().then(function(fs){
-        if(!fs.empty){fail('Bu kullanıcı zaten arkadaşlarında.');return}
-        // Step 3: Check pending count + duplicate (single-field query, in-memory filter)
-        step(function(){
-          db.collection('friendRequests').where('from','==',fbUid).get().then(function(allSent){
-            var pendingCount=0, alreadySent=false;
-            allSent.forEach(function(doc){
-              var d=doc.data();
-              if(d.status==='pending'){pendingCount++;if(d.to===targetUser.id)alreadySent=true}
-            });
-            if(pendingCount>=5){fail('Çok fazla bekleyen isteğin var.');return}
-            if(alreadySent){fail('Bu kullanıcıya zaten istek göndermişsin.');return}
-            // Step 4: Send request
-            var reqId=uid();
-            var myAccs=getAccounts(),myAv=null;
-            for(var ai=0;ai<myAccs.length;ai++){if(myAccs[ai].id===fbUid){myAv=myAccs[ai].avatar||null;break}}
-            db.collection('friendRequests').doc(reqId).set({
-              from:fbUid,fromName:$('sidebar-username').textContent||'Sen',
-              to:targetUser.id,toName:targetUser.data().displayName||name,
-              fromAvatar:myAv,toAvatar:targetUser.data().avatar||null,status:'pending',createdAt:Date.now()
-            }).then(function(){ok('✓ "'+name+'" için arkadaşlık isteği gönderildi.')})
-            .catch(function(err){catchErr('Gönderme',err)})
-          }).catch(function(err){catchErr('İstek sorgusu',err)})
-        })
-      }).catch(function(err){catchErr('Arkadaş sorgusu',err)})
-    })
-  }).catch(function(err){catchErr('Kullanıcı arama',err)})
+    resetTimer();
+    var fs=await db.collection('friends').doc(fbUid).collection('list').where('id','==',targetUser.id).get();
+    if(!fs.empty){fail('Bu kullanıcı zaten arkadaşlarında.');return}
+    // Step 3: Check pending count + duplicate
+    resetTimer();
+    var allSent=await db.collection('friendRequests').where('from','==',fbUid).get();
+    var pendingCount=0, alreadySent=false;
+    allSent.forEach(function(doc){
+      var d=doc.data();
+      if(d.status==='pending'){pendingCount++;if(d.to===targetUser.id)alreadySent=true}
+    });
+    if(pendingCount>=5){fail('Çok fazla bekleyen isteğin var.');return}
+    if(alreadySent){fail('Bu kullanıcıya zaten istek göndermişsin.');return}
+    // Step 4: Send request
+    var reqId=uid();
+    var myAccs=getAccounts(),myAv=null;
+    for(var ai=0;ai<myAccs.length;ai++){if(myAccs[ai].id===fbUid){myAv=myAccs[ai].avatar||null;break}}
+    resetTimer();
+    await db.collection('friendRequests').doc(reqId).set({
+      from:fbUid,fromName:$('sidebar-username').textContent||'Sen',
+      to:targetUser.id,toName:targetUser.data().displayName||name,
+      fromAvatar:myAv,toAvatar:targetUser.data().avatar||null,status:'pending',createdAt:Date.now()
+    });
+    ok('✓ "'+name+'" için arkadaşlık isteği gönderildi.')
+  }catch(err){catchErr('Gönderme',err)}
 }
-function acceptFriendRequest(reqId){
+async function acceptFriendRequest(reqId){
   if(!window.db)return;
   var uid=fbUserId();if(!uid)return;
-  db.collection('friendRequests').doc(reqId).get().then(function(doc){
+  try {
+    var doc=await db.collection('friendRequests').doc(reqId).get();
     if(!doc.exists)return;
-    var data=doc.data();
-    var friendId=data.from===uid?data.to:data.from;
+    var data=doc.data(),friendId=data.from===uid?data.to:data.from;
     var friendName=data.from===uid?data.toName:data.fromName;
     var friendAvatar=data.from===uid?data.toAvatar||null:data.fromAvatar||null;
     var myAccs=getAccounts(),myAv=null;
     for(var ai=0;ai<myAccs.length;ai++){if(myAccs[ai].id===uid){myAv=myAccs[ai].avatar||null;break}}
-    db.collection('friendRequests').doc(reqId).update({status:'accepted'}).then(function(){
-      db.collection('friends').doc(uid).collection('list').doc(friendId).set({id:friendId,name:friendName,avatar:friendAvatar,accepted:Date.now()}).then(function(){
-        db.collection('friends').doc(friendId).collection('list').doc(uid).set({id:uid,name:$('sidebar-username').textContent||'Sen',avatar:myAv,accepted:Date.now()}).then(function(){switchFriendsTab('friends')}).catch(function(){switchFriendsTab('friends')})
-      }).catch(function(){switchFriendsTab('friends')})
-    }).catch(function(){switchFriendsTab('friends')})
-  }).catch(function(){switchFriendsTab('pending')})
+    await db.collection('friendRequests').doc(reqId).update({status:'accepted'});
+    await db.collection('friends').doc(uid).collection('list').doc(friendId).set({id:friendId,name:friendName,avatar:friendAvatar,accepted:Date.now()});
+    await db.collection('friends').doc(friendId).collection('list').doc(uid).set({id:uid,name:$('sidebar-username').textContent||'Sen',avatar:myAv,accepted:Date.now()});
+    switchFriendsTab('friends')
+  }catch(e){switchFriendsTab('friends')}
 }
 function withdrawRequest(reqId){
   if(!window.db)return;

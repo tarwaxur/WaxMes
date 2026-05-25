@@ -287,7 +287,7 @@ function showAlert(msg){
   $('modal-delete').classList.add('active');
   store.pendingAlert=true
 }
-function completeRegistration(){
+async function completeRegistration(){
   var u=$('reg-username').value.trim(),d=$('reg-display').value.trim()||u,e=$('reg-email').value.trim().toLowerCase(),p=$('reg-pass').value;
   if(!window.auth||!p)return;
   var btn=$('reg-next');if(btn){btn.disabled=true;btn.textContent='Kaydediliyor...'}
@@ -299,31 +299,24 @@ function completeRegistration(){
   var timedOut=false, timer=setTimeout(function(){timedOut=true;finishReg('Sunucu yanıt vermiyor. Lütfen tekrar dene.')},15000);
   store._explicitLogin=true;
   store._pendingLoginPassword=p;
-  auth.createUserWithEmailAndPassword(e,p).then(function(cred){
+  try {
+    var cred=await auth.createUserWithEmailAndPassword(e,p);
     clearTimeout(timer);
     var uid=cred.user.uid;
-    function cancelCreatedAccount(msg){
-      store._explicitLogin=false;
-      store._pendingLoginPassword=null;
-      var deletePromise=auth.currentUser?auth.currentUser.delete().catch(function(){return null}):Promise.resolve();
-      deletePromise.then(function(){finishReg(msg)})
+    async function cancelCreatedAccount(msg){
+      store._explicitLogin=false;store._pendingLoginPassword=null;
+      if(auth.currentUser) try{await auth.currentUser.delete()}catch(e){}
+      finishReg(msg)
     }
-    function writeUserDoc(){
-      db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()}).then(function(){
-        store._explicitLogin=false;
-        finishReg();
-        showApp({id:uid,username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,status:'online',bio:'',password:p})
-      }).catch(function(){
-        cancelCreatedAccount('Profil oluşturulamadı. Lütfen tekrar dene.')
-      })
-    }
-    db.collection('users').where('username','==',u).limit(1).get().then(function(snap){
+    try {
+      var snap=await db.collection('users').where('username','==',u).limit(1).get();
       if(!snap.empty){cancelCreatedAccount('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');return}
-      writeUserDoc()
-    }).catch(function(err){
-      cancelCreatedAccount('Kullanıcı adı kontrolü yapılamadı. Lütfen tekrar dene.')
-    })
-  }).catch(function(err){
+      await db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()});
+      store._explicitLogin=false;
+      finishReg();
+      showApp({id:uid,username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,status:'online',bio:'',password:p})
+    }catch(err){cancelCreatedAccount('Profil oluşturulamadı. Lütfen tekrar dene.')}
+  }catch(err){
     clearTimeout(timer);
     if(timedOut)return;
     var msg='';
@@ -332,9 +325,8 @@ function completeRegistration(){
     else if(err.code==='auth/network-request-failed')msg='Ağ hatası. İnternet bağlantını kontrol et.';
     else if(err.code==='auth/invalid-email')msg='Geçersiz e-posta adresi.';
     else msg='Kayıt olunamadı: '+err.message;
-    store._explicitLogin=false;
-    store._pendingLoginPassword=null;
+    store._explicitLogin=false;store._pendingLoginPassword=null;
     finishReg(msg)
-  })
+  }
 }
 async function pickAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){store.avatarDataUrl=r.thumb;var p=$('avatar-picker');p.innerHTML='<img src="'+r.thumb+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.border=\'1px dashed rgba(129,140,248,.2)\';store.avatarDataUrl=null">';p.style.border='none'}}}catch(e){}}
