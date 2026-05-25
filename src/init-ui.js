@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', function(){
   // --- Register ---
   var rsb=$('reg-step-back'),rn=$('reg-next');
   if(rsb)rsb.onclick=function(){regPrev()};
-  var regMainMenu=document.querySelector('#screen-register .login-back');
-  if(regMainMenu)regMainMenu.onclick=function(){goToWelcome()};
+var regBtns=document.querySelectorAll('#screen-register .login-back');
+if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
   var ap=$('avatar-picker');
   if(ap)ap.onclick=function(){pickAvatar()};
   var ru=$('reg-username'),rd=$('reg-display'),re=$('reg-email'),rp=$('reg-pass'),rp2=$('reg-pass2'),rt=$('reg-terms');

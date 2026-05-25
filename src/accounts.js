@@ -198,7 +198,7 @@ function renderSavedAccounts(){
 }
 
 async function autoLogin(acc){
-  if(!window.auth)return;
+  if(!window.auth){showAlert('Veritabanı bağlantısı bulunamadı. İnternet bağlantını kontrol edip tekrar dene.');return}
   var password=await loadAccountPassword(acc);
   if(!password){
     goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
@@ -224,6 +224,17 @@ async function autoLogin(acc){
 }
 
 function doLoginWith(acc){showApp(acc)}
+function doLoginWithUsername(user){
+  var email=(user.email||'').toLowerCase();
+  var accs=getAccounts();
+  for(var i=0;i<accs.length;i++){
+    if(accs[i].email&&accs[i].email.toLowerCase()===email){
+      doLoginWith({id:user.uid,username:accs[i].username,displayName:accs[i].displayName,email:user.email,avatar:accs[i].avatar||null,status:'online',bio:accs[i].bio||'',password:store._pendingLoginPassword});
+      return
+    }
+  }
+  doLoginWith({id:user.uid,username:user.email.split('@')[0],displayName:user.displayName||user.email.split('@')[0],email:user.email,avatar:null,status:'online',bio:'',password:store._pendingLoginPassword})
+}
 
 // ===== LOGIN =====
 function validateLogin(){var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value,ok=e.length>0&&p.length>0;$('fg-login-email').classList.toggle('invalid',e.length>0&&!e.endsWith('@gmail.com'));$('fg-login-pass').classList.toggle('invalid',p.length>0&&p.length<6);$('login-btn').disabled=!ok;return ok}
@@ -234,6 +245,8 @@ async function doLogin(){
   try {
     var cred=await auth.signInWithEmailAndPassword(e,p);
     var user=cred.user;store._explicitLogin=true;store._pendingLoginPassword=p;
+    var accs=getAccounts(),acc=null;
+    for(var ai=0;ai<accs.length;ai++){if(accs[ai].email&&accs[ai].email.toLowerCase()===e){acc=accs[ai];break}}
     doLoginWithUsername(user);
     if(acc)rememberAccountPassword(acc,p)
   }catch(err){
