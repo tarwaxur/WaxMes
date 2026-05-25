@@ -1,5 +1,4 @@
 // ===== CAMERA / MIC / SCREEN =====
-var testCamStream=null, testMicStream=null, micTestInterval=null;
 
 async function toggleCamera(){
   if(testCamStream){

@@ -1,11 +1,8 @@
 // ===== VOICE CALL =====
-var callState=null; // null, 'calling', 'ringing', 'connected'
-var callPeerConn=null, callLocalStream=null, callTimerInterval=null, pendingIceCandidates=[];
-var callStartTime=0,callMicMuted=false,callSpeakerMuted=false;
-var pendingCallMsgId=null;
+
 
 // Simple ringtone using Web Audio API
-var ringtoneCtx=null, ringtoneOsc=null, ringtoneGain=null, ringtoneVibrato=null;
+
 function playRingtone(){
   try{
     ringtoneCtx=new(window.AudioContext||window.webkitAudioContext)();
@@ -104,7 +101,7 @@ function startCall(){
   })
 }
 
-var vadTimer=null;
+
 function startLocalStream(cb){
   try{navigator.mediaDevices.getUserMedia({audio:true,video:false}).then(function(stream){
     callLocalStream=stream;
@@ -202,8 +199,7 @@ function createOffer(callId){
 }
 
 // ===== FIRESTORE CALL SIGNALING =====
-var _callSignalUnsub=null;
-var _callSigOfferId=null;
+
 
 function fbSendCallSignal(convId,data){
   if(!window.db||!fbUserId()||!convId)return;
@@ -415,7 +411,7 @@ function toggleCallMic(){
   $('call-mic-btn').style.background=callMicMuted?'rgba(239,68,68,.2)':'rgba(255,255,255,.06)';
   $('call-mic-btn').style.color=callMicMuted?'#ef4444':'var(--text3)'
 }
-var callCamStream=null, callScreenStream=null;
+
 
 function enlargeCallVideo(){
   var el=$('call-local-video-el');
@@ -503,7 +499,7 @@ function toggleCallSpeaker(){
 }
 
 // Poll for incoming calls (fallback — primary signaling is via Firestore listener)
-var callPollTimer=setInterval(function(){
+callPollTimer=setInterval(function(){
   if(!activeConvId)return;
   if(callState==='calling'&&callPeerConn){
     // Fallback: process any remaining local-message based signals (legacy)

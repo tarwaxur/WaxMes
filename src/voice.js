@@ -1,6 +1,5 @@
 // ===== VOICE RECORDER =====
-var mediaRecorder=null,audioChunks=[],voiceTimer=null,voiceStart=0;
-var audioCtx=null,analyser=null,sourceNode=null,animFrame=null;
+
 function startVoice(){
   if(!activeConvId)return;
   if(mediaRecorder&&mediaRecorder.state==='recording'){stopVoice();return}
@@ -88,7 +87,7 @@ function sendVoice(){
 }
 
 // ===== AUDIO PLAYBACK =====
-var currentAudio=null,currentAudioId=null,audioProgressTimer=null,seekCache={};
+
 function playAudio(msgId){
   var convId=activeConvId;if(!convId)return;
   var msgs=messages[convId]||[],msg=null;

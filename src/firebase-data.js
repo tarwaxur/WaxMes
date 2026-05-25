@@ -1,12 +1,4 @@
 // ===== FIREBASE DATA LAYER =====
-var _fbListeners={};
-var _fbMsgCache={};
-var _fbConvUnsub=null;
-var _convListenerActive=false;
-var _authTransitioning=false; // Prevents processing stale auth state changes
-var _explicitLogin=false; // Prevents onAuthStateChanged from double-calling showApp during autoLogin
-var _pendingLoginPassword=null;
-var _authStateSeq=0;
 
 function fbListenConversations(uid){
   if(_fbConvUnsub){_fbConvUnsub();_fbConvUnsub=null}
@@ -206,7 +198,6 @@ function fbUpdateOnlineStatus(online,status){
   if(status!==undefined)data.status=status;
   db.collection('users').doc(fbUserId()).update(data).catch(function(){})
 }
-var _onlineStatusListeners={};
 function fbSyncOnlineStatus(convId){
   if(!window.db||!fbUserId())return;
   var conv=findConv(convId);if(!conv||conv.isGroup)return;
@@ -240,21 +231,13 @@ function fbUploadFile(dataUrl,path){
 }
 
 // Update online status on app focus/blur (only on actual close, not tab switch)
-if(window.db){
-  document.addEventListener('visibilitychange',function(){
-    if(document.hidden){
-      fbUpdateOnlineStatus(true,'idle')
-    }
-  })
-}
+document.addEventListener('visibilitychange',function(){
+  if(window.db&&document.hidden){
+    fbUpdateOnlineStatus(true,'idle')
+  }
+})
 
-var conversations=[],activeConvId=null,activeAccountId=null;
-var _convListAnimatedOnce=false;
-var messages={};
-var _forceScrollBottom=false;
-var _hasNewMsg=false;
-var _searchQuery='';
-var _showArchived=false;
+
 function getArchived(){return ls('archived')||[]}
 function isArchived(id){var a=getArchived();return a.indexOf(id)>-1}
 function toggleArchive(id){

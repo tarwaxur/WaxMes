@@ -141,7 +141,6 @@ function selectConversation(id){hideContextMenu();hideAvatarMenu();hideSettings(
 if(!conv.isGroup&&window.db&&fbUserId()){var otherId=null;for(var ti=0;ti<(conv.memberIds||[]).length;ti++){if(conv.memberIds[ti]!==fbUserId()){otherId=conv.memberIds[ti];break}}if(otherId)fbListenTyping(id,otherId)}
 fbListenCallSignals(id)}
 
-var _pubKeyCache={};
 async function getRecipientPubKey(convId){
   var conv=findConv(convId);if(!conv)return null;
   var curId=fbUserId();if(!curId)return null;
@@ -196,7 +195,6 @@ function addToGroup(groupId,userId){
 }
 
 // Global edit state
-var editGroupState=null; // {groupId, originalName, addedIds:[], removedIds:[]}
 
 function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!conv||!conv.isGroup)return;
   normalizeGroupMembers(conv);
@@ -293,7 +291,6 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
 }
 
 // ===== MEDIA =====
-var pendingMediaFiles=[],mediaIndex=0;
 function toggleUploadMenu(){$('upload-menu').classList.toggle('active')}
 function hideUploadMenu(){$('upload-menu').classList.remove('active')}
 
@@ -307,7 +304,6 @@ async function sendMedia(type){hideUploadMenu();if(!activeConvId)return;
   }}catch(e){console.error(e)}
 }
 
-var mediaThumbCount=0;
 function showMediaPreview(){
   if(pendingMediaFiles.length===0){hideMediaModal();return}
   $('modal-media').classList.add('active');
@@ -372,7 +368,6 @@ function mediaNext(){if(mediaIndex<pendingMediaFiles.length-1){mediaIndex++;show
 function mediaGoTo(i){mediaIndex=i;showMediaPreview()}
 
 // ===== IMAGE VIEWER =====
-var imageViewerOpen=false,imageViewerMsgs=[],imageViewerIdx=0;
 function showImage(src){
   // Find all image messages in current conversation for navigation
   imageViewerMsgs=[];imageViewerIdx=0;
@@ -429,7 +424,6 @@ document.addEventListener('keydown',function(e){
 
 function hideMediaModal(){pendingMediaFiles=[];mediaThumbCount=0;$('modal-media').classList.remove('active')}
 
-var sendingMediaLock=false;
 async function confirmSendMedia(){
   if(pendingMediaFiles.length===0||!activeConvId||sendingMediaLock)return;
   sendingMediaLock=true;
@@ -496,7 +490,6 @@ async function confirmSendMedia(){
   })(0)
 }
 
-var profilePanelOpen=false;
 function showProfilePanel(){if(!activeConvId)return;
   if(profilePanelOpen){closeProfilePanel();return}
   var conv=findConv(activeConvId);if(!conv)return;
@@ -572,7 +565,6 @@ var emojiCats={
   nature:['🌍','🌎','🌏','🌐','🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘','🌙','🌚','🌛','🌜','☀','🌝','🌞','⭐','🌟','🌠','☁','⛅','🌈','🌤','🌥','🌦','🌧','🌨','🌩','🌪','🌫','🌬','☂','☔','⚡','❄','☃','⛄','🔥','💧','🌊','🌈','🌸','🌺','🌻','🌹','🌷','🌼','🌿','🍀','🍁','🍂','🍃','🌵','🌲','🌳','🌴','🌾','🌱','☘','🌿','🍄','🌻','🌞'],
   activity:['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸','🥌','🎿','⛷','🏂','🪂','🏋','🤼','🤸','🤺','⛹','🤾','🏌','🏇','🧘','🏄','🏊','🤽','🚣','🏆','🥇','🥈','🥉','🏅','🎖','🏵','🎗','🎫','🎟','🎪','🎭','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🎷','🎺','🎸','🎻','🎲','♟','🎯','🎳','🎮','🕹']
 };
-var currentEmojiCat='face';
 
 function switchEmojiCat(cat){
   currentEmojiCat=cat;
@@ -600,7 +592,6 @@ function renderEmojis(){
     list.appendChild(d)
   })
 }
-var emojiPickerVisible=false;
 function toggleEmojiPicker(){
   var p=$('emoji-picker');if(!p)return;
   emojiPickerVisible=!emojiPickerVisible;
@@ -619,7 +610,7 @@ document.addEventListener('click',function(e){
 });
 
 // ===== REPLY TO MESSAGE =====
-var replyToMsgId=null,replyToMsgText='';
+
 function setReply(msgId){
   var convId=activeConvId;
   var msgs=messages[convId]||[];
@@ -724,9 +715,7 @@ function playNotifySound(){
 if(typeof Notification!=='undefined'&&Notification.permission==='default'){Notification.requestPermission()}
 
 // ===== TYPING INDICATOR =====
-var typingTimer=null;
-var _typingRemoteUnsub=null;
-var _typingLocalUid=null;
+
 function startTyping(){
   if(!activeConvId||!window.db||!fbUserId())return;
   var h=$('chat-header-status');
@@ -959,7 +948,7 @@ function editLastMessage(){
   }
 }
 
-var pendingDeleteMsgId=null, pendingSelfDeleteId=null, pendingCollageDelete=null, pendingAlert=false;
+
 
 function confirmCollageDelete(){
   var imgs=pendingCollageDelete;pendingCollageDelete=null;
@@ -1083,7 +1072,7 @@ function updateConvPreview(convId){
   }
 }
 
-var pendingDeleteGroupId=null;
+
 function showDeleteGroupConfirm(convId){
   pendingDeleteGroupId=convId;
   var body=$('modal-delete').querySelector('.modal-body');
@@ -1148,7 +1137,7 @@ function toggleAdmin(memberId,convId){
   }
 }
 
-var pendingRemoveMember=null,pendingRemoveGroup=null;
+
 function removeFromGroup(memberId,convId){
   pendingRemoveMember=memberId;pendingRemoveGroup=convId;
   var body=$('modal-delete').querySelector('.modal-body');

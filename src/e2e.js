@@ -1,6 +1,4 @@
 // ===== E2E Encryption =====
-var e2eKeys=null;
-var e2eReady=false;
 
 async function safeStore(key,val){
   if(window.electronAPI&&electronAPI.safeEncrypt){
@@ -140,7 +138,6 @@ function applyTheme(t){
   ls('theme',t||'default')
 }
 function getTheme(){var t=ls('theme');return t&&validThemes.indexOf(t)!==-1?t:'default'}
-var _previewTimer=null;
 function previewTheme(t){
   var w=$('app-window');if(!w)return;
   if(t&&(t==='default'||validThemes.indexOf(t)!==-1)){

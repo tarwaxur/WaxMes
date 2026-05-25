@@ -1,6 +1,5 @@
 // ===== SHORTCUTS =====
-var recordingShortcut=null;
-var _recKeys=null;
+
 var defaultShortcutsMap={
   upload:{key:'g',ctrl:false,alt:true},voiceMsg:{key:'m',ctrl:false,alt:true},
   micToggle:{key:'',ctrl:false,alt:false},speakerToggle:{key:'',ctrl:false,alt:false},
