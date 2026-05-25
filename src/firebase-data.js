@@ -4,7 +4,7 @@ function fbListenConversations(uid){
   if(store._fbConvUnsub){store._fbConvUnsub();store._fbConvUnsub=null}
   if(!window.db)return;
   store._convListenerActive=true;
-  store._fbConvUnsub=db.collection('conversations').where('memberIds','array-contains',uid).onSnapshot(function(snap){
+  store._fbConvUnsub=db.collection(COLLECTIONS.CONVERSATIONS).where('memberIds','array-contains',uid).onSnapshot(function(snap){
     snap.docChanges().forEach(function(change){
       var d=change.doc.data(),cid=change.doc.id;
       if(change.type==='removed'){
@@ -31,7 +31,7 @@ function fbListenConversations(uid){
             if(!alreadyHas){
             (async function(oid,cid2){
               try {
-                var uDoc=await db.collection('users').doc(oid).get();
+                var uDoc=await db.collection(COLLECTIONS.USERS).doc(oid).get();
                 if(!uDoc.exists)return;
                 var ud=uDoc.data();
                 var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
@@ -67,7 +67,7 @@ async function applyFirestoreGroupConversation(gid,gd,uid){
   var mids=gd.memberIds||[];
   var memberFetches=mids.filter(function(mid){return mid!==uid}).map(async function(mid){
     try {
-      var uDoc=await db.collection('users').doc(mid).get();
+      var uDoc=await db.collection(COLLECTIONS.USERS).doc(mid).get();
       var ud=uDoc.exists?uDoc.data():{};
       var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
       var nm=ud.displayName||ud.username||'Kullanıcı';
@@ -96,7 +96,7 @@ function fbSyncMembers(convId){
   if(conv.isGroup)saveGroup(conv);
   var data={memberIds:mids};
   if(conv.isGroup){data.type='group';data.name=conv.name;data.avatar=conv.avatar||null;data.avatarLetter=conv.avatarLetter||null;data.color=conv.color||null;data.creatorId=conv.creatorId||fbUserId();data.adminIds=conv.adminIds||[data.creatorId]}
-  db.collection('conversations').doc(convId).set(data,{merge:true}).catch(console.error)
+  db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).set(data,{merge:true}).catch(console.error)
 }
 async function fbSendMessage(convId,msg){
   if(!window.db||!fbUserId())return;
@@ -115,13 +115,13 @@ async function fbSendMessage(convId,msg){
   else if(msg.audio)displayMsg='🎤 Ses';
   else displayMsg=msg.text||'';
   try {
-    var docRef=await db.collection('conversations').doc(convId).collection('messages').add(sendData);
+    var docRef=await db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).collection(COLLECTIONS.MESSAGES).add(sendData);
     if(docRef&&docRef.id&&msg._fbId===undefined){
       msg._fbId=docRef.id;
       saveMessages()
     }
   }catch(e){console.error(e)}
-  db.collection('conversations').doc(convId).set({lastActivity:Date.now(),lastMsg:displayMsg,lastTime:msg.time},{merge:true}).catch(console.error);
+  db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).set({lastActivity:Date.now(),lastMsg:displayMsg,lastTime:msg.time},{merge:true}).catch(console.error);
   fbSyncMembers(convId)
 }
 
@@ -134,7 +134,7 @@ function fbListenMessages(convId){
   var _clearTime=null;
   var conv=findConv(convId);
   if(conv&&conv._clearedAt)_clearTime=conv._clearedAt;
-  store._fbListeners[convId]=db.collection('conversations').doc(convId).collection('messages').orderBy('createdAt','asc').onSnapshot(function(snapshot){
+  store._fbListeners[convId]=db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).collection(COLLECTIONS.MESSAGES).orderBy('createdAt','asc').onSnapshot(function(snapshot){
     // Skip if account has changed since listener was set up
     if(store._authTransitioning)return;
     var curUid=fbUserId();
@@ -200,7 +200,7 @@ function fbUpdateOnlineStatus(online,status){
   if(!window.db||!fbUserId())return;
   var data={online:online,lastSeen:Date.now()};
   if(status!==undefined)data.status=status;
-  db.collection('users').doc(fbUserId()).update(data).catch(console.error)
+  db.collection(COLLECTIONS.USERS).doc(fbUserId()).update(data).catch(console.error)
 }
 function fbSyncOnlineStatus(convId){
   if(!window.db||!fbUserId())return;
@@ -210,7 +210,7 @@ function fbSyncOnlineStatus(convId){
   for(var mi=0;mi<(conv.memberIds||[]).length;mi++){
     if(conv.memberIds[mi]!==fbUserId()){
       (function(oid){
-        store._onlineStatusListeners[convId]=db.collection('users').doc(oid).onSnapshot(function(udoc){
+        store._onlineStatusListeners[convId]=db.collection(COLLECTIONS.USERS).doc(oid).onSnapshot(function(udoc){
           if(!udoc.exists)return;
           var uData=udoc.data();
           conv.online=!!uData.online;

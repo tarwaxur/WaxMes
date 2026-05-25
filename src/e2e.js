@@ -31,7 +31,7 @@ async function initE2E(){
     var privKey=await crypto.subtle.exportKey('pkcs8',keyPair.privateKey);
     await safeStore('e2e_private_'+store.activeAccountId,Array.from(new Uint8Array(privKey)));
     var pubB64=btoa(String.fromCharCode.apply(null,new Uint8Array(pubKey)));
-    if(window.db){var fbUid=fbUserId();if(fbUid)db.collection('users').doc(fbUid).update({publicKey:pubB64}).catch(console.error)};
+    if(window.db){var fbUid=fbUserId();if(fbUid)db.collection(COLLECTIONS.USERS).doc(fbUid).update({publicKey:pubB64}).catch(console.error)};
     store.e2eKeys={privateKey:keyPair.privateKey};store.e2eReady=true
   }catch(e){}
 }
@@ -195,7 +195,7 @@ function resetFirebaseAll(){
           if(!pass){showAlert('Şifre gerekli.');$('delete-password-field').style.display='none';return}
           var cred=firebase.auth.EmailAuthProvider.credential(email,pass);
           await auth.currentUser.reauthenticateWithCredential(cred);
-          db.collection('users').doc(auth.currentUser.uid).delete().catch(console.error);
+          db.collection(COLLECTIONS.USERS).doc(auth.currentUser.uid).delete().catch(console.error);
           await auth.currentUser.delete()
         }catch(e){$('delete-password-field').style.display='none';showAlert('Doğrulama başarısız. Hesap silinemedi.');return}
       }
@@ -230,25 +230,25 @@ function resetAllData(){
         await auth.currentUser.reauthenticateWithCredential(cred);
         if(window.db&&fbUid){
           // Clean up friend requests
-          var reqSnap1=await db.collection('friendRequests').where('from','==',fbUid).get().catch(function(){return{forEach:function(){}}});
-          reqSnap1.forEach(function(d){db.collection('friendRequests').doc(d.id).delete().catch(console.error)});
-          var reqSnap2=await db.collection('friendRequests').where('to','==',fbUid).get().catch(function(){return{forEach:function(){}}});
-          reqSnap2.forEach(function(d){db.collection('friendRequests').doc(d.id).delete().catch(console.error)});
+          var reqSnap1=await db.collection(COLLECTIONS.FRIEND_REQUESTS).where('from','==',fbUid).get().catch(function(){return{forEach:function(){}}});
+          reqSnap1.forEach(function(d){db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(d.id).delete().catch(console.error)});
+          var reqSnap2=await db.collection(COLLECTIONS.FRIEND_REQUESTS).where('to','==',fbUid).get().catch(function(){return{forEach:function(){}}});
+          reqSnap2.forEach(function(d){db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(d.id).delete().catch(console.error)});
           // Remove from friends lists
-          var listSnap=await db.collection('friends').doc(fbUid).collection('list').get().catch(function(){return{forEach:function(){}}});
+          var listSnap=await db.collection(COLLECTIONS.FRIENDS).doc(fbUid).collection(COLLECTIONS.LIST).get().catch(function(){return{forEach:function(){}}});
           listSnap.forEach(function(d){
             var otherId=d.data().id;
-            db.collection('friends').doc(otherId).collection('list').doc(fbUid).delete().catch(console.error);
-            db.collection('friends').doc(fbUid).collection('list').doc(d.id).delete().catch(console.error);
+db.collection(COLLECTIONS.FRIENDS).doc(otherId).collection(COLLECTIONS.LIST).doc(fbUid).delete().catch(console.error);
+      db.collection(COLLECTIONS.FRIENDS).doc(fbUid).collection(COLLECTIONS.LIST).doc(d.id).delete().catch(console.error);
           });
           // Remove from conversations
-          var convSnap=await db.collection('conversations').where('memberIds','array-contains',fbUid).get().catch(function(){return{forEach:function(){}}});
+          var convSnap=await db.collection(COLLECTIONS.CONVERSATIONS).where('memberIds','array-contains',fbUid).get().catch(function(){return{forEach:function(){}}});
           convSnap.forEach(function(d){
             var mids=d.data().memberIds||[];
             var idx=mids.indexOf(fbUid);
-            if(idx>-1){mids.splice(idx,1);db.collection('conversations').doc(d.id).update({memberIds:mids}).catch(console.error)}
+            if(idx>-1){mids.splice(idx,1);db.collection(COLLECTIONS.CONVERSATIONS).doc(d.id).update({memberIds:mids}).catch(console.error)}
           });
-          await db.collection('users').doc(fbUid).delete().catch(console.error)
+          await db.collection(COLLECTIONS.USERS).doc(fbUid).delete().catch(console.error)
         }
         await auth.currentUser.delete()
       }catch(e){$('delete-password-field').style.display='none';showAlert('Doğrulama başarısız. Hesap silinemedi.');return}

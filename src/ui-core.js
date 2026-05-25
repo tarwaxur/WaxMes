@@ -37,7 +37,7 @@ function statusText(conv){
   return conv.online?'Çevrimiçi':'Çevrimdışı'
 }
 function cycleStatus(){var o=['online','idle','dnd'],i=o.indexOf(store.currentStatus);if(i===-1)i=0;setStatus(o[(i+1)%3])}
-function setStatus(s,skipSave){updateStatusUI(s);if(!skipSave)ls('status_'+store.activeAccountId,s);hideAvatarMenu();fbUpdateOnlineStatus(true,s);if(window.db&&fbUserId()){db.collection('users').doc(fbUserId()).update({status:s}).catch(console.error)}}
+function setStatus(s,skipSave){updateStatusUI(s);if(!skipSave)ls('status_'+store.activeAccountId,s);hideAvatarMenu();fbUpdateOnlineStatus(true,s);if(window.db&&fbUserId()){db.collection(COLLECTIONS.USERS).doc(fbUserId()).update({status:s}).catch(console.error)}}
 
 // ===== AVATAR DROPDOWN =====
 function toggleAvatarMenu(){
@@ -103,17 +103,17 @@ async function sendFriendRequest(){
   try {
     // Step 1: Search user
     resetTimer();
-    var snap=await db.collection('users').where('username','==',name).limit(1).get();
+    var snap=await db.collection(COLLECTIONS.USERS).where('username','==',name).limit(1).get();
     if(snap.empty){fail('Bu kullanıcı adıyla kayıtlı hesap bulunamadı.');return}
     var targetUser=snap.docs[0];
     if(targetUser.id===fbUid){fail('Kendine istek gönderemezsin.');return}
     // Step 2: Check already friends
     resetTimer();
-    var fs=await db.collection('friends').doc(fbUid).collection('list').where('id','==',targetUser.id).get();
+    var fs=await db.collection(COLLECTIONS.FRIENDS).doc(fbUid).collection(COLLECTIONS.LIST).where('id','==',targetUser.id).get();
     if(!fs.empty){fail('Bu kullanıcı zaten arkadaşlarında.');return}
     // Step 3: Check pending count + duplicate
     resetTimer();
-    var allSent=await db.collection('friendRequests').where('from','==',fbUid).get();
+    var allSent=await db.collection(COLLECTIONS.FRIEND_REQUESTS).where('from','==',fbUid).get();
     var pendingCount=0, alreadySent=false;
     allSent.forEach(function(doc){
       var d=doc.data();
@@ -126,7 +126,7 @@ async function sendFriendRequest(){
     var myAccs=getAccounts(),myAv=null;
     for(var ai=0;ai<myAccs.length;ai++){if(myAccs[ai].id===fbUid){myAv=myAccs[ai].avatar||null;break}}
     resetTimer();
-    await db.collection('friendRequests').doc(reqId).set({
+    await db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(reqId).set({
       from:fbUid,fromName:$('sidebar-username').textContent||'Sen',
       to:targetUser.id,toName:targetUser.data().displayName||name,
       fromAvatar:myAv,toAvatar:targetUser.data().avatar||null,status:'pending',createdAt:Date.now()
@@ -138,26 +138,26 @@ async function acceptFriendRequest(reqId){
   if(!window.db)return;
   var uid=fbUserId();if(!uid)return;
   try {
-    var doc=await db.collection('friendRequests').doc(reqId).get();
+    var doc=await db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(reqId).get();
     if(!doc.exists)return;
     var data=doc.data(),friendId=data.from===uid?data.to:data.from;
     var friendName=data.from===uid?data.toName:data.fromName;
     var friendAvatar=data.from===uid?data.toAvatar||null:data.fromAvatar||null;
     var myAccs=getAccounts(),myAv=null;
     for(var ai=0;ai<myAccs.length;ai++){if(myAccs[ai].id===uid){myAv=myAccs[ai].avatar||null;break}}
-    await db.collection('friendRequests').doc(reqId).update({status:'accepted'});
-    await db.collection('friends').doc(uid).collection('list').doc(friendId).set({id:friendId,name:friendName,avatar:friendAvatar,accepted:Date.now()});
-    await db.collection('friends').doc(friendId).collection('list').doc(uid).set({id:uid,name:$('sidebar-username').textContent||'Sen',avatar:myAv,accepted:Date.now()});
+      await db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(reqId).update({status:'accepted'});
+await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTIONS.LIST).doc(friendId).set({id:friendId,name:friendName,avatar:friendAvatar,accepted:Date.now()});
+      await db.collection(COLLECTIONS.FRIENDS).doc(friendId).collection(COLLECTIONS.LIST).doc(uid).set({id:uid,name:$('sidebar-username').textContent||'Sen',avatar:myAv,accepted:Date.now()});
     switchFriendsTab('friends')
   }catch(e){switchFriendsTab('friends')}
 }
 async function withdrawRequest(reqId){
   if(!window.db)return;
-  try{await db.collection('friendRequests').doc(reqId).delete();switchFriendsTab('pending')}catch(e){switchFriendsTab('pending')}
+  try{if(!window.db)return;await db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(reqId).delete();switchFriendsTab('pending')}catch(e){switchFriendsTab('pending')}
 }
 async function declineFriendRequest(reqId){
   if(!window.db)return;
-  try{await db.collection('friendRequests').doc(reqId).delete();switchFriendsTab('pending')}catch(e){switchFriendsTab('pending')}
+  try{if(!window.db)return;await db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(reqId).delete();switchFriendsTab('pending')}catch(e){switchFriendsTab('pending')}
 }
 function updatePendingBadge(count){
   if(count<0)count=0;
@@ -175,14 +175,14 @@ function startPendingListener(uid){
   if(store._pendingUnsub){store._pendingUnsub()}
   if(store._outgoingUnsub){store._outgoingUnsub()}
   if(!window.db)return;
-  store._pendingUnsub=db.collection('friendRequests').where('to','==',uid).onSnapshot(function(snap){
+  store._pendingUnsub=db.collection(COLLECTIONS.FRIEND_REQUESTS).where('to','==',uid).onSnapshot(function(snap){
     var count=0;
     snap.forEach(function(doc){if(doc.data().status==='pending')count++});
     updatePendingBadge(count)
   },function(err){
     if(err)console.error('pendingListener error:',err)
   });
-  store._outgoingUnsub=db.collection('friendRequests').where('from','==',uid).onSnapshot(function(snap){
+  store._outgoingUnsub=db.collection(COLLECTIONS.FRIEND_REQUESTS).where('from','==',uid).onSnapshot(function(snap){
     snap.docChanges().forEach(function(change){
       if(change.type==='modified'){
         var d=change.doc.data();
@@ -217,19 +217,19 @@ async function removeFriend(friendId,name){
   function done(){switchFriendsTab('friends')}
   if(friendId){
     try {
-      await db.collection('friends').doc(uid).collection('list').doc(friendId).delete();
-      db.collection('friends').doc(friendId).collection('list').doc(uid).delete().catch(console.error);
+      await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTIONS.LIST).doc(friendId).delete();
+      db.collection(COLLECTIONS.FRIENDS).doc(friendId).collection(COLLECTIONS.LIST).doc(uid).delete().catch(console.error);
       done()
     }catch(e){done()}
     return
   }
   try {
-    var snap=await db.collection('friends').doc(uid).collection('list').where('name','==',name).get();
+    var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTIONS.LIST).where('name','==',name).get();
     snap.forEach(async function(doc){
       var fid=doc.id;
       try {
         await doc.ref.delete();
-        db.collection('friends').doc(fid).collection('list').doc(uid).delete().catch(console.error);
+        db.collection(COLLECTIONS.FRIENDS).doc(fid).collection(COLLECTIONS.LIST).doc(uid).delete().catch(console.error);
         done()
       }catch(e){done()}
     })
@@ -247,7 +247,7 @@ async function refreshFriendsCache(){
   var uid=fbUserId();
   if(!window.db||!uid)return getCachedFriends();
   try {
-    var snap=await db.collection('friends').doc(uid).collection('list').get();
+    var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTIONS.LIST).get();
     var friends=snap.docs.map(function(d){return d.data()});
     setCachedFriends(friends);
     return friends
@@ -265,7 +265,7 @@ async function switchFriendsTab(tab){
   if(tab==='friends'){
     if(!window.db||!uid){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Henüz arkadaşın yok.</div>';return}
     try {
-      var snap=await db.collection('friends').doc(uid).collection('list').get();
+var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTIONS.LIST).get();
       if(store._currentFriendsTab!==tab)return;
       var friends=snap.docs.map(function(d){return d.data()});
       setCachedFriends(friends);
@@ -273,10 +273,10 @@ async function switchFriendsTab(tab){
       else{
         var html='<div style="font-size:11px;color:var(--text4);margin-bottom:8px">'+friends.length+' arkadaş</div>';
         friends.forEach(function(f){
-          var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+fAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\'var(--grad)\';this.parentElement.textContent=\''+esc(f.name.charAt(0).toUpperCase())+'\'">'}else{fAvHtml=esc(f.name.charAt(0).toUpperCase())}
-          html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .15s" onclick="startConvWith(\''+escJs(f.name)+'\',\''+escJs(f.id)+'\')" oncontextmenu="showFriendMenu(event,\''+escJs(f.name)+'\',\''+escJs(f.id)+'\')" onmouseover="this.style.background=\'var(--hover)\'" onmouseout="this.style.background=\'transparent\'"><div style="width:34px;height:34px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;overflow:hidden">'+fAvHtml+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text2)">'+esc(f.name)+'</div><div style="font-size:10px;color:var(--text4)">Çevrimiçi</div></div></div>'
+          var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+fAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(f.name.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{fAvHtml=esc(f.name.charAt(0).toUpperCase())}
+          html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .15s" data-action="start-conv" data-friend-name="'+escJs(f.name)+'" data-friend-id="'+escJs(f.id)+'" data-context="friend-menu"><div style="width:34px;height:34px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;overflow:hidden">'+fAvHtml+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text2)">'+esc(f.name)+'</div><div style="font-size:10px;color:var(--text4)">Çevrimiçi</div></div></div>'
         });
-        html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><button class="btn-primary" onclick="$(\'modal-friends\').classList.remove(\'active\');setTimeout(newGroup,300)" style="padding:8px 16px;font-size:11px;border-radius:8px;width:100%">Grup Oluştur</button></div>';
+        html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><button class="btn-primary" data-action="create-group" style="padding:8px 16px;font-size:11px;border-radius:8px;width:100%">Grup Oluştur</button></div>';
         content.innerHTML=html
       }
     }catch(e){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Henüz arkadaşın yok.</div>'}
@@ -285,8 +285,8 @@ async function switchFriendsTab(tab){
     if(!window.db||!uid){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>';return}
     try {
       var results=await Promise.all([
-        db.collection('friendRequests').where('to','==',uid).get(),
-        db.collection('friendRequests').where('from','==',uid).get()
+        db.collection(COLLECTIONS.FRIEND_REQUESTS).where('to','==',uid).get(),
+        db.collection(COLLECTIONS.FRIEND_REQUESTS).where('from','==',uid).get()
       ]);
       if(store._currentFriendsTab!==tab)return;
       var incoming=[]; results[0].forEach(function(d){if(d.data().status==='pending')incoming.push({id:d.id,data:d.data()})});
@@ -295,23 +295,23 @@ async function switchFriendsTab(tab){
       if(incoming.length>0){
         html+='<div style="font-size:11px;color:var(--text4);margin-bottom:6px">Gelen istekler</div>';
         incoming.forEach(function(r){
-          var rAv=r.data.fromAvatar;var rAvHtml;if(rAv&&rAv.indexOf('data:')===0){rAvHtml='<img src="'+rAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\'var(--grad)\';this.parentElement.textContent=\''+esc(r.data.fromName.charAt(0).toUpperCase())+'\'">'}else{rAvHtml=esc(r.data.fromName.charAt(0).toUpperCase())}
-          html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);margin-bottom:4px"><div style="width:34px;height:34px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;overflow:hidden">'+rAvHtml+'</div><div style="flex:1;font-size:12px;color:var(--text2)">'+esc(r.data.fromName)+'</div><button onclick="acceptFriendRequest(\''+escJs(r.id)+'\')" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(34,197,94,.15);color:#22c55e;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Kabul Et</button><button onclick="declineFriendRequest(\''+escJs(r.id)+'\')" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Reddet</button></div>'
+          var rAv=r.data.fromAvatar;var rAvHtml;if(rAv&&rAv.indexOf('data:')===0){rAvHtml='<img src="'+rAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(r.data.fromName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{rAvHtml=esc(r.data.fromName.charAt(0).toUpperCase())}
+          html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);margin-bottom:4px"><div style="width:34px;height:34px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;overflow:hidden">'+rAvHtml+'</div><div style="flex:1;font-size:12px;color:var(--text2)">'+esc(r.data.fromName)+'</div><button data-action="accept-friend" data-req-id="'+escJs(r.id)+'" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(34,197,94,.15);color:#22c55e;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Kabul Et</button><button data-action="decline-friend" data-req-id="'+escJs(r.id)+'" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Reddet</button></div>'
         })
       }
       if(sent.length>0){
         if(html)html+='<div style="margin-top:10px"></div>';
         html+='<div style="font-size:11px;color:var(--text4);margin-bottom:6px">Bekleyen isteklerin</div>';
         sent.forEach(function(r){
-          var sAv=r.data.toAvatar;var sAvHtml;if(sAv&&sAv.indexOf('data:')===0){sAvHtml='<img src="'+sAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\'var(--bg3)\';this.parentElement.textContent=\''+esc(r.data.toName.charAt(0).toUpperCase())+'\'">'}else{sAvHtml=esc(r.data.toName.charAt(0).toUpperCase())}
-          html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);margin-bottom:4px"><div style="width:34px;height:34px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text4);font-size:12px;overflow:hidden">'+sAvHtml+'</div><div style="flex:1;font-size:12px;color:var(--text2)">'+esc(r.data.toName)+'</div><button onclick="withdrawRequest(\''+escJs(r.id)+'\')" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-family:inherit;font-size:10px;font-weight:600">İsteği Geri Al</button></div>'
+          var sAv=r.data.toAvatar;var sAvHtml;if(sAv&&sAv.indexOf('data:')===0){sAvHtml='<img src="'+sAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--bg3)" data-err-text="'+esc(r.data.toName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{sAvHtml=esc(r.data.toName.charAt(0).toUpperCase())}
+          html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);margin-bottom:4px"><div style="width:34px;height:34px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text4);font-size:12px;overflow:hidden">'+sAvHtml+'</div><div style="flex:1;font-size:12px;color:var(--text2)">'+esc(r.data.toName)+'</div><button data-action="withdraw-request" data-req-id="'+escJs(r.id)+'" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-family:inherit;font-size:10px;font-weight:600">İsteği Geri Al</button></div>'
         })
       }
       if(!html)html='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>';
       content.innerHTML=html
     }catch(e){content.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4);font-size:12px">Bekleyen istek yok.</div>'}
   }else if(tab==='add'){
-    content.innerHTML='<div style="margin-bottom:14px"><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Kullanıcı Adıyla Ekle</label><input type="text" id="add-friend-input" placeholder="Örn: waxur" style="width:100%;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:10px;font-family:inherit;font-size:13px;color:var(--text2);outline:none;margin-bottom:8px" onkeydown="if(event.key===\'Enter\')sendFriendRequest()"><button class="btn-primary" onclick="sendFriendRequest()" style="padding:8px 16px;font-size:11px;border-radius:8px;width:100%">Arkadaşlık İsteği Gönder</button><div id="add-friend-result" style="margin-top:8px;font-size:11px;color:var(--text4)"></div></div>'
+    content.innerHTML='<div style="margin-bottom:14px"><label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Kullanıcı Adıyla Ekle</label><input type="text" id="add-friend-input" placeholder="Örn: waxur" style="width:100%;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:10px;font-family:inherit;font-size:13px;color:var(--text2);outline:none;margin-bottom:8px"><button class="btn-primary" data-action="send-friend-request" style="padding:8px 16px;font-size:11px;border-radius:8px;width:100%">Arkadaşlık İsteği Gönder</button><div id="add-friend-result" style="margin-top:8px;font-size:11px;color:var(--text4)"></div></div>'
   }
 }
 
@@ -396,11 +396,11 @@ function startConvWith(name,friendId){
   var color=colors[Math.floor(Math.random()*colors.length)];
   var memberIds=[uid,friendId];
   var newConv={id:convId,name:name,avatar:name.charAt(0).toUpperCase(),color:color,online:true,lastMsg:'',time:'',unread:0,isGroup:false,memberIds:memberIds};
-  (async function(){if(window.db&&friendId)try{var snap=await db.collection('users').doc(friendId).get();if(snap.exists&&snap.data().avatar){newConv.avatar=snap.data().avatar;renderConversations()}}catch(e){console.error(e)}})();
+  (async function(){if(window.db&&friendId)try{var snap=await db.collection(COLLECTIONS.USERS).doc(friendId).get();if(snap.exists&&snap.data().avatar){newConv.avatar=snap.data().avatar;renderConversations()}}catch(e){console.error(e)}})();
   store.unshift('conversations', newConv);
   saveConversations();
   // Create/update Firestore conversation with members (idempotent)
-  if(window.db&&uid)db.collection('conversations').doc(convId).set({type:'dm',memberIds:memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(console.error);
+  if(window.db&&uid)db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).set({type:'dm',memberIds:memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(console.error);
   renderConversations();
   $('modal-friends').classList.remove('active');
   selectConversation(convId)
@@ -413,7 +413,7 @@ async function pickGroupAvatar(){
       if(r&&r.thumb){
         store.groupAvatarDataUrl=r.thumb;
         var picker=$('group-avatar-picker');
-        if(picker){picker.innerHTML='<img src="'+r.thumb+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';store.groupAvatarDataUrl=null">';picker.style.border='none';picker.style.background='transparent'}
+        if(picker){picker.innerHTML='<img src="'+r.thumb+'" style="width:100%;height:100%;object-fit:cover" data-err-clear="groupAvatarDataUrl">';picker.style.border='none';picker.style.background='transparent'}
         // If editing an existing group, update immediately
         if(store.activeConvId){
           var conv=findConv(store.activeConvId);
@@ -425,7 +425,7 @@ async function pickGroupAvatar(){
             for(var gi=0;gi<gs.length;gi++){if(gs[gi].id==store.activeConvId){gs[gi].avatar=r.thumb;saveGroups(gs);break}}
             // Update UI
             var headerAvatar=$('chat-header-avatar');
-            if(headerAvatar&&store.activeConvId==conv.id)headerAvatar.innerHTML='<img src="'+r.thumb+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'">';
+            if(headerAvatar&&store.activeConvId==conv.id)headerAvatar.innerHTML='<img src="'+r.thumb+'" style="width:100%;height:100%;object-fit:cover" data-err-avatar="1">';
             addGroupLog(conv.id,'👑 Grup fotoğrafı değiştirildi');
             fbSyncMembers(conv.id);
             if(store.activeConvId)renderMessages(store.activeConvId);
@@ -501,7 +501,7 @@ function createGroup(){
   group.memberIds=getGroupMemberIds(group);
   store.groupAvatarDataUrl=null;store.unshift('conversations', group);saveGroup(group);saveMessages();
   addGroupLog(gid,'Grup "'+name+'" oluşturuldu');
-  if(window.db&&fbUserId())db.collection('conversations').doc(gid).set({type:'group',name:group.name,avatar:group.avatar||null,avatarLetter:group.avatarLetter||null,color:group.color||null,creatorId:group.creatorId,adminIds:group.adminIds,memberIds:group.memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(console.error)
+  if(window.db&&fbUserId())db.collection(COLLECTIONS.CONVERSATIONS).doc(gid).set({type:'group',name:group.name,avatar:group.avatar||null,avatarLetter:group.avatarLetter||null,color:group.color||null,creatorId:group.creatorId,adminIds:group.adminIds,memberIds:group.memberIds,createdAt:Date.now(),lastActivity:Date.now()},{merge:true}).catch(console.error)
   renderConversations();selectConversation(gid);hideGroupModal()}
 
 function renderGroupMembers(selectedIds){
@@ -512,7 +512,7 @@ function renderGroupMembers(selectedIds){
     addedIds[member.id]=true;
     var sel=selected.indexOf(member.id)>-1||(convId&&selected.indexOf(convId)>-1);
     var d=document.createElement('div');d.className='modal-member-item'+(sel?' selected':'');
-    var av=member.avatar,html;if(av&&av.indexOf('data:')===0){html='<img src="'+av+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+(member.color||color||'var(--grad)')+'\';this.parentElement.textContent=\'?\'">'}else{html='<span>'+esc(av||((member.name||'?').charAt(0).toUpperCase()))+'</span>'}
+    var av=member.avatar,html;if(av&&av.indexOf('data:')===0){html='<img src="'+av+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(member.color||color||'var(--grad)')+'" data-err-text="?" data-err-avatar="1">'}else{html='<span>'+esc(av||((member.name||'?').charAt(0).toUpperCase()))+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+(member.color||color||'var(--grad)')+'">'+html+'</div><div class="mm-name">'+esc(member.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
     d.onclick=function(){d.classList.toggle('selected');validateGroup()};
     d._memberId=member.id;d._convId=convId||null;d._memberData=member;ml.appendChild(d)
@@ -621,7 +621,7 @@ async function fbClearConversationMessages(convId){
   var conv=findConv(convId);
   if(conv)conv._clearedAt=ts;
   try {
-    var snap=await db.collection('conversations').doc(convId).collection('messages').get();
+    var snap=await db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).collection(COLLECTIONS.MESSAGES).get();
     var batch=db.batch();
     var count=0;
     snap.forEach(function(doc){
@@ -630,7 +630,7 @@ async function fbClearConversationMessages(convId){
       batch.delete(doc.ref);count++
     });
     if(count>0)batch.commit().catch(console.error);
-    db.collection('conversations').doc(convId).update({clearedAt:firebase.firestore.FieldValue.serverTimestamp(),lastMsg:'Sohbet temizlendi',lastActivity:Date.now()}).catch(console.error)
+    db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({clearedAt:firebase.firestore.FieldValue.serverTimestamp(),lastMsg:'Sohbet temizlendi',lastActivity:Date.now()}).catch(console.error)
   }catch(e){console.error(e)}
 }
 
@@ -678,6 +678,8 @@ function showContextMenu(x,y,items){
 // All session-specific state that MUST be reset on account switch
 function resetSessionState(){
   store._authTransitioning=true;
+  // Abort DOM event listeners
+  if(store._ac){store._ac.abort();store._ac=new AbortController()}
   // Firebase listeners
   for(var kl in store._fbListeners){store._fbListeners[kl]();delete store._fbListeners[kl]}
   store._fbListeners={};
@@ -770,12 +772,14 @@ function resetSessionState(){
   if(ce)ce.style.display='flex';
   if(ca)ca.style.display='none';
   var cl=$('conv-list');if(cl){cl.innerHTML='';cl.classList.remove('no-anim')}
+  // Re-init session-scoped listeners (new AbortController already created at top)
+  if(typeof initSessionListeners==='function')initSessionListeners()
 }
 
 function doLogout(){resetSessionState();store._authTransitioning=false;store._pendingLoginPassword=null;if(window.auth)auth.signOut();goToWelcome()}
 function leaveGroup(convId){
   var conv=findConv(convId);if(!conv||!conv.isGroup)return;
-  if(window.db&&fbUserId()&&firebase&&firebase.firestore)db.collection('conversations').doc(convId).update({memberIds:firebase.firestore.FieldValue.arrayRemove(fbUserId()),adminIds:firebase.firestore.FieldValue.arrayRemove(fbUserId())}).catch(console.error);
+  if(window.db&&fbUserId()&&firebase&&firebase.firestore)db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({memberIds:firebase.firestore.FieldValue.arrayRemove(fbUserId()),adminIds:firebase.firestore.FieldValue.arrayRemove(fbUserId())}).catch(console.error);
   // Remove from conversations
   for(var lgi=0;lgi<store.conversations.length;lgi++){if(store.conversations[lgi].id===convId){store.conversations.splice(lgi,1);break}}
   var gs=getGroups();
@@ -788,7 +792,7 @@ function leaveGroup(convId){
 function deleteGroup(convId){
   var conv=findConv(convId);if(!conv||!conv.isGroup)return;
   if(conv.creatorId!==store.activeAccountId&&conv.creatorId!==fbUserId()){leaveGroup(convId);return}
-  if(window.db&&fbUserId()&&conv.creatorId===fbUserId())db.collection('conversations').doc(convId).delete().catch(console.error);
+  if(window.db&&fbUserId()&&conv.creatorId===fbUserId())db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).delete().catch(console.error);
   // Remove from conversations
   for(var dgi=0;dgi<store.conversations.length;dgi++){if(store.conversations[dgi].id===convId){store.conversations.splice(dgi,1);break}}
   // Remove from saved groups

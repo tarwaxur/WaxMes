@@ -202,7 +202,7 @@ async function fbSendCallSignal(convId,data){
   data.from=fbUserId();
   data.timestamp=firebase.firestore.FieldValue.serverTimestamp();
   try {
-    var ref=await db.collection('conversations').doc(convId).collection('call_signals').add(data);
+    var ref=await db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).collection(COLLECTIONS.CALL_SIGNALS).add(data);
     return ref.id
   }catch(e){return null}
 }
@@ -211,7 +211,7 @@ function fbListenCallSignals(convId){
   if(store._callSignalUnsub){store._callSignalUnsub();store._callSignalUnsub=null}
   if(!window.db||!convId||!fbUserId())return;
   var uid=fbUserId();
-  store._callSignalUnsub=db.collection('conversations').doc(convId).collection('call_signals').orderBy('timestamp','asc').onSnapshot(function(snap){
+  store._callSignalUnsub=db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).collection(COLLECTIONS.CALL_SIGNALS).orderBy('timestamp','asc').onSnapshot(function(snap){
     snap.docChanges().forEach(function(change){
       if(change.type!=='added')return;
       var d=change.doc.data(),sid=change.doc.id;
@@ -297,7 +297,7 @@ async function acceptCall(){
   
   try {
     if(!window.db||!store.activeConvId||!store._callSigOfferId){endCall();return}
-    var odoc=await db.collection('conversations').doc(store.activeConvId).collection('call_signals').doc(store._callSigOfferId).get();
+    var odoc=await db.collection(COLLECTIONS.CONVERSATIONS).doc(store.activeConvId).collection(COLLECTIONS.CALL_SIGNALS).doc(store._callSigOfferId).get();
     if(!odoc.exists){endCall();return}
     var offer=(odoc.data()).sdp,fcallId=(odoc.data()).callId;
     if(!offer){endCall();return}

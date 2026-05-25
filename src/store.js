@@ -142,7 +142,8 @@ var store = (function(){
     contextMenuMsgId: null,
     contextMenuScrollPos: 0,
     contextMenuRelY: 0,
-    contextMenuRelX: 0
+    contextMenuRelX: 0,
+
   };
   var _listeners = {};
   var api = { _listeners: _listeners };
@@ -212,3 +213,5 @@ var store = (function(){
 
   return api;
 })();
+
+store._ac = new AbortController();

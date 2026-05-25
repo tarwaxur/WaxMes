@@ -111,7 +111,7 @@ function renderConversations(list){
       else avHtml+='G';
       avHtml+='<div class="group-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg></div>'
     }else{
-      if(c.avatar&&c.avatar.indexOf('data:')===0)avHtml+='<img src="'+c.avatar+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+c.color+'\';this.parentElement.textContent=\'?\'">';
+      if(c.avatar&&c.avatar.indexOf('data:')===0)avHtml+='<img src="'+c.avatar+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+c.color+'" data-err-text="?" data-err-avatar="1">';
       else avHtml+=esc(c.avatar||'?')
     }
     avHtml+='</div>';
@@ -137,7 +137,7 @@ function parseTime(t){
   return -9999
 }
 
-function selectConversation(id){hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();store._hasNewMsg=false;if(store.activeConvId&&store.activeConvId!==id)fbUnlistenMessages(store.activeConvId);fbUnlistenTyping();fbStopCallSignals();stopTyping();store.activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();renderConversations();$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.indexOf('data:')===0){ca.innerHTML='<img src="'+conv.avatar+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+(conv.color||'var(--grad)')+'\';this.parentElement.textContent=\''+(conv.isGroup?'G':'?')+'\'">';ca.style.background='transparent'}else{ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);store._forceScrollBottom=true;renderMessages(id);fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
+function selectConversation(id){hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();store._hasNewMsg=false;if(store.activeConvId&&store.activeConvId!==id)fbUnlistenMessages(store.activeConvId);fbUnlistenTyping();fbStopCallSignals();stopTyping();store.activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();renderConversations();$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.indexOf('data:')===0){ca.innerHTML='<img src="'+conv.avatar+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(conv.color||'var(--grad)')+'" data-err-text="'+(conv.isGroup?'G':'?')+'" data-err-avatar="1">';ca.style.background='transparent'}else{ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);store._forceScrollBottom=true;renderMessages(id);fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
 if(!conv.isGroup&&window.db&&fbUserId()){var otherId=null;for(var ti=0;ti<(conv.memberIds||[]).length;ti++){if(conv.memberIds[ti]!==fbUserId()){otherId=conv.memberIds[ti];break}}if(otherId)fbListenTyping(id,otherId)}
 fbListenCallSignals(id)}
 
@@ -153,7 +153,7 @@ async function getRecipientPubKey(convId){
     if(!recId)return null;
     if(store._pubKeyCache[recId])return store._pubKeyCache[recId];
     try{
-      var snap=await db.collection('users').doc(recId).get();
+      var snap=await db.collection(COLLECTIONS.USERS).doc(recId).get();
       if(snap.exists&&snap.data().publicKey){store._pubKeyCache[recId]=snap.data().publicKey;return {keys:[store._pubKeyCache[recId]],missing:[]}}
     }catch(e){}
     return {keys:[],missing:[recId]}
@@ -166,7 +166,7 @@ async function getRecipientPubKey(convId){
     if(memberIds[gmi]===curId)continue;
     if(store._pubKeyCache[memberIds[gmi]]){keys.push(store._pubKeyCache[memberIds[gmi]]);continue}
     try{
-      var snap=await db.collection('users').doc(memberIds[gmi]).get();
+      var snap=await db.collection(COLLECTIONS.USERS).doc(memberIds[gmi]).get();
       if(snap.exists&&snap.data().publicKey){store._pubKeyCache[memberIds[gmi]]=snap.data().publicKey;keys.push(snap.data().publicKey)}
       else{missing.push(memberIds[gmi])}
     }catch(e){missing.push(memberIds[gmi])}
@@ -203,7 +203,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
   // Add existing members
   for(var i=0;i<conv.members.length;i++){(function(m){
     var d=document.createElement('div');d.className='modal-member-item selected';
-    var eAv=m.avatar;var eAvHtml;if(eAv&&eAv.indexOf('data:')===0){eAvHtml='<img src="'+eAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+m.color+'\';this.parentElement.textContent=\'?\'">'}else{eAvHtml='<span>'+(eAv||'?')+'</span>'}
+    var eAv=m.avatar;var eAvHtml;if(eAv&&eAv.indexOf('data:')===0){eAvHtml='<img src="'+eAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+m.color+'" data-err-text="?" data-err-avatar="1">'}else{eAvHtml='<span>'+(eAv||'?')+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+m.color+'">'+eAvHtml+'</div><div class="mm-name">'+esc(m.name)+'</div><div class="mm-check mm-remove"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>';
     d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(!d.classList.contains('selected')){store.push('editGroupState.removedIds', ci)}else{var idx=store.editGroupState.removedIds.indexOf(ci);if(idx>-1)store.splice('editGroupState.removedIds', idx, 1)}validateGroup()};
     d._cid=m.id;ml.appendChild(d)
@@ -215,7 +215,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
     var member=makeGroupMemberFromConversation(c);if(!member||addedNames[member.id])return;
     addedNames[member.id]=true;
     var d=document.createElement('div');d.className='modal-member-item';
-    var cAv=c.avatar;var cAvHtml;if(cAv&&cAv.indexOf('data:')===0){cAvHtml='<img src="'+cAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+c.color+'\';this.parentElement.textContent=\'?\'">'}else{cAvHtml='<span>'+(cAv||'?')+'</span>'}
+    var cAv=c.avatar;var cAvHtml;if(cAv&&cAv.indexOf('data:')===0){cAvHtml='<img src="'+cAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+c.color+'" data-err-text="?" data-err-avatar="1">'}else{cAvHtml='<span>'+(cAv||'?')+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+c.color+'">'+cAvHtml+'</div><div class="mm-name">'+esc(c.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
     d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){store.push('editGroupState.addedIds', ci)}else{var idx=store.editGroupState.addedIds.indexOf(ci);if(idx>-1)store.splice('editGroupState.addedIds', idx, 1)}validateGroup()};
     d._cid=member.id;d._memberData=member;ml.appendChild(d)
@@ -227,7 +227,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
     addedNames[fm.id]=true;
     var fid=fm.id;
     var d=document.createElement('div');d.className='modal-member-item';
-    var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+fAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+eColors[efi%eColors.length]+'\';this.parentElement.textContent=\'?\'">'}else{fAvHtml='<span>'+esc(f.name.charAt(0).toUpperCase())+'</span>'}
+    var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+fAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+eColors[efi%eColors.length]+'" data-err-text="?" data-err-avatar="1">'}else{fAvHtml='<span>'+esc(f.name.charAt(0).toUpperCase())+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+eColors[efi%eColors.length]+'">'+fAvHtml+'</div><div class="mm-name">'+esc(f.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
     d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){store.push('editGroupState.addedIds', ci)}else{var idx=store.editGroupState.addedIds.indexOf(ci);if(idx>-1)store.splice('editGroupState.addedIds', idx, 1)}validateGroup()};
     d._cid=fid;d._memberData=fm;ml.appendChild(d)
@@ -387,12 +387,19 @@ function renderImageViewer(){
   var overlay=document.createElement('div');
   overlay.id='image-viewer';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column';
-  overlay.onclick=function(e){if(e.target===overlay)closeImageViewer()};
+  overlay.addEventListener('click',function(e){
+    if(e.target===overlay){closeImageViewer();return}
+    var btn=e.target.closest('[data-action]');if(!btn)return;
+    if(btn.dataset.action==='prev-image'){e.stopPropagation();store.imageViewerIdx=Math.max(0,store.imageViewerIdx-1);document.body.removeChild(overlay);renderImageViewer()}
+    else if(btn.dataset.action==='next-image'){e.stopPropagation();store.imageViewerIdx=Math.min(store.imageViewerMsgs.length-1,store.imageViewerIdx+1);document.body.removeChild(overlay);renderImageViewer()}
+    else if(btn.dataset.action==='save-image'){e.stopPropagation();saveImage(store.imageViewerMsgs[store.imageViewerIdx])}
+    else if(btn.dataset.action==='copy-image'){e.stopPropagation();copyImage(store.imageViewerMsgs[store.imageViewerIdx])}
+  });
   overlay.innerHTML='<div style="position:relative;display:flex;align-items:center;gap:12px">'+
-    (store.imageViewerMsgs.length>1?'<button onclick="event.stopPropagation();store.imageViewerIdx=Math.max(0,store.imageViewerIdx-1);document.body.removeChild(document.getElementById(\'image-viewer\'));renderImageViewer()" style="width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px" onmouseover="this.style.background=\'rgba(255,255,255,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.1)\'">‹</button>':'')+
+    (store.imageViewerMsgs.length>1?'<button data-action="prev-image" style="width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px">‹</button>':'')+
     '<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><img src="'+store.imageViewerMsgs[store.imageViewerIdx]+'" style="max-width:85vw;max-height:75vh;border-radius:12px;object-fit:contain;cursor:default">'+
-    '<div style="display:flex;gap:6px"><button onclick="event.stopPropagation();saveImage(store.imageViewerMsgs[store.imageViewerIdx])" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:11px">💾 Kaydet</button><button onclick="event.stopPropagation();copyImage(store.imageViewerMsgs[store.imageViewerIdx])" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:11px">📋 Kopyala</button></div></div>'+
-    (store.imageViewerMsgs.length>1?'<button onclick="event.stopPropagation();store.imageViewerIdx=Math.min(store.imageViewerMsgs.length-1,store.imageViewerIdx+1);document.body.removeChild(document.getElementById(\'image-viewer\'));renderImageViewer()" style="width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px" onmouseover="this.style.background=\'rgba(255,255,255,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.1)\'">›</button>':'')+
+    '<div style="display:flex;gap:6px"><button data-action="save-image" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:11px">💾 Kaydet</button><button data-action="copy-image" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:11px">📋 Kopyala</button></div></div>'+
+    (store.imageViewerMsgs.length>1?'<button data-action="next-image" style="width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px">›</button>':'')+
   '</div>'+
   (store.imageViewerMsgs.length>1?'<div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.4)">'+(store.imageViewerIdx+1)+' / '+store.imageViewerMsgs.length+'</div>':'');
   document.body.appendChild(overlay)
@@ -496,7 +503,7 @@ function showProfilePanel(){if(!store.activeConvId)return;
   var conv=findConv(store.activeConvId);if(!conv)return;
   var body=$('profile-panel-body');store.profilePanelOpen=true;
   var avatarHtml='<div class="pp-avatar" style="background:'+conv.color+'">';
-  if(conv.avatar&&conv.avatar.indexOf('data:')===0)avatarHtml+='<img src="'+conv.avatar+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+conv.color+'\';this.parentElement.textContent=\''+(conv.isGroup?'G':'?')+'\'">';
+  if(conv.avatar&&conv.avatar.indexOf('data:')===0)avatarHtml+='<img src="'+conv.avatar+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+conv.color+'" data-err-text="'+(conv.isGroup?'G':'?')+'" data-err-avatar="1">';
   else avatarHtml+='<span>'+(conv.isGroup?'G':(conv.avatar||'?'))+'</span>';
   avatarHtml+='</div>';
   body.innerHTML=avatarHtml+'<div class="pp-name">'+esc(conv.name)+'</div>';
@@ -508,14 +515,14 @@ function showProfilePanel(){if(!store.activeConvId)return;
     var isCreator=conv.creatorId===store.activeAccountId;
     var isAdmin=conv.adminIds&&conv.adminIds.indexOf(store.activeAccountId)!==-1;
     body.innerHTML+='<div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap">'+
-      (isAdmin?'<button class="btn-primary" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer" onclick="editGroup(\''+conv.id+'\')"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Grubu Düzenle</button>':'')+
-      (isCreator?'<button class="btn-primary" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer" onclick="pickGroupAvatar()"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> Fotoğraf</button>':'')+
-      (isCreator?'<button class="btn-danger" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer" onclick="showDeleteGroupConfirm(\''+conv.id+'\')"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Grubu Sil</button>':'')+
+      (isAdmin?'<button class="btn-primary" data-action="edit-group" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Grubu Düzenle</button>':'')+
+      (isCreator?'<button class="btn-primary" data-action="pick-group-avatar" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> Fotoğraf</button>':'')+
+      (isCreator?'<button class="btn-danger" data-action="delete-group" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Grubu Sil</button>':'')+
     '</div>';
     body.innerHTML+='<div class="pp-bio" style="text-align:left;font-size:11px">'+memberCount(conv)+' üye</div>';
     for(var mi=0;mi<conv.members.length;mi++){(function(m){
-      var mAv=m.avatar;var mAvHtml;if(mAv&&mAv.indexOf('data:')===0){mAvHtml='<img src="'+mAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+m.color+'\';this.parentElement.textContent=\'?\'">'}else{mAvHtml='<span>'+(mAv||'?')+'</span>'}
-      body.innerHTML+='<div class="pp-row member-row" style="gap:10px;cursor:pointer" onclick="showMemberProfile(\''+m.id+'\',\''+conv.id+'\')" oncontextmenu="showMemberMenu(event,\''+m.id+'\',\''+conv.id+'\')"><div style="width:36px;height:36px;border-radius:50%;background:'+m.color+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden">'+mAvHtml+'</div><div style="flex:1;min-width:0;text-align:left"><div style="font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(conv.adminIds&&conv.adminIds.indexOf(m.id)!==-1?'👑 ':'')+esc(m.name)+'</div><div style="font-size:10px;color:var(--text4)">'+(conv.adminIds&&conv.adminIds.indexOf(m.id)!==-1?'Yönetici':(conv.creatorId===m.id?'Kurucu':'Üye'))+'</div></div></div>'
+      var mAv=m.avatar;var mAvHtml;if(mAv&&mAv.indexOf('data:')===0){mAvHtml='<img src="'+mAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+m.color+'" data-err-text="?" data-err-avatar="1">'}else{mAvHtml='<span>'+(mAv||'?')+'</span>'}
+      body.innerHTML+='<div class="pp-row member-row" style="gap:10px;cursor:pointer" data-action="member-profile" data-context="member-menu" data-member-id="'+m.id+'" data-conv-id="'+conv.id+'"><div style="width:36px;height:36px;border-radius:50%;background:'+m.color+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden">'+mAvHtml+'</div><div style="flex:1;min-width:0;text-align:left"><div style="font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(conv.adminIds&&conv.adminIds.indexOf(m.id)!==-1?'👑 ':'')+esc(m.name)+'</div><div style="font-size:10px;color:var(--text4)">'+(conv.adminIds&&conv.adminIds.indexOf(m.id)!==-1?'Yönetici':(conv.creatorId===m.id?'Kurucu':'Üye'))+'</div></div></div>'
     })(conv.members[mi])}
   }
   $('profile-panel').classList.add('open')
@@ -528,12 +535,12 @@ function showMemberProfile(memberId,convId){
     if(store.conversations[ci].id==memberId){
       var member=store.conversations[ci];
       var body=$('profile-panel-body');body.dataset.backConv=convId;
-      var mAv=member.avatar;var mAvHtml;if(mAv&&mAv.indexOf('data:')===0){mAvHtml='<img src="'+mAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+member.color+'\';this.parentElement.textContent=\'?\'">'}else{mAvHtml='<span>'+(mAv||'?')+'</span>'}
+      var mAv=member.avatar;var mAvHtml;if(mAv&&mAv.indexOf('data:')===0){mAvHtml='<img src="'+mAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+member.color+'" data-err-text="?" data-err-avatar="1">'}else{mAvHtml='<span>'+(mAv||'?')+'</span>'}
       body.innerHTML='<div class="pp-avatar" style="background:'+member.color+'">'+mAvHtml+'</div><div class="pp-name">'+esc(member.name)+'</div>'+
         '<div class="pp-uname">@'+esc((member.name||'').toLowerCase().replace(/\s/g,''))+'</div>'+
         (member.bio?'<div class="pp-bio">'+esc(member.bio)+'</div>':'')+
         '<div class="pp-row"><div><div class="pp-row-label">Durum</div><div class="pp-row-val" style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="sd-dot '+(member.online?'sd-online':'')+'" style="display:inline-block;flex-shrink:0"></span>'+(member.online?'Çevrimiçi':'Çevrimdışı')+'</div></div></div>'+
-        '<div style="margin-top:16px"><button class="btn-back" style="padding:8px 20px;font-size:11px;border-radius:8px;display:inline-flex;align-items:center;gap:6px" onclick="showMemberProfile(null,\''+convId+'\')"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Geri</button></div>';
+        '<div style="margin-top:16px"><button class="btn-back" data-action="back-profile" style="padding:8px 20px;font-size:11px;border-radius:8px;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Geri</button></div>';
       return
     }
   }
@@ -721,20 +728,20 @@ function startTyping(){
   if(!store.activeConvId||!window.db||!fbUserId())return;
   var h=$('chat-header-status');
   if(!h)return;
-  db.collection('conversations').doc(store.activeConvId).update({typing:fbUserId(),typingAt:Date.now()}).catch(console.error);
+  db.collection(COLLECTIONS.CONVERSATIONS).doc(store.activeConvId).update({typing:fbUserId(),typingAt:Date.now()}).catch(console.error);
   if(store.typingTimer)clearTimeout(store.typingTimer);
   store.typingTimer=setTimeout(stopTyping,2500)
 }
 function stopTyping(){
   if(!store.activeConvId||!window.db||!fbUserId())return;
-  db.collection('conversations').doc(store.activeConvId).update({typing:firebase.firestore.FieldValue.delete(),typingAt:firebase.firestore.FieldValue.delete()}).catch(console.error);
+  db.collection(COLLECTIONS.CONVERSATIONS).doc(store.activeConvId).update({typing:firebase.firestore.FieldValue.delete(),typingAt:firebase.firestore.FieldValue.delete()}).catch(console.error);
   if(store.typingTimer){clearTimeout(store.typingTimer);store.typingTimer=null}
 }
 function fbListenTyping(convId,otherUserId){
   if(store._typingRemoteUnsub){store._typingRemoteUnsub()}
   if(!window.db||!convId||!otherUserId)return;
   store._typingLocalUid=otherUserId;
-  store._typingRemoteUnsub=db.collection('conversations').doc(convId).onSnapshot(function(doc){
+  store._typingRemoteUnsub=db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).onSnapshot(function(doc){
     if(!doc.exists)return;
     var d=doc.data();
     var h=$('chat-header-status');
@@ -811,7 +818,7 @@ function showPinnedMessages(event){
       if(m.image)mediaHtml='<img src="'+m.image+'" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0">';
       else if(m.video)mediaHtml='<div style="width:36px;height:36px;border-radius:6px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">🎬</div>';
       else if(m.audio)mediaHtml='<div style="width:36px;height:36px;border-radius:6px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">🎤</div>';
-      d.innerHTML=mediaHtml+'<span style="flex:1;font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+content+'</span><span style="font-size:10px;color:var(--text4)">'+esc(m.time)+'</span><button onclick="event.stopPropagation();togglePinMessage(\''+m.id+'\');showPinnedMessages()" style="padding:3px 8px;border:none;border-radius:5px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-size:10px;flex-shrink:0">Kaldır</button>';
+      d.innerHTML=mediaHtml+'<span style="flex:1;font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+content+'</span><span style="font-size:10px;color:var(--text4)">'+esc(m.time)+'</span><button data-action="unpin-msg" data-msg-id="'+m.id+'" style="padding:3px 8px;border:none;border-radius:5px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-size:10px;flex-shrink:0">Kaldır</button>';
       d.onclick=function(){
         $('modal-pinned').classList.remove('active');
         selectConversation(store.activeConvId);
@@ -983,7 +990,7 @@ function editMessage(msgId){
   var el=$('msg-'+msgId);if(!el)return;
   var oldT=msg._decrypted||msg.text||'';
   if(oldT.indexOf('🔒')===0)oldT='';
-  el.innerHTML='<textarea class="edit-input" id="ei-'+msgId+'" rows="3" style="resize:none">'+esc(oldT)+'</textarea><div class="edit-actions"><button class="edit-save" onclick="saveEdit(\''+msgId+'\')">Kaydet</button><button class="edit-cancel" onclick="cancelEdit(\''+msgId+'\')">İptal</button></div>';
+  el.innerHTML='<textarea class="edit-input" id="ei-'+msgId+'" rows="3" style="resize:none">'+esc(oldT)+'</textarea><div class="edit-actions"><button class="edit-save" data-action="save-edit" data-msg-id="'+msgId+'">Kaydet</button><button class="edit-cancel" data-action="cancel-edit" data-msg-id="'+msgId+'">İptal</button></div>';
   var inp=document.getElementById('ei-'+msgId);
   if(inp){inp.focus();inp.onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveEdit(msgId)}else if(e.key==='Escape')cancelEdit(msgId)}}
 }
@@ -1270,9 +1277,9 @@ renderMessages=function(convId){
       }
       else{var txt='<div class="msg-text">';
         if(isGroupChat&&m.sender&&m.type==='received'){if(conv&&conv.members){for(var mi=0;mi<conv.members.length;mi++){if(conv.members[mi].name===m.sender){txt+='<span class="msg-sender"><span class="msg-sender-avatar" style="background:'+conv.members[mi].color+'">'+conv.members[mi].avatar+'</span>'+esc(m.sender)+'</span>';break}}}}
-        if(m.image)txt+='<img class="msg-image" src="'+escJs(m.image)+'" alt="" onclick="showImage(\''+escJs(m.image)+'\')">';
-        if(m.video)txt+='<video class="msg-image" src="'+escJs(m.video)+'" controls style="max-width:280px;border-radius:12px;display:block;cursor:pointer" onclick="event.stopPropagation();showVideoPreview(\''+escJs(m.video)+'\')"></video>';
-        if(m.audio){var mins=Math.floor((m.duration||0)/60),secs=(m.duration||0)%60;txt+='<div class="msg-audio"><button class="ma-play" onclick="playAudio(\''+m.id+'\')"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button><div class="ma-body"><div class="ma-seek" onclick="seekAudio(event,\''+m.id+'\')"><div class="ma-progress"></div></div></div><span class="ma-dur">'+mins+':'+(secs<10?'0':'')+secs+'</span></div>'}
+        if(m.image)txt+='<img class="msg-image" src="'+escJs(m.image)+'" alt="" data-action="show-image" data-url="'+escJs(m.image)+'">';
+        if(m.video)txt+='<video class="msg-image" src="'+escJs(m.video)+'" controls style="max-width:280px;border-radius:12px;display:block;cursor:pointer" data-action="show-video" data-url="'+escJs(m.video)+'"></video>';
+        if(m.audio){var mins=Math.floor((m.duration||0)/60),secs=(m.duration||0)%60;txt+='<div class="msg-audio"><button class="ma-play" data-action="play-audio" data-msg-id="'+m.id+'"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button><div class="ma-body"><div class="ma-seek" data-action="seek-audio" data-msg-id="'+m.id+'"><div class="ma-progress"></div></div></div><span class="ma-dur">'+mins+':'+(secs<10?'0':'')+secs+'</span></div>'}
         if(m.isForwarded)txt+='<div style="font-size:9px;opacity:.4;margin-bottom:2px;font-style:italic">📤 İletildi</div>';
         if(m.forwardComment)txt+='<div style="font-size:11px;opacity:.7;margin-bottom:2px">💬 '+esc(m.forwardComment)+'</div>';
         if(m.replyTo&&m.replyText){
@@ -1291,15 +1298,15 @@ renderMessages=function(convId){
       if(n===1){
         var m=imgs[0];
         var div=document.createElement('div');div.className='msg sent';div.id='msg-'+m.id;
-        div.innerHTML='<div class="msg-text"><img class="msg-image" src="'+m.image+'" alt="" onclick="showImage(\''+m.image+'\')"></div><div class="msg-time" style="padding-top:2px">'+esc(m.time)+'</div>';
+        div.innerHTML='<div class="msg-text"><img class="msg-image" src="'+m.image+'" alt="" data-action="show-image" data-url="'+m.image+'"></div><div class="msg-time" style="padding-top:2px">'+esc(m.time)+'</div>';
         addMsgActions(div,m);el.appendChild(div)
       }else{
         var div=document.createElement('div');div.className='msg sent';div.id=g.id;
         var first=imgs[0];
         var extra=n-1;
         div.innerHTML='<div style="position:relative;display:inline-block;max-width:280px">'+
-          '<img class="msg-image" src="'+first.image+'" alt="" onclick="showImage(\''+first.image+'\')" style="max-width:280px;width:100%;border-radius:12px;display:block;cursor:pointer">'+
-          (extra>0?'<div onclick="showImage(\''+first.image+'\')" style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.65);color:#fff;padding:3px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+'+extra+'</div>':'')+
+          '<img class="msg-image" src="'+first.image+'" alt="" data-action="show-image" data-url="'+first.image+'" style="max-width:280px;width:100%;border-radius:12px;display:block;cursor:pointer">'+
+          (extra>0?'<div data-action="show-image" data-url="'+first.image+'" style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.65);color:#fff;padding:3px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">+'+extra+'</div>':'')+
         (g.isForwarded?'<div style="font-size:9px;opacity:.4;margin-top:4px;font-style:italic">📤 İletildi</div>':'')+
         (g.forwardComment?'<div style="font-size:11px;opacity:.7;margin:2px 0">💬 '+esc(g.forwardComment)+'</div>':'')+
         '</div><div class="msg-time" style="padding-top:2px;text-align:right">'+esc(g.time)+(g.time!==g.time2?' · '+esc(g.time2):'')+'</div>';
@@ -1368,3 +1375,41 @@ function updateNewMsgIndicator(el){
 
 var _chatMsgsEl=$('chat-messages');
 if(_chatMsgsEl)_chatMsgsEl.addEventListener('scroll',function(){updateNewMsgIndicator(this)});
+// Delegation: chat-messages (images, videos, audio, edit, pinned nav)
+if(_chatMsgsEl){
+  _chatMsgsEl.addEventListener('click',function(e){
+    var t=e.target.closest('[data-action]');if(!t)return;
+    var a=t.dataset.action,url=t.dataset.url,mid=t.dataset.msgId;
+    if(a==='show-image'&&url){e.stopPropagation();showImage(url)}
+    else if(a==='show-video'&&url){e.stopPropagation();showVideoPreview(url)}
+    else if(a==='play-audio'&&mid){playAudio(mid)}
+    else if(a==='seek-audio'&&mid){seekAudio(e,mid)}
+    else if(a==='save-edit'&&mid){saveEdit(mid)}
+    else if(a==='cancel-edit'&&mid){cancelEdit(mid)}
+  })
+}
+// Delegation: profile-panel-body
+var _ppb=$('profile-panel-body');
+if(_ppb){
+  _ppb.addEventListener('click',function(e){
+    var t=e.target.closest('[data-action]');if(!t)return;
+    var a=t.dataset.action,convId=t.dataset.convId,mid=t.dataset.memberId;
+    if(a==='edit-group'&&convId){editGroup(convId)}
+    else if(a==='pick-group-avatar'){pickGroupAvatar()}
+    else if(a==='delete-group'&&convId){showDeleteGroupConfirm(convId)}
+    else if(a==='member-profile'&&mid&&convId){showMemberProfile(mid,convId)}
+    else if(a==='back-profile'){showMemberProfile(null,this.dataset.backConv)}
+  });
+  _ppb.addEventListener('contextmenu',function(e){
+    var t=e.target.closest('[data-context="member-menu"]');if(!t)return;
+    e.preventDefault();showMemberMenu(e,t.dataset.memberId,t.dataset.convId)
+  })
+}
+// Delegation: modal-pinned (unpin button)
+var _mp=$('modal-pinned');
+if(_mp){
+  _mp.addEventListener('click',function(e){
+    var t=e.target.closest('[data-action="unpin-msg"]');if(!t)return;
+    e.stopPropagation();togglePinMessage(t.dataset.msgId);showPinnedMessages()
+  })
+}

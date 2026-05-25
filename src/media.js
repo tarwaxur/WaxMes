@@ -105,7 +105,7 @@ async function pickSettingsAvatar(){
             a[i].avatar=r.thumb;ls('accounts',a);
             syncSidebarProfile(a[i],store.currentStatus);
             showSettingsCat('profile');
-            var fbUid=fbUserId();if(window.db&&fbUid)db.collection('users').doc(fbUid).update({avatar:r.thumb});
+            var fbUid=fbUserId();if(window.db&&fbUid)db.collection(COLLECTIONS.USERS).doc(fbUid).update({avatar:r.thumb});
             break
           }
         }
@@ -120,7 +120,7 @@ function saveProfileSettings(){
     if(accs[i].id===store.activeAccountId){
       accs[i].displayName=d;accs[i].username=u;accs[i].bio=b;
       var av=accs[i].avatar||null;ls('accounts',accs);
-      var fbUid=fbUserId();if(window.db&&fbUid)db.collection('users').doc(fbUid).update({displayName:d,username:u,bio:b,avatar:av});
+      var fbUid=fbUserId();if(window.db&&fbUid)db.collection(COLLECTIONS.USERS).doc(fbUid).update({displayName:d,username:u,bio:b,avatar:av});
       syncSidebarProfile(accs[i],store.currentStatus);
       showSettingsCat('profile');
       break

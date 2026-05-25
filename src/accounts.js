@@ -147,7 +147,7 @@ function syncSidebarProfile(acc,status){
   if(avEl){
     if(acc.avatar){
       avEl.style.background='transparent';
-      avEl.innerHTML='<img src="'+esc(acc.avatar)+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.background=\'linear-gradient(135deg,#2563eb,#6d28d9)\';this.parentElement.textContent=\''+escJs(initial)+'\'">';
+      avEl.innerHTML='<img src="'+esc(acc.avatar)+'" alt="" data-err-bg="linear-gradient(135deg,#2563eb,#6d28d9)" data-err-text="'+escJs(initial)+'" data-err-avatar="1">';
     }else{
       avEl.style.background='linear-gradient(135deg,#2563eb,#6d28d9)';
       avEl.textContent=initial
@@ -191,7 +191,7 @@ function renderSavedAccounts(){
   for(var i=0;i<a.length;i++){(function(acc){
     var d=document.createElement('div');d.className='saved-account';
     var display=accountFallbackName(acc),initial=display.charAt(0).toUpperCase();
-    d.innerHTML='<div class="sa-avatar"'+(acc.avatar?' style="background:none"':'')+'>'+(acc.avatar?'<img src="'+esc(acc.avatar)+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.background=\'linear-gradient(135deg,#2563eb,#6d28d9)\';this.parentElement.textContent=\''+escJs(initial)+'\'">':esc(initial))+'</div><div class="sa-info"><div class="sa-name">'+esc(display)+'</div><div class="sa-email" title="'+esc(acc.email||'')+'">'+esc(acc.email||'')+'</div></div><button class="sa-remove" onclick="event.stopPropagation();removeAccount(\''+escJs(acc.id)+'\')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+    d.innerHTML='<div class="sa-avatar"'+(acc.avatar?' style="background:none"':'')+'>'+(acc.avatar?'<img src="'+esc(acc.avatar)+'" alt="" data-err-bg="linear-gradient(135deg,#2563eb,#6d28d9)" data-err-text="'+escJs(initial)+'" data-err-avatar="1">':esc(initial))+'</div><div class="sa-info"><div class="sa-name">'+esc(display)+'</div><div class="sa-email" title="'+esc(acc.email||'')+'">'+esc(acc.email||'')+'</div></div><button class="sa-remove" data-action="remove-account" data-acc-id="'+escJs(acc.id)+'"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
     d.onclick=function(){autoLogin(acc)};
     el.appendChild(d)
   })(a[i])}
@@ -258,7 +258,7 @@ async function regNext(){
     if(btn)btn.disabled=true;
     var timedOut=false,timer=setTimeout(function(){timedOut=true;dbTimeout('Kullanıcı adı')},15000);
     try {
-      var snap=await db.collection('users').where('username','==',u).get();
+      var snap=await db.collection(COLLECTIONS.USERS).where('username','==',u).get();
       clearTimeout(timer);if(timedOut)return;
       if(!snap.empty){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Bu kullanıcı adı zaten alınmış';showAlert('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');if(btn)btn.disabled=false;return}
       advance()
@@ -302,9 +302,9 @@ async function completeRegistration(){
       finishReg(msg)
     }
     try {
-      var snap=await db.collection('users').where('username','==',u).limit(1).get();
+      var snap=await db.collection(COLLECTIONS.USERS).where('username','==',u).limit(1).get();
       if(!snap.empty){cancelCreatedAccount('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');return}
-      await db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()});
+      await db.collection(COLLECTIONS.USERS).doc(uid).set({username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()});
       store._explicitLogin=false;
       finishReg();
       showApp({id:uid,username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,status:'online',bio:'',password:p})
@@ -322,4 +322,4 @@ async function completeRegistration(){
     finishReg(msg)
   }
 }
-async function pickAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){store.avatarDataUrl=r.thumb;var p=$('avatar-picker');p.innerHTML='<img src="'+r.thumb+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.border=\'1px dashed rgba(129,140,248,.2)\';store.avatarDataUrl=null">';p.style.border='none'}}}catch(e){}}
+async function pickAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){store.avatarDataUrl=r.thumb;var p=$('avatar-picker');p.innerHTML='<img src="'+r.thumb+'" alt="" data-err-border="1px dashed rgba(129,140,248,.2)" data-err-clear="avatarDataUrl">';p.style.border='none'}}}catch(e){}}
