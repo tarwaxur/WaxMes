@@ -29,12 +29,12 @@ function timeNow(){
 }
 
 function findConv(id){
-  for(var i=0;i<conversations.length;i++){
-    if(conversations[i].id===id)return conversations[i]
+  for(var i=0;i<store.conversations.length;i++){
+    if(store.conversations[i].id===id)return store.conversations[i]
   }
   return null
 }
 
 function fbUserId(){
-  return window.auth&&auth.currentUser?auth.currentUser.uid:(activeAccountId||null)
+  return window.auth&&auth.currentUser?auth.currentUser.uid:(store.activeAccountId||null)
 }

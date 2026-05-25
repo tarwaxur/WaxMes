@@ -6,10 +6,10 @@ var defaultShortcutsMap={
   statusCycle:{key:'',ctrl:false,alt:false},voiceCall:{key:'',ctrl:false,alt:false},
   editLast:{key:'ArrowUp',ctrl:false,alt:false}
 };
-function cancelRecord(){recordingShortcut=null;_recKeys=null;renderSettingsShortcuts()}
+function cancelRecord(){store.recordingShortcut=null;store._recKeys=null;renderSettingsShortcuts()}
 function finishRecord(id){
-  recordingShortcut=null;
-  var keys=_recKeys;_recKeys=null;
+  store.recordingShortcut=null;
+  var keys=store._recKeys;store._recKeys=null;
   var btn=$('sc-'+id);if(!btn)return;
   if(!keys||(!keys.key&&!keys.ctrl&&!keys.alt)){renderSettingsShortcuts();return}
   var saved=ls('shortcuts')||{};
@@ -25,11 +25,11 @@ function getShortcutDisplay(keys){
   return d||'—'
 }
 function recordShortcut(id){
-  if(recordingShortcut)return;
+  if(store.recordingShortcut)return;
   // Clean up any leftover confirm buttons from previous incomplete sessions
   document.querySelectorAll('[id^="sc-save-"],[id^="sc-cancel-"]').forEach(function(el){el.remove()});
-  _recKeys={key:'',ctrl:false,alt:false,shift:false,meta:false};
-  recordingShortcut=id;
+  store._recKeys={key:'',ctrl:false,alt:false,shift:false,meta:false};
+  store.recordingShortcut=id;
   var btn=$('sc-'+id);if(!btn)return;
   btn.textContent='…';btn.style.background='rgba(129,140,248,.2)';btn.style.color='var(--accent)';
   var parent=btn.parentElement;
@@ -45,22 +45,22 @@ function recordShortcut(id){
   parent.appendChild(cancelBtn)
 }
 document.addEventListener('keydown',function(e){
-  if(!recordingShortcut)return;
+  if(!store.recordingShortcut)return;
   e.preventDefault();
   var key=e.key;
   if(key==='Escape'){cancelRecord();return}
-  if(key==='Enter'){finishRecord(recordingShortcut);return}
-  _recKeys.ctrl=e.ctrlKey;_recKeys.alt=e.altKey;_recKeys.shift=e.shiftKey;_recKeys.meta=e.metaKey;
-  if(key!=='Control'&&key!=='Alt'&&key!=='Shift'&&key!=='Meta')_recKeys.key=key;
-  var btn=$('sc-'+recordingShortcut);if(btn)btn.textContent=getShortcutDisplay(_recKeys)
+  if(key==='Enter'){finishRecord(store.recordingShortcut);return}
+  store._recKeys.ctrl=e.ctrlKey;store._recKeys.alt=e.altKey;store._recKeys.shift=e.shiftKey;store._recKeys.meta=e.metaKey;
+  if(key!=='Control'&&key!=='Alt'&&key!=='Shift'&&key!=='Meta')store._recKeys.key=key;
+  var btn=$('sc-'+store.recordingShortcut);if(btn)btn.textContent=getShortcutDisplay(store._recKeys)
 });
 document.addEventListener('keyup',function(e){
-  if(!recordingShortcut)return;
+  if(!store.recordingShortcut)return;
   e.preventDefault();
-  var btn=$('sc-'+recordingShortcut);if(btn)btn.textContent=getShortcutDisplay(_recKeys)
+  var btn=$('sc-'+store.recordingShortcut);if(btn)btn.textContent=getShortcutDisplay(store._recKeys)
 });
 function resetShortcut(id){
-  if(recordingShortcut){recordingShortcut=null;_recKeys=null}
+  if(store.recordingShortcut){store.recordingShortcut=null;store._recKeys=null}
   var def=defaultShortcutsMap[id];if(!def)return;
   var saved=ls('shortcuts')||{};
   delete saved[id];ls('shortcuts',saved);

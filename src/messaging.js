@@ -2,49 +2,49 @@
 async function showApp(profileOrUsername,display,email,avatar,status,bio,password){
   var profile=(profileOrUsername&&typeof profileOrUsername==='object')?profileOrUsername:{username:profileOrUsername,displayName:display,email:email,avatar:avatar,status:status,bio:bio,password:password};
   resetSessionState();
-  status=profile.status||'online';currentStatus=status;
+  status=profile.status||'online';store.currentStatus=status;
   try{
     var acc=mergeAccountProfile(profile);
-    status=acc.status||status||'online';currentStatus=status;
+    status=acc.status||status||'online';store.currentStatus=status;
     showScreen(null);
     var appMain=$('app-main');if(appMain)appMain.classList.add('active');
     syncSidebarProfile(acc,status);
     await loadMessages();
-    var savedStatus=ls('status_'+activeAccountId);if(savedStatus)updateStatusUI(savedStatus);
+    var savedStatus=ls('status_'+store.activeAccountId);if(savedStatus)updateStatusUI(savedStatus);
     // Load conversations: merge encrypted + localStorage data
     var localConvs=loadConversations();
     if(localConvs&&localConvs.length>0){
       for(var lci=0;lci<localConvs.length;lci++){
         var exists=false;
-        for(var eci=0;eci<conversations.length;eci++){if(conversations[eci].id===localConvs[lci].id){exists=true;break}}
-        if(!exists)conversations.push(localConvs[lci])
+        for(var eci=0;eci<store.conversations.length;eci++){if(store.conversations[eci].id===localConvs[lci].id){exists=true;break}}
+        if(!exists)store.conversations.push(localConvs[lci])
       }
     }
     var savedGroups=getGroups();
     for(var i=0;i<savedGroups.length;i++){
       normalizeGroupMembers(savedGroups[i]);savedGroups[i].memberIds=getGroupMemberIds(savedGroups[i]);
       var exists=false;
-      for(var gci=0;gci<conversations.length;gci++){if(conversations[gci].id===savedGroups[i].id){exists=true;break}}
-      if(!exists)conversations.unshift(savedGroups[i])
+      for(var gci=0;gci<store.conversations.length;gci++){if(store.conversations[gci].id===savedGroups[i].id){exists=true;break}}
+      if(!exists)store.conversations.unshift(savedGroups[i])
     }
     if(savedGroups.length)saveGroups(savedGroups);
     // Restore unread counts and last activity
     var savedUnread=ls('unreadCounts')||{};
     var savedActivity=ls('lastActivity')||{};
-    for(var uci=0;uci<conversations.length;uci++){
-      var cid=conversations[uci].id;
-      if(savedUnread[cid]!==undefined)conversations[uci].unread=savedUnread[cid];
-      if(savedActivity[cid]!==undefined)conversations[uci].lastActivity=savedActivity[cid]
+    for(var uci=0;uci<store.conversations.length;uci++){
+      var cid=store.conversations[uci].id;
+      if(savedUnread[cid]!==undefined)store.conversations[uci].unread=savedUnread[cid];
+      if(savedActivity[cid]!==undefined)store.conversations[uci].lastActivity=savedActivity[cid]
     }
     // Initialize lastActivity for conversations that don't have it
-    for(var lai=0;lai<conversations.length;lai++){
-      if(!conversations[lai].lastActivity){conversations[lai].lastActivity=Date.now()-conversations.length*1000+lai*100}
+    for(var lai=0;lai<store.conversations.length;lai++){
+      if(!store.conversations[lai].lastActivity){store.conversations[lai].lastActivity=Date.now()-store.conversations.length*1000+lai*100}
     }
     // Recalculate conversation previews from actual messages
-    for(var sci=0;sci<conversations.length;sci++){
-      updateConvPreview(conversations[sci].id)
+    for(var sci=0;sci<store.conversations.length;sci++){
+      updateConvPreview(store.conversations[sci].id)
     }
-    activeConvId=null;
+    store.activeConvId=null;
     // Start listening to conversation updates from Firestore
     var currentFbUid=fbUserId();
     if(window.db&&currentFbUid){fbListenConversations(currentFbUid);startPendingListener(currentFbUid)}
@@ -53,8 +53,8 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
     initE2E();
   }catch(e){console.error('[showApp] Error:',e)}
   // Always render and finalize, even on error
-  _pendingLoginPassword=null;
-  _authTransitioning=false;
+  store._pendingLoginPassword=null;
+  store._authTransitioning=false;
   function tryRender(){
     var el=$('conv-list');
     var layout=document.querySelector('.app-layout');
@@ -68,8 +68,8 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
 }
 
 function renderConversations(list){
-  var el=$('conv-list');if(!el)return;var data=(list||conversations).slice();
-  var animateList=!_convListAnimatedOnce&&!list;
+  var el=$('conv-list');if(!el)return;var data=(list||store.conversations).slice();
+  var animateList=!store._convListAnimatedOnce&&!list;
   el.classList.toggle('no-anim',!animateList);
   // Sort: pinned first (alphabetically), then by most recent activity
   data.sort(function(a,b){
@@ -86,25 +86,25 @@ function renderConversations(list){
     return an<bn?-1:(an>bn?1:0)
   });
   // Apply archive filter (skip if searching)
-  if(!_searchQuery)data=data.filter(function(c){return _showArchived?isArchived(c.id):!isArchived(c.id)});
+  if(!store._searchQuery)data=data.filter(function(c){return store._showArchived?isArchived(c.id):!isArchived(c.id)});
   // Hide closed conversations from sidebar
-  if(!_searchQuery)data=data.filter(function(c){return !c.hidden});
+  if(!store._searchQuery)data=data.filter(function(c){return !c.hidden});
   // Update archive bar
   var ab=$('archive-label');
-  if(ab)ab.textContent=_showArchived?'Arşiv (gizle)':'Arşiv';
+  if(ab)ab.textContent=store._showArchived?'Arşiv (gizle)':'Arşiv';
   // Archive badge: total unread from archived conversations
   var archUnread=0;
-  for(var ai=0;ai<conversations.length;ai++){if(isArchived(conversations[ai].id))archUnread+=conversations[ai].unread||0}
+  for(var ai=0;ai<store.conversations.length;ai++){if(isArchived(store.conversations[ai].id))archUnread+=store.conversations[ai].unread||0}
   var archBadge=$('archive-badge');
   if(archBadge){
     if(archUnread>0){archBadge.style.display='flex';archBadge.textContent=archUnread>99?'99+':archUnread}
     else archBadge.style.display='none'
   }
   el.innerHTML='';
-  if(_showArchived&&data.length===0){el.innerHTML='<div style="text-align:center;padding:40px 10px;font-size:11px;color:var(--text4)">📦 Arşiv boş.</div>';_convListAnimatedOnce=true;return}
+  if(store._showArchived&&data.length===0){el.innerHTML='<div style="text-align:center;padding:40px 10px;font-size:11px;color:var(--text4)">📦 Arşiv boş.</div>';store._convListAnimatedOnce=true;return}
   for(var i=0;i<data.length;i++){(function(c){
     var muted=isMuted(c.id);var pinned=isPinned(c.id);
-    var div=document.createElement('div');div.className='conv-item'+(c.id===activeConvId?' active':'')+(muted?' muted':'');
+    var div=document.createElement('div');div.className='conv-item'+(c.id===store.activeConvId?' active':'')+(muted?' muted':'');
     var avHtml='<div class="conv-avatar'+(c.online?' online':'')+'" style="background:'+c.color+'">';
     if(c.isGroup){
       if(c.avatar&&c.avatar.indexOf('data:')===0)avHtml+='<img src="'+c.avatar+'" style="width:100%;height:100%;object-fit:cover">';
@@ -122,10 +122,10 @@ function renderConversations(list){
     div.oncontextmenu=function(e){e.preventDefault();showConvContext(e.clientX,e.clientY,c.id)};
     el.appendChild(div)
   })(data[i])}
-  _convListAnimatedOnce=true;
+  store._convListAnimatedOnce=true;
 }
 
-function filterConversations(q){_searchQuery=q;renderConversations()}
+function filterConversations(q){store._searchQuery=q;renderConversations()}
 
 function memberCount(g){return(g&&g.members?g.members.length:0)+(g&&g.creatorId?1:0)}
 function parseTime(t){
@@ -137,7 +137,7 @@ function parseTime(t){
   return -9999
 }
 
-function selectConversation(id){hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();_hasNewMsg=false;if(activeConvId&&activeConvId!==id)fbUnlistenMessages(activeConvId);fbUnlistenTyping();fbStopCallSignals();stopTyping();activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();renderConversations();$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.indexOf('data:')===0){ca.innerHTML='<img src="'+conv.avatar+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+(conv.color||'var(--grad)')+'\';this.parentElement.textContent=\''+(conv.isGroup?'G':'?')+'\'">';ca.style.background='transparent'}else{ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);_forceScrollBottom=true;renderMessages(id);fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
+function selectConversation(id){hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();store._hasNewMsg=false;if(store.activeConvId&&store.activeConvId!==id)fbUnlistenMessages(store.activeConvId);fbUnlistenTyping();fbStopCallSignals();stopTyping();store.activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();renderConversations();$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.indexOf('data:')===0){ca.innerHTML='<img src="'+conv.avatar+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+(conv.color||'var(--grad)')+'\';this.parentElement.textContent=\''+(conv.isGroup?'G':'?')+'\'">';ca.style.background='transparent'}else{ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);store._forceScrollBottom=true;renderMessages(id);fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
 if(!conv.isGroup&&window.db&&fbUserId()){var otherId=null;for(var ti=0;ti<(conv.memberIds||[]).length;ti++){if(conv.memberIds[ti]!==fbUserId()){otherId=conv.memberIds[ti];break}}if(otherId)fbListenTyping(id,otherId)}
 fbListenCallSignals(id)}
 
@@ -151,10 +151,10 @@ async function getRecipientPubKey(convId){
     if(memberIds.length<1)return null;
     var recId=memberIds[0]===curId?memberIds[1]:memberIds[0];
     if(!recId)return null;
-    if(_pubKeyCache[recId])return _pubKeyCache[recId];
+    if(store._pubKeyCache[recId])return store._pubKeyCache[recId];
     try{
       var snap=await db.collection('users').doc(recId).get();
-      if(snap.exists&&snap.data().publicKey){_pubKeyCache[recId]=snap.data().publicKey;return {keys:[_pubKeyCache[recId]],missing:[]}}
+      if(snap.exists&&snap.data().publicKey){store._pubKeyCache[recId]=snap.data().publicKey;return {keys:[store._pubKeyCache[recId]],missing:[]}}
     }catch(e){}
     return {keys:[],missing:[recId]}
   }
@@ -164,21 +164,21 @@ async function getRecipientPubKey(convId){
   var keys=[],missing=[];
   for(var gmi=0;gmi<memberIds.length;gmi++){
     if(memberIds[gmi]===curId)continue;
-    if(_pubKeyCache[memberIds[gmi]]){keys.push(_pubKeyCache[memberIds[gmi]]);continue}
+    if(store._pubKeyCache[memberIds[gmi]]){keys.push(store._pubKeyCache[memberIds[gmi]]);continue}
     try{
       var snap=await db.collection('users').doc(memberIds[gmi]).get();
-      if(snap.exists&&snap.data().publicKey){_pubKeyCache[memberIds[gmi]]=snap.data().publicKey;keys.push(snap.data().publicKey)}
+      if(snap.exists&&snap.data().publicKey){store._pubKeyCache[memberIds[gmi]]=snap.data().publicKey;keys.push(snap.data().publicKey)}
       else{missing.push(memberIds[gmi])}
     }catch(e){missing.push(memberIds[gmi])}
   }
   return keys.length?{keys:keys,missing:missing}:{keys:[],missing:missing}
 }
 
-async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!txt||!activeConvId)return;var conv=findConv(activeConvId);
+async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!txt||!store.activeConvId)return;var conv=findConv(store.activeConvId);
   var finalText=txt;
-  if(conv&&e2eReady&&window.db){var pubKeyResult=await getRecipientPubKey(activeConvId);if(pubKeyResult&&pubKeyResult.keys&&pubKeyResult.keys.length>0){if(pubKeyResult.missing&&pubKeyResult.missing.length>0){showAlert(pubKeyResult.missing.length+' kullanıcı henüz E2E\'yi etkinleştirmemiş. Mesaj E2E şifrelenmeden gönderiliyor.')}else{try{var enc=await e2eEncrypt(txt,pubKeyResult.keys);if(enc&&enc.indexOf('🔒')===0)finalText=enc}catch(e){}}}}
+  if(conv&&store.e2eReady&&window.db){var pubKeyResult=await getRecipientPubKey(store.activeConvId);if(pubKeyResult&&pubKeyResult.keys&&pubKeyResult.keys.length>0){if(pubKeyResult.missing&&pubKeyResult.missing.length>0){showAlert(pubKeyResult.missing.length+' kullanıcı henüz E2E\'yi etkinleştirmemiş. Mesaj E2E şifrelenmeden gönderiliyor.')}else{try{var enc=await e2eEncrypt(txt,pubKeyResult.keys);if(enc&&enc.indexOf('🔒')===0)finalText=enc}catch(e){}}}}
   var myId=fbUserId();
-  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(replyToMsgId){msg.replyTo=replyToMsgId;msg.replyText=replyToMsgText&&replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!messages[activeConvId])messages[activeConvId]=[];messages[activeConvId].push(msg);renderMessages(activeConvId);inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
+  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);renderMessages(store.activeConvId);inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
 
 function addToGroup(groupId,userId){
   hideContextMenu();
@@ -190,7 +190,7 @@ function addToGroup(groupId,userId){
   group.members.push(member);group.memberIds=getGroupMemberIds(group);
   saveGroup(group);addGroupLog(groupId,member.name+' gruba eklendi');
   saveMessages();fbSyncMembers(groupId);
-  if(activeConvId==groupId){var se=$('chat-header-status');if(se)se.textContent=memberCount(group)+' üye'}
+  if(store.activeConvId==groupId){var se=$('chat-header-status');if(se)se.textContent=memberCount(group)+' üye'}
   selectConversation(groupId)
 }
 
@@ -198,28 +198,28 @@ function addToGroup(groupId,userId){
 
 function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!conv||!conv.isGroup)return;
   normalizeGroupMembers(conv);
-  editGroupState={groupId:groupId,originalName:conv.name,addedIds:[],removedIds:[]};
+  store.editGroupState={groupId:groupId,originalName:conv.name,addedIds:[],removedIds:[]};
   var ml=$('group-member-list');ml.innerHTML='';
   // Add existing members
   for(var i=0;i<conv.members.length;i++){(function(m){
     var d=document.createElement('div');d.className='modal-member-item selected';
     var eAv=m.avatar;var eAvHtml;if(eAv&&eAv.indexOf('data:')===0){eAvHtml='<img src="'+eAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+m.color+'\';this.parentElement.textContent=\'?\'">'}else{eAvHtml='<span>'+(eAv||'?')+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+m.color+'">'+eAvHtml+'</div><div class="mm-name">'+esc(m.name)+'</div><div class="mm-check mm-remove"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>';
-    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(!d.classList.contains('selected')){editGroupState.removedIds.push(ci)}else{var idx=editGroupState.removedIds.indexOf(ci);if(idx>-1)editGroupState.removedIds.splice(idx,1)}validateGroup()};
+    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(!d.classList.contains('selected')){store.editGroupState.removedIds.push(ci)}else{var idx=store.editGroupState.removedIds.indexOf(ci);if(idx>-1)store.editGroupState.removedIds.splice(idx,1)}validateGroup()};
     d._cid=m.id;ml.appendChild(d)
   })(conv.members[i])}
   // Add non-member contacts (including friends not in conversations)
   var addedNames={};for(var mi=0;mi<conv.members.length;mi++)addedNames[conv.members[mi].id]=true;
-  for(var i=0;i<conversations.length;i++){(function(c){
+  for(var i=0;i<store.conversations.length;i++){(function(c){
     if(c.isGroup||c.id===groupId)return;
     var member=makeGroupMemberFromConversation(c);if(!member||addedNames[member.id])return;
     addedNames[member.id]=true;
     var d=document.createElement('div');d.className='modal-member-item';
     var cAv=c.avatar;var cAvHtml;if(cAv&&cAv.indexOf('data:')===0){cAvHtml='<img src="'+cAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+c.color+'\';this.parentElement.textContent=\'?\'">'}else{cAvHtml='<span>'+(cAv||'?')+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+c.color+'">'+cAvHtml+'</div><div class="mm-name">'+esc(c.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
-    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){editGroupState.addedIds.push(ci)}else{var idx=editGroupState.addedIds.indexOf(ci);if(idx>-1)editGroupState.addedIds.splice(idx,1)}validateGroup()};
+    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){store.editGroupState.addedIds.push(ci)}else{var idx=store.editGroupState.addedIds.indexOf(ci);if(idx>-1)store.editGroupState.addedIds.splice(idx,1)}validateGroup()};
     d._cid=member.id;d._memberData=member;ml.appendChild(d)
-  })(conversations[i])}
+  })(store.conversations[i])}
   // Also add friends not in conversations
   var editFriends=getCachedFriends();var eColors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
   for(var efi=0;efi<editFriends.length;efi++){(function(f){
@@ -229,7 +229,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
     var d=document.createElement('div');d.className='modal-member-item';
     var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+fAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+eColors[efi%eColors.length]+'\';this.parentElement.textContent=\'?\'">'}else{fAvHtml='<span>'+esc(f.name.charAt(0).toUpperCase())+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+eColors[efi%eColors.length]+'">'+fAvHtml+'</div><div class="mm-name">'+esc(f.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
-    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){editGroupState.addedIds.push(ci)}else{var idx=editGroupState.addedIds.indexOf(ci);if(idx>-1)editGroupState.addedIds.splice(idx,1)}validateGroup()};
+    d.onclick=function(){d.classList.toggle('selected');var ci=d._cid;if(d.classList.contains('selected')){store.editGroupState.addedIds.push(ci)}else{var idx=store.editGroupState.addedIds.indexOf(ci);if(idx>-1)store.editGroupState.addedIds.splice(idx,1)}validateGroup()};
     d._cid=fid;d._memberData=fm;ml.appendChild(d)
   })(editFriends[efi])}
   $('group-name').value=conv.name;
@@ -241,27 +241,27 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
   $('group-create-btn').textContent='Kaydet';
   var _saving=false;
   $('group-create-btn').onclick=function(){
-    if(!editGroupState||_saving)return;_saving=true;
+    if(!store.editGroupState||_saving)return;_saving=true;
     var nn=$('group-name').value.trim();if(!nn)return;
     var logs=[];
     
-    if(conv.creatorId===activeAccountId){conv.name=nn}
-    if(nn!==editGroupState.originalName)logs.push('Grup adı "'+nn+'" olarak değiştirildi');
+    if(conv.creatorId===store.activeAccountId){conv.name=nn}
+    if(nn!==store.editGroupState.originalName)logs.push('Grup adı "'+nn+'" olarak değiştirildi');
     
-    for(var ri=0;ri<editGroupState.removedIds.length;ri++){
+    for(var ri=0;ri<store.editGroupState.removedIds.length;ri++){
       for(var x=0;x<conv.members.length;x++){
-        if(conv.members[x].id==editGroupState.removedIds[ri]){
+        if(conv.members[x].id==store.editGroupState.removedIds[ri]){
           logs.push(conv.members[x].name+' gruptan çıkarıldı');
           conv.members.splice(x,1);
           break
         }
       }
-      if(conv.adminIds){var rai=conv.adminIds.indexOf(editGroupState.removedIds[ri]);if(rai>-1)conv.adminIds.splice(rai,1)}
+      if(conv.adminIds){var rai=conv.adminIds.indexOf(store.editGroupState.removedIds[ri]);if(rai>-1)conv.adminIds.splice(rai,1)}
     }
     
-    for(var ai=0;ai<editGroupState.addedIds.length;ai++){
+    for(var ai=0;ai<store.editGroupState.addedIds.length;ai++){
       var added=false;
-      var cm=makeGroupMemberFromConversation(findConversationByPeerId(editGroupState.addedIds[ai]));
+      var cm=makeGroupMemberFromConversation(findConversationByPeerId(store.editGroupState.addedIds[ai]));
       if(cm){
         conv.members.push(cm);
         logs.push(cm.name+' gruba eklendi');
@@ -269,7 +269,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
       }
       if(!added){
         var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
-        var fm=makeGroupMemberFromFriend(findFriendByIdOrName(editGroupState.addedIds[ai],null),colors[ai%colors.length]);
+        var fm=makeGroupMemberFromFriend(findFriendByIdOrName(store.editGroupState.addedIds[ai],null),colors[ai%colors.length]);
         if(fm){conv.members.push(fm);logs.push(fm.name+' gruba eklendi');added=true}
       }
     }
@@ -283,7 +283,7 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
     
     renderConversations();selectConversation(groupId);hideGroupModal();
     fbSyncMembers(groupId);
-    editGroupState=null;
+    store.editGroupState=null;
     $('group-create-btn').textContent='Oluştur';
     $('group-create-btn').onclick=function(){createGroup()}
   };
@@ -294,29 +294,29 @@ function editGroup(groupId){closeProfilePanel();var conv=findConv(groupId);if(!c
 function toggleUploadMenu(){$('upload-menu').classList.toggle('active')}
 function hideUploadMenu(){$('upload-menu').classList.remove('active')}
 
-async function sendMedia(type){hideUploadMenu();if(!activeConvId)return;
+async function sendMedia(type){hideUploadMenu();if(!store.activeConvId)return;
   try{if(window.electronAPI&&electronAPI.selectMedia){
     var files=await electronAPI.selectMedia(type||'all');
     if(files&&files.length>0){
-      pendingMediaFiles=files;mediaIndex=0;
+      store.pendingMediaFiles=files;store.mediaIndex=0;
       showMediaPreview()
     }
   }}catch(e){console.error(e)}
 }
 
 function showMediaPreview(){
-  if(pendingMediaFiles.length===0){hideMediaModal();return}
+  if(store.pendingMediaFiles.length===0){hideMediaModal();return}
   $('modal-media').classList.add('active');
-  mediaIndex=Math.min(mediaIndex,pendingMediaFiles.length-1);
-  var file=pendingMediaFiles[mediaIndex];
+  store.mediaIndex=Math.min(store.mediaIndex,store.pendingMediaFiles.length-1);
+  var file=store.pendingMediaFiles[store.mediaIndex];
   
   // Update counter & nav
-  $('media-counter').textContent=(mediaIndex+1)+' / '+pendingMediaFiles.length;
-  $('media-prev-btn').style.display=mediaIndex>0?'':'none';
-  $('media-next-btn').style.display=mediaIndex<pendingMediaFiles.length-1?'':'none';
-  $('media-caption-label').textContent='Açıklama ('+(mediaIndex+1)+'. dosya için)';
+  $('media-counter').textContent=(store.mediaIndex+1)+' / '+store.pendingMediaFiles.length;
+  $('media-prev-btn').style.display=store.mediaIndex>0?'':'none';
+  $('media-next-btn').style.display=store.mediaIndex<store.pendingMediaFiles.length-1?'':'none';
+  $('media-caption-label').textContent='Açıklama ('+(store.mediaIndex+1)+'. dosya için)';
   $('media-caption').value=file.caption||'';
-  $('media-caption').oninput=function(){pendingMediaFiles[mediaIndex].caption=this.value};
+  $('media-caption').oninput=function(){store.pendingMediaFiles[store.mediaIndex].caption=this.value};
   
   // Update main preview
   var area=$('media-preview-area');
@@ -329,18 +329,18 @@ function showMediaPreview(){
   }
   
   // Rebuild thumbnails if count changed
-  if(mediaThumbCount!==pendingMediaFiles.length){
-    mediaThumbCount=pendingMediaFiles.length;
+  if(store.mediaThumbCount!==store.pendingMediaFiles.length){
+    store.mediaThumbCount=store.pendingMediaFiles.length;
     var list=$('media-files-list');
     var container=document.createElement('div');
     container.className='media-files-list-inner';
     container.style.cssText='display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:6px 2px;flex-wrap:nowrap';
-    for(var i=0;i<pendingMediaFiles.length;i++){
+    for(var i=0;i<store.pendingMediaFiles.length;i++){
       (function(fi,f){
         var thumb=document.createElement('div');
         thumb.className='media-thumb';
         thumb.dataset.idx=fi;
-        thumb.style.cssText='width:56px;height:56px;border-radius:10px;overflow:hidden;cursor:pointer;flex-shrink:0;border:2px solid '+(fi===mediaIndex?'var(--accent)':'transparent');
+        thumb.style.cssText='width:56px;height:56px;border-radius:10px;overflow:hidden;cursor:pointer;flex-shrink:0;border:2px solid '+(fi===store.mediaIndex?'var(--accent)':'transparent');
         thumb.onclick=function(){mediaGoTo(fi)};
         if(f.type==='image'){
           thumb.style.backgroundImage='url('+f.dataUrl+')';
@@ -351,69 +351,69 @@ function showMediaPreview(){
           thumb.textContent=f.type==='video'?'🎬':'📎'
         }
         container.appendChild(thumb)
-      })(i,pendingMediaFiles[i])
+      })(i,store.pendingMediaFiles[i])
     }
     list.innerHTML='';list.appendChild(container)
   }else{
     // Just update active border on thumbs
     var thumbs=document.querySelectorAll('.media-thumb');
     for(var i=0;i<thumbs.length;i++){
-      thumbs[i].style.borderColor=i===mediaIndex?'var(--accent)':'transparent'
+      thumbs[i].style.borderColor=i===store.mediaIndex?'var(--accent)':'transparent'
     }
   }
 }
 
-function mediaPrev(){if(mediaIndex>0){mediaIndex--;showMediaPreview()}}
-function mediaNext(){if(mediaIndex<pendingMediaFiles.length-1){mediaIndex++;showMediaPreview()}}
-function mediaGoTo(i){mediaIndex=i;showMediaPreview()}
+function mediaPrev(){if(store.mediaIndex>0){store.mediaIndex--;showMediaPreview()}}
+function mediaNext(){if(store.mediaIndex<store.pendingMediaFiles.length-1){store.mediaIndex++;showMediaPreview()}}
+function mediaGoTo(i){store.mediaIndex=i;showMediaPreview()}
 
 // ===== IMAGE VIEWER =====
 function showImage(src){
   // Find all image messages in current conversation for navigation
-  imageViewerMsgs=[];imageViewerIdx=0;
-  if(activeConvId&&messages[activeConvId]){
-    for(var vi=0;vi<messages[activeConvId].length;vi++){
-      if(messages[activeConvId][vi].image){
-        imageViewerMsgs.push(messages[activeConvId][vi].image);
-        if(messages[activeConvId][vi].image===src)imageViewerIdx=imageViewerMsgs.length-1
+  store.imageViewerMsgs=[];store.imageViewerIdx=0;
+  if(store.activeConvId&&store.messages[store.activeConvId]){
+    for(var vi=0;vi<store.messages[store.activeConvId].length;vi++){
+      if(store.messages[store.activeConvId][vi].image){
+        store.imageViewerMsgs.push(store.messages[store.activeConvId][vi].image);
+        if(store.messages[store.activeConvId][vi].image===src)store.imageViewerIdx=store.imageViewerMsgs.length-1
       }
     }
   }
-  imageViewerOpen=true;
+  store.imageViewerOpen=true;
   renderImageViewer()
 }
 function renderImageViewer(){
-  if(!imageViewerOpen||imageViewerMsgs.length===0){imageViewerOpen=false;return}
+  if(!store.imageViewerOpen||store.imageViewerMsgs.length===0){store.imageViewerOpen=false;return}
   var overlay=document.createElement('div');
   overlay.id='image-viewer';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column';
   overlay.onclick=function(e){if(e.target===overlay)closeImageViewer()};
   overlay.innerHTML='<div style="position:relative;display:flex;align-items:center;gap:12px">'+
-    (imageViewerMsgs.length>1?'<button onclick="event.stopPropagation();imageViewerIdx=Math.max(0,imageViewerIdx-1);document.body.removeChild(document.getElementById(\'image-viewer\'));renderImageViewer()" style="width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px" onmouseover="this.style.background=\'rgba(255,255,255,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.1)\'">‹</button>':'')+
-    '<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><img src="'+imageViewerMsgs[imageViewerIdx]+'" style="max-width:85vw;max-height:75vh;border-radius:12px;object-fit:contain;cursor:default">'+
-    '<div style="display:flex;gap:6px"><button onclick="event.stopPropagation();saveImage(imageViewerMsgs[imageViewerIdx])" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:11px">💾 Kaydet</button><button onclick="event.stopPropagation();copyImage(imageViewerMsgs[imageViewerIdx])" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:11px">📋 Kopyala</button></div></div>'+
-    (imageViewerMsgs.length>1?'<button onclick="event.stopPropagation();imageViewerIdx=Math.min(imageViewerMsgs.length-1,imageViewerIdx+1);document.body.removeChild(document.getElementById(\'image-viewer\'));renderImageViewer()" style="width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px" onmouseover="this.style.background=\'rgba(255,255,255,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.1)\'">›</button>':'')+
+    (store.imageViewerMsgs.length>1?'<button onclick="event.stopPropagation();store.imageViewerIdx=Math.max(0,store.imageViewerIdx-1);document.body.removeChild(document.getElementById(\'image-viewer\'));renderImageViewer()" style="width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px" onmouseover="this.style.background=\'rgba(255,255,255,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.1)\'">‹</button>':'')+
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><img src="'+store.imageViewerMsgs[store.imageViewerIdx]+'" style="max-width:85vw;max-height:75vh;border-radius:12px;object-fit:contain;cursor:default">'+
+    '<div style="display:flex;gap:6px"><button onclick="event.stopPropagation();saveImage(store.imageViewerMsgs[store.imageViewerIdx])" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:11px">💾 Kaydet</button><button onclick="event.stopPropagation();copyImage(store.imageViewerMsgs[store.imageViewerIdx])" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:11px">📋 Kopyala</button></div></div>'+
+    (store.imageViewerMsgs.length>1?'<button onclick="event.stopPropagation();store.imageViewerIdx=Math.min(store.imageViewerMsgs.length-1,store.imageViewerIdx+1);document.body.removeChild(document.getElementById(\'image-viewer\'));renderImageViewer()" style="width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px" onmouseover="this.style.background=\'rgba(255,255,255,.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,.1)\'">›</button>':'')+
   '</div>'+
-  (imageViewerMsgs.length>1?'<div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.4)">'+(imageViewerIdx+1)+' / '+imageViewerMsgs.length+'</div>':'');
+  (store.imageViewerMsgs.length>1?'<div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.4)">'+(store.imageViewerIdx+1)+' / '+store.imageViewerMsgs.length+'</div>':'');
   document.body.appendChild(overlay)
 }
 function closeImageViewer(){
-  imageViewerOpen=false;
+  store.imageViewerOpen=false;
   var el=document.getElementById('image-viewer');
   if(el)document.body.removeChild(el)
 }
 
 // Keyboard nav for image viewer
 document.addEventListener('keydown',function(e){
-  if(!imageViewerOpen)return;
-  if(e.key==='ArrowLeft'&&imageViewerIdx>0){
+  if(!store.imageViewerOpen)return;
+  if(e.key==='ArrowLeft'&&store.imageViewerIdx>0){
     e.preventDefault();
-    imageViewerIdx--;
+    store.imageViewerIdx--;
     var el=document.getElementById('image-viewer');if(el)document.body.removeChild(el);
     renderImageViewer()
-  }else if(e.key==='ArrowRight'&&imageViewerIdx<imageViewerMsgs.length-1){
+  }else if(e.key==='ArrowRight'&&store.imageViewerIdx<store.imageViewerMsgs.length-1){
     e.preventDefault();
-    imageViewerIdx++;
+    store.imageViewerIdx++;
     var el=document.getElementById('image-viewer');if(el)document.body.removeChild(el);
     renderImageViewer()
   }else if(e.key==='Escape'){
@@ -422,13 +422,13 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-function hideMediaModal(){pendingMediaFiles=[];mediaThumbCount=0;$('modal-media').classList.remove('active')}
+function hideMediaModal(){store.pendingMediaFiles=[];store.mediaThumbCount=0;$('modal-media').classList.remove('active')}
 
 async function confirmSendMedia(){
-  if(pendingMediaFiles.length===0||!activeConvId||sendingMediaLock)return;
-  sendingMediaLock=true;
+  if(store.pendingMediaFiles.length===0||!store.activeConvId||store.sendingMediaLock)return;
+  store.sendingMediaLock=true;
   async function e2eMediaText(text,convId){
-    if(!text||!e2eReady||!window.db)return text;
+    if(!text||!store.e2eReady||!window.db)return text;
     var conv=findConv(convId);if(!conv)return text;
     var pubKeys=await getRecipientPubKey(convId);
     if(!pubKeys||!(Array.isArray(pubKeys)?pubKeys.length:1))return text;
@@ -436,64 +436,64 @@ async function confirmSendMedia(){
     return text
   }
   (function processMedia(idx){
-    if(idx>=pendingMediaFiles.length){
-      renderMessages(activeConvId);renderConversations();
+    if(idx>=store.pendingMediaFiles.length){
+      renderMessages(store.activeConvId);renderConversations();
       saveMessages();
-      pendingMediaFiles=[];mediaThumbCount=0;
-      hideMediaModal();sendingMediaLock=false;
+      store.pendingMediaFiles=[];store.mediaThumbCount=0;
+      hideMediaModal();store.sendingMediaLock=false;
       return
     }
-    var file=pendingMediaFiles[idx];
+    var file=store.pendingMediaFiles[idx];
     var caption=(file.caption||'').trim();
     var ext=file.name?file.name.split('.').pop():'png';
-    var path='media/'+activeConvId+'/'+Date.now()+'_'+idx+'.'+ext;
+    var path='media/'+store.activeConvId+'/'+Date.now()+'_'+idx+'.'+ext;
     var dataUrl=file.dataUrl;
     if(dataUrl&&dataUrl.indexOf('data:')===0&&window.storage){
       fbUploadFile(dataUrl,path).then(async function(url){
         var id=uid();
-        if(!messages[activeConvId])messages[activeConvId]=[];
+        if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
         var txt=file.type==='image'||file.type==='video'?caption:'📎 '+file.name+(caption?' — '+caption:'');
-        var encTxt=await e2eMediaText(txt,activeConvId);
+        var encTxt=await e2eMediaText(txt,store.activeConvId);
         var msg={id:id,type:'sent',senderId:fbUserId(),text:encTxt,time:timeNow(),edited:false,deleted:false};
         if(file.type==='image')msg.image=url;
         else if(file.type==='video')msg.video=url;
         if(encTxt!==txt)msg.e2e=true;
-        messages[activeConvId].push(msg);
-        var conv=findConv(activeConvId);
+        store.messages[store.activeConvId].push(msg);
+        var conv=findConv(store.activeConvId);
         if(conv){conv.lastMsg=encTxt!==txt?'🔒 Mesaj':(file.type==='image'?'📷 '+(caption||file.name):(file.type==='video'?'🎬 '+(caption||file.name):'📎 '+file.name));conv.lastActivity=Date.now();conv.time=timeNow()}
-        fbSendMessage(activeConvId,msg);
+        fbSendMessage(store.activeConvId,msg);
         processMedia(idx+1)
       }).catch(function(){
         var id=uid();
-        if(!messages[activeConvId])messages[activeConvId]=[];
+        if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
         var msg={id:id,type:'sent',senderId:fbUserId(),text:caption,time:timeNow(),edited:false,deleted:false,image:dataUrl};
-        messages[activeConvId].push(msg);
+        store.messages[store.activeConvId].push(msg);
         processMedia(idx+1)
       })
     }else{
       var id=uid();
-      if(!messages[activeConvId])messages[activeConvId]=[];
+      if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
       (async function(){
         var txt=file.type==='document'?'📎 '+file.name+(caption?' — '+caption:''):caption;
-        var encTxt=await e2eMediaText(txt,activeConvId);
+        var encTxt=await e2eMediaText(txt,store.activeConvId);
         var msg={id:id,type:'sent',senderId:fbUserId(),text:encTxt,time:timeNow(),edited:false,deleted:false};
         if(file.type==='image')msg.image=dataUrl;
         else if(file.type==='video')msg.video=dataUrl;
         if(encTxt!==txt)msg.e2e=true;
-        messages[activeConvId].push(msg);
-        var conv=findConv(activeConvId);
+        store.messages[store.activeConvId].push(msg);
+        var conv=findConv(store.activeConvId);
         if(conv){conv.lastMsg=encTxt!==txt?'🔒 Mesaj':(file.type==='image'?'📷 '+(caption||file.name):(file.type==='video'?'🎬 '+(caption||file.name):'📎 '+file.name));conv.lastActivity=Date.now();conv.time=timeNow()}
-        fbSendMessage(activeConvId,msg);
+        fbSendMessage(store.activeConvId,msg);
         processMedia(idx+1)
       })()
     }
   })(0)
 }
 
-function showProfilePanel(){if(!activeConvId)return;
-  if(profilePanelOpen){closeProfilePanel();return}
-  var conv=findConv(activeConvId);if(!conv)return;
-  var body=$('profile-panel-body');profilePanelOpen=true;
+function showProfilePanel(){if(!store.activeConvId)return;
+  if(store.profilePanelOpen){closeProfilePanel();return}
+  var conv=findConv(store.activeConvId);if(!conv)return;
+  var body=$('profile-panel-body');store.profilePanelOpen=true;
   var avatarHtml='<div class="pp-avatar" style="background:'+conv.color+'">';
   if(conv.avatar&&conv.avatar.indexOf('data:')===0)avatarHtml+='<img src="'+conv.avatar+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+conv.color+'\';this.parentElement.textContent=\''+(conv.isGroup?'G':'?')+'\'">';
   else avatarHtml+='<span>'+(conv.isGroup?'G':(conv.avatar||'?'))+'</span>';
@@ -504,8 +504,8 @@ function showProfilePanel(){if(!activeConvId)return;
     if(conv.bio)body.innerHTML+='<div class="pp-bio">'+esc(conv.bio)+'</div>';
     body.innerHTML+='<div class="pp-row"><div><div class="pp-row-label">Durum</div><div class="pp-row-val" style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="sd-dot '+(conv.online?'sd-online':'')+'" style="display:inline-block"></span>'+(conv.online?'Çevrimiçi':'Çevrimdışı')+'</div></div></div>'
   }else{
-    var isCreator=conv.creatorId===activeAccountId;
-    var isAdmin=conv.adminIds&&conv.adminIds.indexOf(activeAccountId)!==-1;
+    var isCreator=conv.creatorId===store.activeAccountId;
+    var isAdmin=conv.adminIds&&conv.adminIds.indexOf(store.activeAccountId)!==-1;
     body.innerHTML+='<div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap">'+
       (isAdmin?'<button class="btn-primary" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer" onclick="editGroup(\''+conv.id+'\')"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Grubu Düzenle</button>':'')+
       (isCreator?'<button class="btn-primary" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer" onclick="pickGroupAvatar()"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> Fotoğraf</button>':'')+
@@ -519,13 +519,13 @@ function showProfilePanel(){if(!activeConvId)return;
   }
   $('profile-panel').classList.add('open')
 }
-function closeProfilePanel(){$('profile-panel').classList.remove('open');profilePanelOpen=false;delete $('profile-panel-body').dataset.backConv}
+function closeProfilePanel(){$('profile-panel').classList.remove('open');store.profilePanelOpen=false;delete $('profile-panel-body').dataset.backConv}
 
 function showMemberProfile(memberId,convId){
   if(!memberId){closeProfilePanel();showProfilePanel();return}
-  for(var ci=0;ci<conversations.length;ci++){
-    if(conversations[ci].id==memberId){
-      var member=conversations[ci];
+  for(var ci=0;ci<store.conversations.length;ci++){
+    if(store.conversations[ci].id==memberId){
+      var member=store.conversations[ci];
       var body=$('profile-panel-body');body.dataset.backConv=convId;
       var mAv=member.avatar;var mAvHtml;if(mAv&&mAv.indexOf('data:')===0){mAvHtml='<img src="'+mAv+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\''+member.color+'\';this.parentElement.textContent=\'?\'">'}else{mAvHtml='<span>'+(mAv||'?')+'</span>'}
       body.innerHTML='<div class="pp-avatar" style="background:'+member.color+'">'+mAvHtml+'</div><div class="pp-name">'+esc(member.name)+'</div>'+
@@ -567,7 +567,7 @@ var emojiCats={
 };
 
 function switchEmojiCat(cat){
-  currentEmojiCat=cat;
+  store.currentEmojiCat=cat;
   document.querySelectorAll('.emoji-cat').forEach(function(c){c.style.background='transparent'});
   var el=document.querySelector('.emoji-cat[data-cat="'+cat+'"]');
   if(el)el.style.background='rgba(129,140,248,.1)';
@@ -577,7 +577,7 @@ function switchEmojiCat(cat){
 function renderEmojis(){
   var list=$('emoji-list');if(!list)return;
   list.innerHTML='';
-  var emojis=emojiCats[currentEmojiCat]||[];
+  var emojis=emojiCats[store.currentEmojiCat]||[];
   emojis.forEach(function(e){
     var d=document.createElement('span');
     d.textContent=e;
@@ -594,8 +594,8 @@ function renderEmojis(){
 }
 function toggleEmojiPicker(){
   var p=$('emoji-picker');if(!p)return;
-  emojiPickerVisible=!emojiPickerVisible;
-  if(emojiPickerVisible){
+  store.emojiPickerVisible=!store.emojiPickerVisible;
+  if(store.emojiPickerVisible){
     requestAnimationFrame(function(){
       p.style.display='block';
       p.classList.add('emoji-open');
@@ -606,31 +606,31 @@ function toggleEmojiPicker(){
 // Close emoji picker on click outside
 document.addEventListener('click',function(e){
   var ep=$('emoji-picker');if(!ep)return;
-  if(!ep.contains(e.target)&&e.target!==$('emoji-btn')){ep.style.display='none';emojiPickerVisible=false}
+  if(!ep.contains(e.target)&&e.target!==$('emoji-btn')){ep.style.display='none';store.emojiPickerVisible=false}
 });
 
 // ===== REPLY TO MESSAGE =====
 
 function setReply(msgId){
-  var convId=activeConvId;
-  var msgs=messages[convId]||[];
+  var convId=store.activeConvId;
+  var msgs=store.messages[convId]||[];
   for(var ri=0;ri<msgs.length;ri++){
     if(msgs[ri].id===msgId){
-      replyToMsgId=msgId;
+      store.replyToMsgId=msgId;
       var rt=msgs[ri]._decrypted||msgs[ri].text;
-      replyToMsgText=rt&&rt.indexOf('🔒')===0?'🔒 [Şifreli]':(rt||(msgs[ri].image?'📷 Fotoğraf':(msgs[ri].video?'🎬 Video':(msgs[ri].audio?'🎤 Ses':''))));
+      store.replyToMsgText=rt&&rt.indexOf('🔒')===0?'🔒 [Şifreli]':(rt||(msgs[ri].image?'📷 Fotoğraf':(msgs[ri].video?'🎬 Video':(msgs[ri].audio?'🎤 Ses':''))));
       updateReplyBar();
       break
     }
   }
 }
-function cancelReply(){replyToMsgId=null;replyToMsgText='';updateReplyBar()}
+function cancelReply(){store.replyToMsgId=null;store.replyToMsgText='';updateReplyBar()}
 function updateReplyBar(){
   var bar=$('reply-bar');
   if(!bar)return;
-  if(replyToMsgId){
+  if(store.replyToMsgId){
     bar.style.display='flex';
-    $('reply-text').textContent='⤴ '+replyToMsgText
+    $('reply-text').textContent='⤴ '+store.replyToMsgText
   }else{bar.style.display='none'}
 }
 
@@ -642,10 +642,10 @@ function openSearch(){
 }
 function searchMessages(q){
   var results=$('search-results');q=q.toLowerCase();
-  if(!q||!activeConvId||!messages[activeConvId]){results.innerHTML='<div style="text-align:center;padding:20px;color:var(--text4)">Sonuç yok</div>';return}
+  if(!q||!store.activeConvId||!store.messages[store.activeConvId]){results.innerHTML='<div style="text-align:center;padding:20px;color:var(--text4)">Sonuç yok</div>';return}
   var found=[];
-  for(var si=0;si<messages[activeConvId].length;si++){
-    var m=messages[activeConvId][si];
+  for(var si=0;si<store.messages[store.activeConvId].length;si++){
+    var m=store.messages[store.activeConvId][si];
     if(m.text&&m.text.toLowerCase().indexOf(q)!==-1&&!m.deleted)found.push(m)
   }
   if(found.length===0){results.innerHTML='<div style="text-align:center;padding:20px;color:var(--text4)">Sonuç bulunamadı</div>';return}
@@ -658,8 +658,8 @@ function searchMessages(q){
     d.onclick=function(){
       $('modal-search').classList.remove('active');
       // Navigate to the conversation
-      if(activeConvId){
-        var targetConvId=activeConvId;
+      if(store.activeConvId){
+        var targetConvId=store.activeConvId;
         selectConversation(targetConvId);
         // Wait for render, then scroll and highlight
         setTimeout(function(){
@@ -693,7 +693,7 @@ function requestNotify(){Notification.requestPermission()}
 function showNotification(title,body,convId){
   if(!ls('notifications')&&ls('notifications')!==false){ls('notifications',true)}
   if(ls('notifications')===false)return;
-  if(currentStatus==='dnd')return;
+  if(store.currentStatus==='dnd')return;
   if(convId&&isMuted(convId))return;
   if(convId&&isArchived(convId))return;
   if(window.electronAPI&&electronAPI.notify){electronAPI.notify(title,body)}
@@ -717,23 +717,23 @@ if(typeof Notification!=='undefined'&&Notification.permission==='default'){Notif
 // ===== TYPING INDICATOR =====
 
 function startTyping(){
-  if(!activeConvId||!window.db||!fbUserId())return;
+  if(!store.activeConvId||!window.db||!fbUserId())return;
   var h=$('chat-header-status');
   if(!h)return;
-  db.collection('conversations').doc(activeConvId).update({typing:fbUserId(),typingAt:Date.now()}).catch(console.error);
-  if(typingTimer)clearTimeout(typingTimer);
-  typingTimer=setTimeout(stopTyping,2500)
+  db.collection('conversations').doc(store.activeConvId).update({typing:fbUserId(),typingAt:Date.now()}).catch(console.error);
+  if(store.typingTimer)clearTimeout(store.typingTimer);
+  store.typingTimer=setTimeout(stopTyping,2500)
 }
 function stopTyping(){
-  if(!activeConvId||!window.db||!fbUserId())return;
-  db.collection('conversations').doc(activeConvId).update({typing:firebase.firestore.FieldValue.delete(),typingAt:firebase.firestore.FieldValue.delete()}).catch(console.error);
-  if(typingTimer){clearTimeout(typingTimer);typingTimer=null}
+  if(!store.activeConvId||!window.db||!fbUserId())return;
+  db.collection('conversations').doc(store.activeConvId).update({typing:firebase.firestore.FieldValue.delete(),typingAt:firebase.firestore.FieldValue.delete()}).catch(console.error);
+  if(store.typingTimer){clearTimeout(store.typingTimer);store.typingTimer=null}
 }
 function fbListenTyping(convId,otherUserId){
-  if(_typingRemoteUnsub){_typingRemoteUnsub()}
+  if(store._typingRemoteUnsub){store._typingRemoteUnsub()}
   if(!window.db||!convId||!otherUserId)return;
-  _typingLocalUid=otherUserId;
-  _typingRemoteUnsub=db.collection('conversations').doc(convId).onSnapshot(function(doc){
+  store._typingLocalUid=otherUserId;
+  store._typingRemoteUnsub=db.collection('conversations').doc(convId).onSnapshot(function(doc){
     if(!doc.exists)return;
     var d=doc.data();
     var h=$('chat-header-status');
@@ -747,8 +747,8 @@ function fbListenTyping(convId,otherUserId){
   },function(){})
 }
 function fbUnlistenTyping(){
-  if(_typingRemoteUnsub){_typingRemoteUnsub();_typingRemoteUnsub=null}
-  _typingLocalUid=null;
+  if(store._typingRemoteUnsub){store._typingRemoteUnsub();store._typingRemoteUnsub=null}
+  store._typingLocalUid=null;
 }
 document.addEventListener('input',function(e){
   if(e.target&&e.target.id==='chat-input')startTyping()
@@ -762,10 +762,10 @@ document.addEventListener('input',function(e){
 // ===== EMOJI REACTIONS =====
 // ===== PINNED MESSAGES =====
 function togglePinMessage(msgId){
-  var convId=activeConvId;if(!convId)return;
+  var convId=store.activeConvId;if(!convId)return;
   var pinned=ls('pinnedMsg_'+convId)||[];
   var idx=pinned.indexOf(msgId);
-  var msgs=messages[convId]||[],msgText='';
+  var msgs=store.messages[convId]||[],msgText='';
   for(var pi=0;pi<msgs.length;pi++){if(msgs[pi].id===msgId){msgText=msgs[pi].text||(msgs[pi].image?'Fotoğraf':(msgs[pi].video?'Video':(msgs[pi].audio?'Ses':'Mesaj')));break}}
   var label=msgText.substring(0,50);
   if(idx>-1){
@@ -776,19 +776,19 @@ function togglePinMessage(msgId){
     addGroupLog(convId,'📌 "'+label+'" mesajı sabitlendi')
   }
   ls('pinnedMsg_'+convId,pinned);
-  if(activeConvId===convId)renderMessages(convId)
+  if(store.activeConvId===convId)renderMessages(convId)
 }
 function isMsgPinned(msgId){
-  if(!activeConvId)return false;
-  var pinned=ls('pinnedMsg_'+activeConvId)||[];
+  if(!store.activeConvId)return false;
+  var pinned=ls('pinnedMsg_'+store.activeConvId)||[];
   return pinned.indexOf(msgId)>-1
 }
 function showPinnedMessages(event){
   if(event)event.stopPropagation();
-  if(!activeConvId)return;
+  if(!store.activeConvId)return;
   var list=$('pinned-msg-list');if(!list)return;
-  var pinned=ls('pinnedMsg_'+activeConvId)||[];
-  var msgs=messages[activeConvId]||[];
+  var pinned=ls('pinnedMsg_'+store.activeConvId)||[];
+  var msgs=store.messages[store.activeConvId]||[];
   var found=msgs.filter(function(m){return pinned.indexOf(m.id)>-1&&!m.deleted});
   if(found.length===0){
     list.innerHTML='<div style="text-align:center;padding:30px;color:var(--text4)">📌 Sabitlenmiş mesaj yok.</div>'
@@ -813,7 +813,7 @@ function showPinnedMessages(event){
       d.innerHTML=mediaHtml+'<span style="flex:1;font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+content+'</span><span style="font-size:10px;color:var(--text4)">'+esc(m.time)+'</span><button onclick="event.stopPropagation();togglePinMessage(\''+m.id+'\');showPinnedMessages()" style="padding:3px 8px;border:none;border-radius:5px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-size:10px;flex-shrink:0">Kaldır</button>';
       d.onclick=function(){
         $('modal-pinned').classList.remove('active');
-        selectConversation(activeConvId);
+        selectConversation(store.activeConvId);
         setTimeout(function(){
           var msgEl=$('msg-'+m.id);
           if(msgEl){
@@ -832,9 +832,9 @@ function showPinnedMessages(event){
 }
 
 function showMediaGallery(){
-  if(!activeConvId)return;
+  if(!store.activeConvId)return;
   var grid=$('gallery-grid');if(!grid)return;
-  var msgs=messages[activeConvId]||[];
+  var msgs=store.messages[store.activeConvId]||[];
   var media=msgs.filter(function(m){return !m.deleted&&(m.image||m.video)});
   if(media.length===0){
     grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text4)">📷 Medya bulunamadı.</div>'
@@ -866,12 +866,12 @@ function showMediaGallery(){
         items.push({sep:true});
         items.push({label:'Mesaja Git',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',action:function(){
           $('modal-gallery').classList.remove('active');
-          selectConversation(activeConvId);
+          selectConversation(store.activeConvId);
           setTimeout(function(){
             var targetId=m.id;
             // If in a collage group, find the first image in same consecutive group
-            if(activeConvId&&messages[activeConvId]){
-              var msgs=messages[activeConvId];
+            if(store.activeConvId&&store.messages[store.activeConvId]){
+              var msgs=store.messages[store.activeConvId];
               for(var ci=0;ci<msgs.length;ci++){
                 if(msgs[ci].id===m.id){
                   // Walk backwards to find first image in this consecutive group
@@ -911,8 +911,8 @@ function showVideoPreview(src){
 }
 
 function addReaction(msgId,emoji){
-  var convId=activeConvId;
-  var msgs=messages[convId]||[];
+  var convId=store.activeConvId;
+  var msgs=store.messages[convId]||[];
   for(var ri=0;ri<msgs.length;ri++){
     if(msgs[ri].id===msgId){
       if(!msgs[ri].reactions)msgs[ri].reactions=[];
@@ -924,8 +924,8 @@ function addReaction(msgId,emoji){
 }
 
 function copyMessageText(msgId){
-  var convId=activeConvId;if(!convId)return;
-  var msgs=messages[convId]||[];
+  var convId=store.activeConvId;if(!convId)return;
+  var msgs=store.messages[convId]||[];
   for(var cmi=0;cmi<msgs.length;cmi++){if(msgs[cmi].id===msgId){
     var txt=msgs[cmi]._decrypted||msgs[cmi].text||(msgs[cmi].image?'📷 Fotoğraf':(msgs[cmi].video?'🎬 Video':(msgs[cmi].audio?'🎤 Ses':'')));
     if(txt&&txt.indexOf('🔒')===0)txt='🔒 [Şifreli mesaj]';
@@ -940,10 +940,10 @@ function copyMessageText(msgId){
 }
 
 function editLastMessage(){
-  if(!activeConvId||!messages[activeConvId])return;
-  for(var eli=messages[activeConvId].length-1;eli>=0;eli--){
-    if(messages[activeConvId][eli].type==='sent'&&!messages[activeConvId][eli].deleted){
-      editMessage(messages[activeConvId][eli].id);return
+  if(!store.activeConvId||!store.messages[store.activeConvId])return;
+  for(var eli=store.messages[store.activeConvId].length-1;eli>=0;eli--){
+    if(store.messages[store.activeConvId][eli].type==='sent'&&!store.messages[store.activeConvId][eli].deleted){
+      editMessage(store.messages[store.activeConvId][eli].id);return
     }
   }
 }
@@ -951,16 +951,16 @@ function editLastMessage(){
 
 
 function confirmCollageDelete(){
-  var imgs=pendingCollageDelete;pendingCollageDelete=null;
+  var imgs=store.pendingCollageDelete;store.pendingCollageDelete=null;
   hideDeleteModal();
   $('delete-confirm-btn').textContent='Sil';
   $('delete-confirm-btn').onclick=function(){confirmDelete()};
-  if(!imgs||!activeConvId)return;
+  if(!imgs||!store.activeConvId)return;
   // Keep only the first image marked as deleted (shows one "Bu mesaj silindi"), remove the rest
   var firstId=imgs[0].id;
   var kept=[];
-  for(var di=0;di<messages[activeConvId].length;di++){
-    var m=messages[activeConvId][di];
+  for(var di=0;di<store.messages[store.activeConvId].length;di++){
+    var m=store.messages[store.activeConvId][di];
     var match=false;
     for(var dj=0;dj<imgs.length;dj++){
       if(m.id===imgs[dj].id){match=true;break}
@@ -969,14 +969,14 @@ function confirmCollageDelete(){
     else if(!match){kept.push(m)}
     // else: skip other images in the collage
   }
-  messages[activeConvId]=kept;
-  updateConvPreview(activeConvId);
-  renderMessages(activeConvId);renderConversations();saveMessages()
+  store.messages[store.activeConvId]=kept;
+  updateConvPreview(store.activeConvId);
+  renderMessages(store.activeConvId);renderConversations();saveMessages()
 }
 
 function editMessage(msgId){
-  var convId=activeConvId;if(!convId)return;
-  var msgs=messages[convId],msg=null;
+  var convId=store.activeConvId;if(!convId)return;
+  var msgs=store.messages[convId],msg=null;
   for(var ei=0;ei<msgs.length;ei++){if(msgs[ei].id===msgId){msg=msgs[ei];break}}
   if(!msg||msg.type!=='sent'||msg.deleted)return;
   var el=$('msg-'+msgId);if(!el)return;
@@ -989,21 +989,21 @@ function editMessage(msgId){
 async function saveEdit(msgId){
   var inp=document.getElementById('ei-'+msgId);if(!inp)return;
   var t=inp.value.trim();if(!t)return;
-  var convId=activeConvId;if(!convId)return;
-  var msgs=messages[convId];
+  var convId=store.activeConvId;if(!convId)return;
+  var msgs=store.messages[convId];
   for(var si=0;si<msgs.length;si++){if(msgs[si].id===msgId){
     if(msgs[si].text===t){renderMessages(convId);return}
     // Re-encrypt if original was E2E
     var newTxt=t;
-    if(msgs[si].e2e||(msgs[si].text&&msgs[si].text.indexOf('🔒')===0)){var conv=findConv(convId);if(conv&&e2eReady&&window.db){var pubKeys=await getRecipientPubKey(convId);if(pubKeys&&(Array.isArray(pubKeys)?pubKeys.length:1)){try{var enc=await e2eEncrypt(t,pubKeys);if(enc&&enc.indexOf('🔒')===0)newTxt=enc}catch(e){}}}}
+    if(msgs[si].e2e||(msgs[si].text&&msgs[si].text.indexOf('🔒')===0)){var conv=findConv(convId);if(conv&&store.e2eReady&&window.db){var pubKeys=await getRecipientPubKey(convId);if(pubKeys&&(Array.isArray(pubKeys)?pubKeys.length:1)){try{var enc=await e2eEncrypt(t,pubKeys);if(enc&&enc.indexOf('🔒')===0)newTxt=enc}catch(e){}}}}
     msgs[si].text=newTxt;msgs[si].edited=true;msgs[si].editedTime=timeNow();msgs[si]._decrypted=null;break
   }}
   renderMessages(convId);saveMessages()
 }
-function cancelEdit(msgId){renderMessages(activeConvId)}
+function cancelEdit(msgId){renderMessages(store.activeConvId)}
 
 function deleteMessage(msgId){
-  pendingDeleteMsgId=msgId;
+  store.pendingDeleteMsgId=msgId;
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
     '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Mesajı Sil</h4>'+
@@ -1014,7 +1014,7 @@ function deleteMessage(msgId){
 }
 
 function selfDeleteMessage(msgId){
-  pendingSelfDeleteId=msgId;
+  store.pendingSelfDeleteId=msgId;
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
     '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Mesajı Sil</h4>'+
@@ -1024,17 +1024,17 @@ function selfDeleteMessage(msgId){
   $('modal-delete').classList.add('active')
 }
 function confirmSelfDelete(){
-  var msgId=pendingSelfDeleteId;pendingSelfDeleteId=null;
+  var msgId=store.pendingSelfDeleteId;store.pendingSelfDeleteId=null;
   hideDeleteModal();if(!msgId)return;
-  var convId=activeConvId;if(!convId)return;
-  var msgs=messages[convId];
+  var convId=store.activeConvId;if(!convId)return;
+  var msgs=store.messages[convId];
   for(var i=0;i<msgs.length;i++){if(msgs[i].id===msgId){msgs[i].deleted=true;msgs[i].deletedByMe=true;break}}
   updateConvPreview(convId);
   renderMessages(convId);renderConversations();saveMessages()
 }
 
 function hideDeleteModal(){
-  pendingDeleteMsgId=null;pendingRemoveMember=null;pendingRemoveGroup=null;pendingCollageDelete=null;pendingClearConvId=null;pendingAlert=false;
+  store.pendingDeleteMsgId=null;store.pendingRemoveMember=null;store.pendingRemoveGroup=null;store.pendingCollageDelete=null;store.pendingClearConvId=null;store.pendingAlert=false;
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
     '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Mesajı Sil</h4>'+
@@ -1044,10 +1044,10 @@ function hideDeleteModal(){
   $('modal-delete').classList.remove('active')
 }
 function confirmDelete(){
-  var msgId=pendingDeleteMsgId;pendingDeleteMsgId=null;
+  var msgId=store.pendingDeleteMsgId;store.pendingDeleteMsgId=null;
   hideDeleteModal();if(!msgId)return;
-  var convId=activeConvId;if(!convId)return;
-  var msgs=messages[convId];
+  var convId=store.activeConvId;if(!convId)return;
+  var msgs=store.messages[convId];
   for(var i=0;i<msgs.length;i++){if(msgs[i].id===msgId){msgs[i].deleted=true;msgs[i].text='';break}}
   // Update sidebar with last non-deleted message
   updateConvPreview(convId);
@@ -1056,8 +1056,8 @@ function confirmDelete(){
 
 function updateConvPreview(convId){
   var conv=findConv(convId);if(!conv)return;
-  if(!messages[convId]||messages[convId].length===0){conv.lastMsg='Sohbet temizlendi';conv.time='';return}
-  var last=messages[convId][messages[convId].length-1];
+  if(!store.messages[convId]||store.messages[convId].length===0){conv.lastMsg='Sohbet temizlendi';conv.time='';return}
+  var last=store.messages[convId][store.messages[convId].length-1];
   if(last.deleted){
     conv.lastMsg=last.deletedByMe?'Bu mesajı sildiniz':'Bu mesaj silindi';
     conv.time=last.time
@@ -1074,7 +1074,7 @@ function updateConvPreview(convId){
 
 
 function showDeleteGroupConfirm(convId){
-  pendingDeleteGroupId=convId;
+  store.pendingDeleteGroupId=convId;
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
     '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Grubu Sil</h4>'+
@@ -1084,7 +1084,7 @@ function showDeleteGroupConfirm(convId){
   $('modal-delete').classList.add('active')
 }
 function confirmDeleteGroup(){
-  var cid=pendingDeleteGroupId;pendingDeleteGroupId=null;
+  var cid=store.pendingDeleteGroupId;store.pendingDeleteGroupId=null;
   hideDeleteModal();if(!cid)return;
   deleteGroup(cid)
 }
@@ -1097,9 +1097,9 @@ function showMemberMenu(e,memberId,convId){
 function showMemberContextMenu(x,y,memberId,convId){
   var conv=findConv(convId);if(!conv||!conv.isGroup)return;
   if(!conv.adminIds)conv.adminIds=[];
-  var isCreator=conv.creatorId===activeAccountId;
-  var isAdmin=conv.adminIds.indexOf(activeAccountId)!==-1;
-  var isSelf=memberId===activeAccountId;
+  var isCreator=conv.creatorId===store.activeAccountId;
+  var isAdmin=conv.adminIds.indexOf(store.activeAccountId)!==-1;
+  var isSelf=memberId===store.activeAccountId;
   var items=[];
   // Creator can promote/demote admins AND member management
   if(isCreator&&!isSelf){
@@ -1118,9 +1118,9 @@ function showMemberContextMenu(x,y,memberId,convId){
 }
 
 function toggleAdmin(memberId,convId){
-  for(var tai=0;tai<conversations.length;tai++){
-    if(conversations[tai].id==convId&&conversations[tai].isGroup){
-      var g=conversations[tai];
+  for(var tai=0;tai<store.conversations.length;tai++){
+    if(store.conversations[tai].id==convId&&store.conversations[tai].isGroup){
+      var g=store.conversations[tai];
       if(!g.adminIds)g.adminIds=[];
       var idx=g.adminIds.indexOf(memberId);
       var memberName='';
@@ -1131,7 +1131,7 @@ function toggleAdmin(memberId,convId){
       for(var tgi=0;tgi<gs.length;tgi++){if(gs[tgi].id==convId){gs[tgi].adminIds=g.adminIds;saveGroups(gs);break}}
       fbSyncMembers(convId);
       renderMessages(convId);
-      if(profilePanelOpen)showProfilePanel();
+      if(store.profilePanelOpen)showProfilePanel();
       return
     }
   }
@@ -1139,7 +1139,7 @@ function toggleAdmin(memberId,convId){
 
 
 function removeFromGroup(memberId,convId){
-  pendingRemoveMember=memberId;pendingRemoveGroup=convId;
+  store.pendingRemoveMember=memberId;store.pendingRemoveGroup=convId;
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>'+
     '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Gruptan Çıkar</h4>'+
@@ -1149,30 +1149,30 @@ function removeFromGroup(memberId,convId){
   $('modal-delete').classList.add('active')
 }
 function addGroupLog(convId,text){
-  if(!messages[convId])messages[convId]=[];
-  messages[convId].push({id:uid(),type:'log',text:text,time:timeNow()});
+  if(!store.messages[convId])store.messages[convId]=[];
+  store.messages[convId].push({id:uid(),type:'log',text:text,time:timeNow()});
   var conv=findConv(convId);
   if(conv){conv.lastMsg=text;conv.lastActivity=Date.now();conv.time=timeNow()}
   saveMessages();
-  if(activeConvId===convId)renderMessages(convId);
+  if(store.activeConvId===convId)renderMessages(convId);
   renderConversations()
 }
 
 function removeFromGroupConfirm(){
-  var memberId=pendingRemoveMember,convId=pendingRemoveGroup;
-  pendingRemoveMember=null;pendingRemoveGroup=null;
+  var memberId=store.pendingRemoveMember,convId=store.pendingRemoveGroup;
+  store.pendingRemoveMember=null;store.pendingRemoveGroup=null;
   hideDeleteModal();
   $('delete-confirm-btn').textContent='Sil';
   $('delete-confirm-btn').onclick=function(){confirmDelete()};
   if(!memberId||!convId)return;
   // Find member name
   var memberName='';
-  for(var ci=0;ci<conversations.length;ci++){if(conversations[ci].id==memberId){memberName=conversations[ci].name;break}}
-  if(!memberName){for(var mi=0;mi<conversations.length;mi++){if(conversations[mi].isGroup&&conversations[mi].id==convId){var gm=conversations[mi].members;for(var mm=0;mm<gm.length;mm++){if(gm[mm].id==memberId){memberName=gm[mm].name;break}}}if(memberName)break}}
+  for(var ci=0;ci<store.conversations.length;ci++){if(store.conversations[ci].id==memberId){memberName=store.conversations[ci].name;break}}
+  if(!memberName){for(var mi=0;mi<store.conversations.length;mi++){if(store.conversations[mi].isGroup&&store.conversations[mi].id==convId){var gm=store.conversations[mi].members;for(var mm=0;mm<gm.length;mm++){if(gm[mm].id==memberId){memberName=gm[mm].name;break}}}if(memberName)break}}
   
-  for(var gi=0;gi<conversations.length;gi++){
-    if(conversations[gi].id==convId&&conversations[gi].isGroup){
-      var g=conversations[gi];
+  for(var gi=0;gi<store.conversations.length;gi++){
+    if(store.conversations[gi].id==convId&&store.conversations[gi].isGroup){
+      var g=store.conversations[gi];
       for(var mi=0;mi<g.members.length;mi++){
         if(g.members[mi].id==memberId){
           var removedName=g.members[mi].name;
@@ -1189,18 +1189,18 @@ function removeFromGroupConfirm(){
       renderMessages(convId);
       // Update chat header member count
       var hs=$('chat-header-status');
-      if(hs&&activeConvId==convId)hs.textContent=memberCount(g)+' üye';
+      if(hs&&store.activeConvId==convId)hs.textContent=memberCount(g)+' üye';
       // Re-render profile panel without closing/reopening
-      if(profilePanelOpen){profilePanelOpen=false;showProfilePanel()}
+      if(store.profilePanelOpen){store.profilePanelOpen=false;showProfilePanel()}
     }
   }
 }
 
 // ===== RENDER MESSAGES =====
 renderMessages=function(convId){
-  var el=$('chat-messages');if(!el)return;var raw=messages[convId]||[];el.innerHTML='';
+  var el=$('chat-messages');if(!el)return;var raw=store.messages[convId]||[];el.innerHTML='';
   var conv=findConv(convId);var isGroupChat=conv&&conv.isGroup;
-  for(var di=0;di<raw.length;di++){if(raw[di].text&&raw[di].text.indexOf('🔒')===0&&!raw[di]._decrypted&&!raw[di]._decrypting){raw[di]._decrypting=true;(function(m){e2eDecrypt(m.text).then(function(d){if(d){m._decrypted=d;m._decrypting=false}else{m._decrypting=false;m._decrypted='🔒 [Çözülemedi]'}if(activeConvId===convId)renderMessages(convId)}).catch(function(){m._decrypting=false;m._decrypted='🔒 [Çözülemedi]';if(activeConvId===convId)renderMessages(convId)})})(raw[di])}}
+  for(var di=0;di<raw.length;di++){if(raw[di].text&&raw[di].text.indexOf('🔒')===0&&!raw[di]._decrypted&&!raw[di]._decrypting){raw[di]._decrypting=true;(function(m){e2eDecrypt(m.text).then(function(d){if(d){m._decrypted=d;m._decrypting=false}else{m._decrypting=false;m._decrypted='🔒 [Çözülemedi]'}if(store.activeConvId===convId)renderMessages(convId)}).catch(function(){m._decrypting=false;m._decrypted='🔒 [Çözülemedi]';if(store.activeConvId===convId)renderMessages(convId)})})(raw[di])}}
   var groups=[];var ci=0;
   while(ci<raw.length){
     var msg=raw[ci];
@@ -1245,8 +1245,8 @@ renderMessages=function(convId){
       }else{
         items.push({label:'Mesajı Sil',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){selfDeleteMessage(id)}})
       }
-      contextMenuMsgId=id;
-      if(chatMsgs)contextMenuScrollPos=chatMsgs.scrollTop;
+      store.contextMenuMsgId=id;
+      if(chatMsgs)store.contextMenuScrollPos=chatMsgs.scrollTop;
       showContextMenu(e.clientX+2,e.clientY-2,items)
     }
   }
@@ -1304,15 +1304,15 @@ renderMessages=function(convId){
         '</div><div class="msg-time" style="padding-top:2px;text-align:right">'+esc(g.time)+(g.time!==g.time2?' · '+esc(g.time2):'')+'</div>';
         div.oncontextmenu=function(e){
           e.preventDefault();
-          contextMenuMsgId='collage';
-          if(chatMsgs)contextMenuScrollPos=chatMsgs.scrollTop;
+          store.contextMenuMsgId='collage';
+          if(chatMsgs)store.contextMenuScrollPos=chatMsgs.scrollTop;
           var items=[];
           items.push({label:'Medyaları Düzenle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',action:function(){
-            pendingMediaFiles=[];
+            store.pendingMediaFiles=[];
             for(var ci=0;ci<imgs.length;ci++){
-              pendingMediaFiles.push({path:'',dataUrl:imgs[ci].image,name:'image '+(ci+1),type:'image',caption:imgs[ci].text||'',_editId:imgs[ci].id})
+              store.pendingMediaFiles.push({path:'',dataUrl:imgs[ci].image,name:'image '+(ci+1),type:'image',caption:imgs[ci].text||'',_editId:imgs[ci].id})
             }
-            mediaIndex=0;mediaThumbCount=0;
+            store.mediaIndex=0;store.mediaThumbCount=0;
             showMediaPreview()
           }});
           if(imgs.length>1)items.push({label:'Tümünü İlet',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',action:function(){
@@ -1320,7 +1320,7 @@ renderMessages=function(convId){
             showForwardModal(null,fwdData)
           }});
           items.push({label:'Tümünü Sil',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){
-            pendingCollageDelete=imgs;
+            store.pendingCollageDelete=imgs;
             var body=$('modal-delete').querySelector('.modal-body');
             body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
               '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Tümünü Sil</h4>'+
@@ -1343,7 +1343,7 @@ renderMessages=function(convId){
   setTimeout(function(){
     if(!el)return;
     var nearBottom=el.scrollHeight-el.scrollTop-el.clientHeight<150;
-    if(nearBottom||_forceScrollBottom){_forceScrollBottom=false;el.scrollTop=el.scrollHeight}
+    if(nearBottom||store._forceScrollBottom){store._forceScrollBottom=false;el.scrollTop=el.scrollHeight}
     updateNewMsgIndicator(el)
   },50)
 }
@@ -1352,11 +1352,11 @@ function updateNewMsgIndicator(el){
   el=el||$('chat-messages');if(!el)return;
   var ni=$('new-msg-indicator');var sb=$('scroll-bottom-btn');
   var nearBottom=el.scrollHeight-el.scrollTop-el.clientHeight<150;
-  if(nearBottom){_hasNewMsg=false;var cv=findConv(activeConvId);if(cv&&cv.unread>0){cv.unread=0;saveUnreadCounts();renderConversations()}}
-  if(_hasNewMsg&&!nearBottom){
+  if(nearBottom){store._hasNewMsg=false;var cv=findConv(store.activeConvId);if(cv&&cv.unread>0){cv.unread=0;saveUnreadCounts();renderConversations()}}
+  if(store._hasNewMsg&&!nearBottom){
     if(ni)ni.style.display='flex';
     if(sb)sb.style.display='none'
-  }else if(!nearBottom&&!_hasNewMsg){
+  }else if(!nearBottom&&!store._hasNewMsg){
     if(ni)ni.style.display='none';
     if(sb)sb.style.display='flex'
   }else{

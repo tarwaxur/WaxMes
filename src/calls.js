@@ -5,29 +5,29 @@
 
 function playRingtone(){
   try{
-    ringtoneCtx=new(window.AudioContext||window.webkitAudioContext)();
-    ringtoneOsc=ringtoneCtx.createOscillator();
-    ringtoneGain=ringtoneCtx.createGain();
-    ringtoneOsc.type='sine';ringtoneOsc.frequency.value=440;
-    ringtoneGain.gain.value=0.15;
-    ringtoneOsc.connect(ringtoneGain);ringtoneGain.connect(ringtoneCtx.destination);
-    ringtoneOsc.start();
+    store.ringtoneCtx=new(window.AudioContext||window.webkitAudioContext)();
+    store.ringtoneOsc=store.ringtoneCtx.createOscillator();
+    store.ringtoneGain=store.ringtoneCtx.createGain();
+    store.ringtoneOsc.type='sine';store.ringtoneOsc.frequency.value=440;
+    store.ringtoneGain.gain.value=0.15;
+    store.ringtoneOsc.connect(store.ringtoneGain);store.ringtoneGain.connect(store.ringtoneCtx.destination);
+    store.ringtoneOsc.start();
     // Vibrato effect
-    if(ringtoneVibrato)clearInterval(ringtoneVibrato);
-    ringtoneVibrato=setInterval(function(){
-      if(ringtoneOsc)ringtoneOsc.frequency.value=ringtoneOsc.frequency.value===440?520:440
+    if(store.ringtoneVibrato)clearInterval(store.ringtoneVibrato);
+    store.ringtoneVibrato=setInterval(function(){
+      if(store.ringtoneOsc)store.ringtoneOsc.frequency.value=store.ringtoneOsc.frequency.value===440?520:440
     },400)
   }catch(e){}
 }
 function stopRingtone(){
-  if(ringtoneVibrato){clearInterval(ringtoneVibrato);ringtoneVibrato=null}
-  try{if(ringtoneOsc){ringtoneOsc.stop();ringtoneOsc=null}if(ringtoneCtx){ringtoneCtx.close();ringtoneCtx=null}}catch(e){}
+  if(store.ringtoneVibrato){clearInterval(store.ringtoneVibrato);store.ringtoneVibrato=null}
+  try{if(store.ringtoneOsc){store.ringtoneOsc.stop();store.ringtoneOsc=null}if(store.ringtoneCtx){store.ringtoneCtx.close();store.ringtoneCtx=null}}catch(e){}
 }
 
 function startCall(){
-  if(!activeConvId){return}
-  var conv=findConv(activeConvId);if(!conv)return;
-  if(callState){return}
+  if(!store.activeConvId){return}
+  var conv=findConv(store.activeConvId);if(!conv)return;
+  if(store.callState){return}
   // Show inline call bar
   $('call-bar').style.display='flex';
   $('call-bar-name').textContent=conv.name;
@@ -55,9 +55,9 @@ function startCall(){
   var myName=$('sidebar-username').textContent;
   var accs=getAccounts();
   var selfAcc=null;
-  for(var sai=0;sai<accs.length;sai++){if(accs[sai].id===activeAccountId){selfAcc=accs[sai];break}}
+  for(var sai=0;sai<accs.length;sai++){if(accs[sai].id===store.activeAccountId){selfAcc=accs[sai];break}}
   // Self avatar
-  var selfA=makeCallAvatar(activeAccountId,myName,'var(--grad)',myName.charAt(0).toUpperCase(),selfAcc?selfAcc.avatar:null);
+  var selfA=makeCallAvatar(store.activeAccountId,myName,'var(--grad)',myName.charAt(0).toUpperCase(),selfAcc?selfAcc.avatar:null);
   selfA.id='call-self-avatar';
   avatarContainer.appendChild(selfA);
   // Other members
@@ -84,15 +84,15 @@ function startCall(){
     avatarContainer.appendChild(a)
   }
   // Add call log
-  if(messages[activeConvId]){var logTxt='📞 '+(conv.isGroup?'Grup araması':'Sesli arama')+' başlatıldı';var logMsg={id:uid(),type:'log',text:logTxt,time:timeNow(),senderId:fbUserId()};messages[activeConvId].push(logMsg);conv.lastMsg=logTxt;conv.lastActivity=Date.now();conv.time=timeNow();fbSendMessage(activeConvId,logMsg);saveMessages();renderMessages(activeConvId);renderConversations()}
-  callState='calling';
+  if(store.messages[store.activeConvId]){var logTxt='📞 '+(conv.isGroup?'Grup araması':'Sesli arama')+' başlatıldı';var logMsg={id:uid(),type:'log',text:logTxt,time:timeNow(),senderId:fbUserId()};store.messages[store.activeConvId].push(logMsg);conv.lastMsg=logTxt;conv.lastActivity=Date.now();conv.time=timeNow();fbSendMessage(store.activeConvId,logMsg);saveMessages();renderMessages(store.activeConvId);renderConversations()}
+  store.callState='calling';
   playRingtone();
   
   // Send call offer as a special message
   var callId=uid();
-  pendingCallMsgId=callId;
-  if(!messages[activeConvId])messages[activeConvId]=[];
-  messages[activeConvId].push({id:callId,type:'call',action:'offer',time:timeNow(),sender:$('sidebar-username').textContent,status:'calling'});
+  store.pendingCallMsgId=callId;
+  if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
+  store.messages[store.activeConvId].push({id:callId,type:'call',action:'offer',time:timeNow(),sender:$('sidebar-username').textContent,status:'calling'});
   saveMessages();
   
   // Start local stream and create offer
@@ -104,9 +104,9 @@ function startCall(){
 
 function startLocalStream(cb){
   try{navigator.mediaDevices.getUserMedia({audio:true,video:false}).then(function(stream){
-    callLocalStream=stream;
+    store.callLocalStream=stream;
     // Voice activity detection for self avatar
-    if(vadTimer){clearInterval(vadTimer)}
+    if(store.vadTimer){clearInterval(store.vadTimer)}
     try{
       var vCtx=new(window.AudioContext||window.webkitAudioContext)();
       var vSrc=vCtx.createMediaStreamSource(stream);
@@ -116,7 +116,7 @@ function startLocalStream(cb){
       // Auto-calibrate noise floor
       var vadNoiseFloor=0,vadCalibCount=0,vadSilenceFrames=0;
       var vadSpeaking=false;
-      vadTimer=setInterval(function(){
+      store.vadTimer=setInterval(function(){
         vAna.getByteFrequencyData(vData);
         var avg=0;for(var vi=0;vi<vData.length;vi++){avg+=vData[vi]}
         avg/=vData.length;
@@ -150,34 +150,34 @@ function startLocalStream(cb){
 
 function createOffer(callId){
   var config={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'}]};
-  callPeerConn=new RTCPeerConnection(config);
-  callLocalStream.getTracks().forEach(function(t){callPeerConn.addTrack(t,callLocalStream)});
-  callPeerConn.onicecandidate=function(e){
-    if(e.candidate&&callId&&activeConvId){
-      fbSendCallSignal(activeConvId,{action:'ice',candidate:e.candidate,callId:callId})
+  store.callPeerConn=new RTCPeerConnection(config);
+  store.callLocalStream.getTracks().forEach(function(t){store.callPeerConn.addTrack(t,store.callLocalStream)});
+  store.callPeerConn.onicecandidate=function(e){
+    if(e.candidate&&callId&&store.activeConvId){
+      fbSendCallSignal(store.activeConvId,{action:'ice',candidate:e.candidate,callId:callId})
     }
   };
-  callPeerConn.oniceconnectionstatechange=function(){
-    if(!callPeerConn)return;
-    if(callPeerConn.iceConnectionState==='connected'||callPeerConn.iceConnectionState==='completed'){
-      if(callState!=='connected'){
-        callState='connected';callStartTime=Date.now();
+  store.callPeerConn.oniceconnectionstatechange=function(){
+    if(!store.callPeerConn)return;
+    if(store.callPeerConn.iceConnectionState==='connected'||store.callPeerConn.iceConnectionState==='completed'){
+      if(store.callState!=='connected'){
+        store.callState='connected';store.callStartTime=Date.now();
         $('call-bar-status').textContent='Bağlandı';
         $('call-bar-timer').style.display='inline';
         stopRingtone();
-        if(callTimerInterval){clearInterval(callTimerInterval)}
-        callTimerInterval=setInterval(function(){
-          var sec=Math.floor((Date.now()-callStartTime)/1000);
+        if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
+        store.callTimerInterval=setInterval(function(){
+          var sec=Math.floor((Date.now()-store.callStartTime)/1000);
           var m=Math.floor(sec/60),s=sec%60;
           $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
         },500)
       }
     }
-    if(callPeerConn.iceConnectionState==='disconnected'||callPeerConn.iceConnectionState==='failed'){
+    if(store.callPeerConn.iceConnectionState==='disconnected'||store.callPeerConn.iceConnectionState==='failed'){
       endCall()
     }
   };
-  callPeerConn.ontrack=function(e){
+  store.callPeerConn.ontrack=function(e){
     var audioEl=document.createElement('audio');
     audioEl.srcObject=e.streams[0];
     audioEl.autoplay=true;
@@ -187,14 +187,14 @@ function createOffer(callId){
     audioEl.play().catch(console.error)
   };
   // Process any pending ICE candidates collected before PeerConnection was ready
-  while(pendingIceCandidates.length>0){
-    var c=pendingIceCandidates.shift();
-    try{callPeerConn.addIceCandidate(new RTCIceCandidate(c))}catch(e){}
+  while(store.pendingIceCandidates.length>0){
+    var c=store.pendingIceCandidates.shift();
+    try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(c))}catch(e){}
   }
-  callPeerConn.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:false}).then(function(offer){
-    callPeerConn.setLocalDescription(offer);
+  store.callPeerConn.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:false}).then(function(offer){
+    store.callPeerConn.setLocalDescription(offer);
     $('call-bar-status').textContent='Bağlanıyor...';
-    if(activeConvId)fbSendCallSignal(activeConvId,{action:'offer',sdp:offer,callId:callId,callerName:$('sidebar-username').textContent||'Birisi'})
+    if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'offer',sdp:offer,callId:callId,callerName:$('sidebar-username').textContent||'Birisi'})
   }).catch(console.error)
 }
 
@@ -209,48 +209,48 @@ function fbSendCallSignal(convId,data){
 }
 
 function fbListenCallSignals(convId){
-  if(_callSignalUnsub){_callSignalUnsub();_callSignalUnsub=null}
+  if(store._callSignalUnsub){store._callSignalUnsub();store._callSignalUnsub=null}
   if(!window.db||!convId||!fbUserId())return;
   var uid=fbUserId();
-  _callSignalUnsub=db.collection('conversations').doc(convId).collection('call_signals').orderBy('timestamp','asc').onSnapshot(function(snap){
+  store._callSignalUnsub=db.collection('conversations').doc(convId).collection('call_signals').orderBy('timestamp','asc').onSnapshot(function(snap){
     snap.docChanges().forEach(function(change){
       if(change.type!=='added')return;
       var d=change.doc.data(),sid=change.doc.id;
       if(d.from===uid)return;
-      if(!callState||callState==='idle'){
+      if(!store.callState||store.callState==='idle'){
         // Incoming offer
         if(d.action==='offer'&&d.sdp){
-          _callSigOfferId=sid;
+          store._callSigOfferId=sid;
           var callerName=d.callerName||'Birisi';
           $('incoming-caller-name').textContent=callerName;
-          callState='ringing';
-          pendingCallMsgId=sid;
+          store.callState='ringing';
+          store.pendingCallMsgId=sid;
           playRingtone();
           $('incoming-call').style.display='flex';
           // Auto-cleanup the offer
-          setTimeout(function(){if(callState==='ringing'&&pendingCallMsgId===sid){$('incoming-call').style.display='none';stopRingtone();callState=null;pendingCallMsgId=null}},30000)
+          setTimeout(function(){if(store.callState==='ringing'&&store.pendingCallMsgId===sid){$('incoming-call').style.display='none';stopRingtone();store.callState=null;store.pendingCallMsgId=null}},30000)
         }
       }
       // Handle ICE candidates regardless of callState (queue if no PeerConnection yet)
       if(d.action==='ice'&&d.candidate){
-        if(callPeerConn){
-          try{callPeerConn.addIceCandidate(new RTCIceCandidate(d.candidate))}catch(e){}
+        if(store.callPeerConn){
+          try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(d.candidate))}catch(e){}
         }else{
-          pendingIceCandidates.push(d.candidate)
+          store.pendingIceCandidates.push(d.candidate)
         }
       }
-      if(callState==='calling'||callState==='connected'){
+      if(store.callState==='calling'||store.callState==='connected'){
         // Incoming answer (we are the caller)
-        if(d.action==='answer'&&d.sdp&&callPeerConn&&callPeerConn.localDescription&&callPeerConn.localDescription.type==='offer'){
-          callPeerConn.setRemoteDescription(new RTCSessionDescription(d.sdp)).then(function(){
+        if(d.action==='answer'&&d.sdp&&store.callPeerConn&&store.callPeerConn.localDescription&&store.callPeerConn.localDescription.type==='offer'){
+          store.callPeerConn.setRemoteDescription(new RTCSessionDescription(d.sdp)).then(function(){
             $('call-bar-status').textContent='Bağlandı';
             $('call-bar-timer').style.display='inline';
-            callState='connected';
-            callStartTime=Date.now();
+            store.callState='connected';
+            store.callStartTime=Date.now();
             stopRingtone();
-            if(callTimerInterval){clearInterval(callTimerInterval)}
-            callTimerInterval=setInterval(function(){
-              var sec=Math.floor((Date.now()-callStartTime)/1000);
+            if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
+            store.callTimerInterval=setInterval(function(){
+              var sec=Math.floor((Date.now()-store.callStartTime)/1000);
               var m=Math.floor(sec/60),s=sec%60;
               $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
             },500)
@@ -266,14 +266,14 @@ function fbListenCallSignals(convId){
 }
 
 function fbStopCallSignals(){
-  if(_callSignalUnsub){_callSignalUnsub();_callSignalUnsub=null}
-  _callSigOfferId=null
+  if(store._callSignalUnsub){store._callSignalUnsub();store._callSignalUnsub=null}
+  store._callSigOfferId=null
 }
 
 function checkIncomingCalls(){} // Replaced by fbListenCallSignals
 
 function acceptCall(){
-  if(callState!=='ringing'||!pendingCallMsgId)return;
+  if(store.callState!=='ringing'||!store.pendingCallMsgId)return;
   stopRingtone();$('incoming-call').style.display='none';
   $('call-bar').style.display='flex';
   var name=$('incoming-caller-name').textContent;
@@ -285,51 +285,51 @@ function acceptCall(){
   $('call-bar-name').textContent=name;
   $('call-bar-status').textContent='Bağlanıyor...';
   $('call-bar-timer').style.display='none';
-  callState='calling';
+  store.callState='calling';
   
   // Add call accepted log
-  if(activeConvId&&messages[activeConvId]){
+  if(store.activeConvId&&store.messages[store.activeConvId]){
     var acceptLogTxt='📞 Arama kabul edildi';
-    messages[activeConvId].push({id:uid(),type:'log',text:acceptLogTxt,time:timeNow()});
-    fbSendMessage(activeConvId,{id:uid(),type:'log',text:acceptLogTxt,time:timeNow(),senderId:fbUserId()});
+    store.messages[store.activeConvId].push({id:uid(),type:'log',text:acceptLogTxt,time:timeNow()});
+    fbSendMessage(store.activeConvId,{id:uid(),type:'log',text:acceptLogTxt,time:timeNow(),senderId:fbUserId()});
     saveMessages();
-    renderMessages(activeConvId);
+    renderMessages(store.activeConvId);
     renderConversations()
   }
   
   // Get offer from Firestore
   var offer=null,fcallId=null;
-  if(window.db&&activeConvId&&_callSigOfferId){
-    db.collection('conversations').doc(activeConvId).collection('call_signals').doc(_callSigOfferId).get().then(function(odoc){
+  if(window.db&&store.activeConvId&&store._callSigOfferId){
+    db.collection('conversations').doc(store.activeConvId).collection('call_signals').doc(store._callSigOfferId).get().then(function(odoc){
       if(odoc.exists){var od=odoc.data();offer=od.sdp;fcallId=od.callId}
       if(!offer){endCall();return}
       startLocalStream(function(){
         var config={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'}]};
-        callPeerConn=new RTCPeerConnection(config);
-        callLocalStream.getTracks().forEach(function(t){callPeerConn.addTrack(t,callLocalStream)});
-        callPeerConn.onicecandidate=function(e){
-          if(e.candidate&&activeConvId){
-            fbSendCallSignal(activeConvId,{action:'ice',candidate:e.candidate,callId:fcallId})
+        store.callPeerConn=new RTCPeerConnection(config);
+        store.callLocalStream.getTracks().forEach(function(t){store.callPeerConn.addTrack(t,store.callLocalStream)});
+        store.callPeerConn.onicecandidate=function(e){
+          if(e.candidate&&store.activeConvId){
+            fbSendCallSignal(store.activeConvId,{action:'ice',candidate:e.candidate,callId:fcallId})
           }
         };
-        callPeerConn.oniceconnectionstatechange=function(){
-          if(!callPeerConn)return;
-          if(callPeerConn.iceConnectionState==='connected'||callPeerConn.iceConnectionState==='completed'){
-            if(callState!=='connected'){
-              callState='connected';callStartTime=Date.now();
+        store.callPeerConn.oniceconnectionstatechange=function(){
+          if(!store.callPeerConn)return;
+          if(store.callPeerConn.iceConnectionState==='connected'||store.callPeerConn.iceConnectionState==='completed'){
+            if(store.callState!=='connected'){
+              store.callState='connected';store.callStartTime=Date.now();
               $('call-bar-status').textContent='Bağlandı';
               $('call-bar-timer').style.display='inline';
-              if(callTimerInterval){clearInterval(callTimerInterval)}
-              callTimerInterval=setInterval(function(){
-                var sec=Math.floor((Date.now()-callStartTime)/1000);
+              if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
+              store.callTimerInterval=setInterval(function(){
+                var sec=Math.floor((Date.now()-store.callStartTime)/1000);
                 var m=Math.floor(sec/60),s=sec%60;
                 $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
               },500)
             }
           }
-          if(callPeerConn.iceConnectionState==='disconnected'||callPeerConn.iceConnectionState==='failed'){endCall()}
+          if(store.callPeerConn.iceConnectionState==='disconnected'||store.callPeerConn.iceConnectionState==='failed'){endCall()}
         };
-        callPeerConn.ontrack=function(e){
+        store.callPeerConn.ontrack=function(e){
           var audioEl=document.createElement('audio');
           audioEl.srcObject=e.streams[0];
           audioEl.autoplay=true;audioEl.playsinline=true;
@@ -338,24 +338,24 @@ function acceptCall(){
           audioEl.play().catch(console.error)
         };
         // Process pending ICE candidates collected before PeerConnection was ready
-        while(pendingIceCandidates.length>0){
-          var c=pendingIceCandidates.shift();
-          try{callPeerConn.addIceCandidate(new RTCIceCandidate(c))}catch(e){}
+        while(store.pendingIceCandidates.length>0){
+          var c=store.pendingIceCandidates.shift();
+          try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(c))}catch(e){}
         }
-        callPeerConn.setRemoteDescription(new RTCSessionDescription(offer)).then(function(){
-          return callPeerConn.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:false})
+        store.callPeerConn.setRemoteDescription(new RTCSessionDescription(offer)).then(function(){
+          return store.callPeerConn.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:false})
         }).then(function(answer){
-          return callPeerConn.setLocalDescription(answer).then(function(){
-            callState='connected';callStartTime=Date.now();
+          return store.callPeerConn.setLocalDescription(answer).then(function(){
+            store.callState='connected';store.callStartTime=Date.now();
             $('call-bar-status').textContent='Bağlandı';
             $('call-bar-timer').style.display='inline';
-            if(callTimerInterval){clearInterval(callTimerInterval)}
-            callTimerInterval=setInterval(function(){
-              var sec=Math.floor((Date.now()-callStartTime)/1000);
+            if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
+            store.callTimerInterval=setInterval(function(){
+              var sec=Math.floor((Date.now()-store.callStartTime)/1000);
               var m=Math.floor(sec/60),s=sec%60;
               $('call-bar-timer').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s
             },500);
-            if(activeConvId)fbSendCallSignal(activeConvId,{action:'answer',sdp:answer,callId:fcallId})
+            if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'answer',sdp:answer,callId:fcallId})
           })
         }).catch(function(){endCall()})
       })
@@ -363,35 +363,35 @@ function acceptCall(){
   }else{endCall()}
 }
 
-function declineCall(){stopRingtone();$('incoming-call').style.display='none';if(pendingCallMsgId){pendingCallMsgId=null}callState=null}
+function declineCall(){stopRingtone();$('incoming-call').style.display='none';if(store.pendingCallMsgId){store.pendingCallMsgId=null}store.callState=null}
 
 function endCall(){
   stopRingtone();
   $('call-bar').style.display='none';
   $('incoming-call').style.display='none';
-  if(callTimerInterval){clearInterval(callTimerInterval);callTimerInterval=null}
-  if(callPeerConn){callPeerConn.close();callPeerConn=null}
-  if(vadTimer){clearInterval(vadTimer);vadTimer=null}
-  if(callLocalStream){callLocalStream.getTracks().forEach(function(t){t.stop()});callLocalStream=null}
-  if(callCamStream){callCamStream.getTracks().forEach(function(t){t.stop()});callCamStream=null}
-  if(callScreenStream){callScreenStream.getTracks().forEach(function(t){t.stop()});callScreenStream=null}
+  if(store.callTimerInterval){clearInterval(store.callTimerInterval);store.callTimerInterval=null}
+  if(store.callPeerConn){store.callPeerConn.close();store.callPeerConn=null}
+  if(store.vadTimer){clearInterval(store.vadTimer);store.vadTimer=null}
+  if(store.callLocalStream){store.callLocalStream.getTracks().forEach(function(t){t.stop()});store.callLocalStream=null}
+  if(store.callCamStream){store.callCamStream.getTracks().forEach(function(t){t.stop()});store.callCamStream=null}
+  if(store.callScreenStream){store.callScreenStream.getTracks().forEach(function(t){t.stop()});store.callScreenStream=null}
   var cv=$('call-local-video');if(cv){cv.style.display='none';var cve=$('call-local-video-el');if(cve)cve.srcObject=null}
   // Add call end log with duration
-  if(activeConvId&&messages[activeConvId]&&callStartTime>0){
-    var dur=Math.floor((Date.now()-callStartTime)/1000);
+  if(store.activeConvId&&store.messages[store.activeConvId]&&store.callStartTime>0){
+    var dur=Math.floor((Date.now()-store.callStartTime)/1000);
     var dm=Math.floor(dur/60),ds=dur%60;
     var endLogTxt='📞 Arama sonlandı · '+(dm<10?'0':'')+dm+':'+(ds<10?'0':'')+ds;
     var endLogMsg={id:uid(),type:'log',text:endLogTxt,time:timeNow(),senderId:fbUserId()};
-    messages[activeConvId].push(endLogMsg);
-    fbSendMessage(activeConvId,endLogMsg);
-    var conv2=findConv(activeConvId);if(conv2){conv2.lastMsg=endLogTxt;conv2.lastActivity=Date.now();conv2.time=timeNow()}
+    store.messages[store.activeConvId].push(endLogMsg);
+    fbSendMessage(store.activeConvId,endLogMsg);
+    var conv2=findConv(store.activeConvId);if(conv2){conv2.lastMsg=endLogTxt;conv2.lastActivity=Date.now();conv2.time=timeNow()}
     saveMessages();
-    renderMessages(activeConvId);
+    renderMessages(store.activeConvId);
     renderConversations()
   }
-  pendingIceCandidates=[];
-  callState=null;callMicMuted=false;callSpeakerMuted=false;
-  if(activeConvId)fbSendCallSignal(activeConvId,{action:'end'});
+  store.pendingIceCandidates=[];
+  store.callState=null;store.callMicMuted=false;store.callSpeakerMuted=false;
+  if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'end'});
   $('call-mic-btn').style.background='rgba(255,255,255,.04)';
   $('call-mic-btn').style.color='var(--text3)';
   $('call-cam-btn').style.background='rgba(255,255,255,.04)';
@@ -406,10 +406,10 @@ function endCall(){
 }
 
 function toggleCallMic(){
-  callMicMuted=!callMicMuted;
-  if(callLocalStream){callLocalStream.getAudioTracks().forEach(function(t){t.enabled=!callMicMuted})}
-  $('call-mic-btn').style.background=callMicMuted?'rgba(239,68,68,.2)':'rgba(255,255,255,.06)';
-  $('call-mic-btn').style.color=callMicMuted?'#ef4444':'var(--text3)'
+  store.callMicMuted=!store.callMicMuted;
+  if(store.callLocalStream){store.callLocalStream.getAudioTracks().forEach(function(t){t.enabled=!store.callMicMuted})}
+  $('call-mic-btn').style.background=store.callMicMuted?'rgba(239,68,68,.2)':'rgba(255,255,255,.06)';
+  $('call-mic-btn').style.color=store.callMicMuted?'#ef4444':'var(--text3)'
 }
 
 
@@ -439,12 +439,12 @@ function closeCallVideo(){
 }
 
 function toggleCallCamera(){
-  if(!callState)return;
+  if(!store.callState)return;
   var videoEl=$('call-local-video-el');
   var container=$('call-local-video');
-  if(callCamStream){
-    callCamStream.getTracks().forEach(function(t){t.stop()});
-    callCamStream=null;
+  if(store.callCamStream){
+    store.callCamStream.getTracks().forEach(function(t){t.stop()});
+    store.callCamStream=null;
     videoEl.srcObject=null;
     container.style.display='none';
     $('call-cam-btn').style.background='rgba(255,255,255,.04)';
@@ -452,7 +452,7 @@ function toggleCallCamera(){
     return
   }
   try{navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(function(stream){
-    callCamStream=stream;
+    store.callCamStream=stream;
     videoEl.srcObject=stream;
     container.style.display='block';
     videoEl.play().catch(console.error);
@@ -462,12 +462,12 @@ function toggleCallCamera(){
 }
 
 function toggleCallScreen(){
-  if(!callState)return;
+  if(!store.callState)return;
   var videoEl=$('call-local-video-el');
   var container=$('call-local-video');
-  if(callScreenStream){
-    callScreenStream.getTracks().forEach(function(t){t.stop()});
-    callScreenStream=null;
+  if(store.callScreenStream){
+    store.callScreenStream.getTracks().forEach(function(t){t.stop()});
+    store.callScreenStream=null;
     videoEl.srcObject=null;
     container.style.display='none';
     $('call-screen-btn').style.background='rgba(255,255,255,.04)';
@@ -476,14 +476,14 @@ function toggleCallScreen(){
   }
   // Native picker shows window/screen/tab options automatically
   try{navigator.mediaDevices.getDisplayMedia({video:true,audio:false}).then(function(stream){
-    callScreenStream=stream;
+    store.callScreenStream=stream;
     videoEl.srcObject=stream;
     container.style.display='';
     videoEl.play().catch(console.error);
     $('call-screen-btn').style.background='rgba(34,197,94,.15)';
     $('call-screen-btn').style.color='#22c55e';
     stream.getVideoTracks()[0].onended=function(){
-      callScreenStream=null;
+      store.callScreenStream=null;
       videoEl.srcObject=null;
       container.style.display='none';
       $('call-screen-btn').style.background='rgba(255,255,255,.04)';
@@ -493,21 +493,21 @@ function toggleCallScreen(){
 }
 
 function toggleCallSpeaker(){
-  callSpeakerMuted=!callSpeakerMuted;
-  $('call-speaker-btn').style.background=callSpeakerMuted?'rgba(239,68,68,.2)':'rgba(255,255,255,.06)';
-  $('call-speaker-btn').style.color=callSpeakerMuted?'#ef4444':'var(--text3)'
+  store.callSpeakerMuted=!store.callSpeakerMuted;
+  $('call-speaker-btn').style.background=store.callSpeakerMuted?'rgba(239,68,68,.2)':'rgba(255,255,255,.06)';
+  $('call-speaker-btn').style.color=store.callSpeakerMuted?'#ef4444':'var(--text3)'
 }
 
 // Poll for incoming calls (fallback — primary signaling is via Firestore listener)
-callPollTimer=setInterval(function(){
-  if(!activeConvId)return;
-  if(callState==='calling'&&callPeerConn){
+store.callPollTimer=setInterval(function(){
+  if(!store.activeConvId)return;
+  if(store.callState==='calling'&&store.callPeerConn){
     // Fallback: process any remaining local-message based signals (legacy)
-    if(!messages[activeConvId])return;
-    var msgs=messages[activeConvId];
+    if(!store.messages[store.activeConvId])return;
+    var msgs=store.messages[store.activeConvId];
     for(var ci=0;ci<msgs.length;ci++){
       if(msgs[ci].type==='call'&&msgs[ci].action==='ice'&&msgs[ci].candidate&&!msgs[ci]._processed){
-        try{callPeerConn.addIceCandidate(new RTCIceCandidate(msgs[ci].candidate));msgs[ci]._processed=true}catch(e){}
+        try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(msgs[ci].candidate));msgs[ci]._processed=true}catch(e){}
       }
     }
   }

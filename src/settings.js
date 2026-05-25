@@ -5,14 +5,14 @@ var themes={
 
 // ===== SETTINGS =====
 function showSettings(){hideAvatarMenu();$('chat-empty').style.display='none';$('chat-active').style.display='none';$('settings-page').classList.add('active');showSettingsCat('profile')}
-function hideSettings(){$('settings-page').classList.remove('active');if(activeConvId){$('chat-empty').style.display='none';$('chat-active').style.display='flex'}else $('chat-empty').style.display='flex'}
+function hideSettings(){$('settings-page').classList.remove('active');if(store.activeConvId){$('chat-empty').style.display='none';$('chat-active').style.display='flex'}else $('chat-empty').style.display='flex'}
 
 function showSettingsCat(cat){
   document.querySelectorAll('.settings-cat').forEach(function(c){c.classList.remove('active')});
   var el=document.querySelector('.settings-cat[data-cat="'+cat+'"]');if(el)el.classList.add('active');
   var content=$('settings-content');content.classList.remove('settings-content-anim');
   if(cat==='profile'){
-    var accs=getAccounts(),acc=null;for(var i=0;i<accs.length;i++){if(accs[i].id===activeAccountId){acc=accs[i];break}}
+    var accs=getAccounts(),acc=null;for(var i=0;i<accs.length;i++){if(accs[i].id===store.activeAccountId){acc=accs[i];break}}
     if(!acc){content.innerHTML='<div class="stitle">Profil</div><p style="color:var(--text4)">Hesap bulunamadı.</p>';return}
     var accName=accountFallbackName(acc),accUser=accountFallbackUsername(acc);
     content.innerHTML='<div class="stitle">Profil Ayarları</div><div style="display:flex;align-items:center;gap:16px;margin-bottom:20px"><div id="settings-avatar" style="width:64px;height:64px;border-radius:50%;background:'+(acc.avatar?'none':'linear-gradient(135deg,#2563eb,#6d28d9)')+';overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;border:1px dashed var(--border2);background-size:cover;background-position:center" onclick="pickSettingsAvatar()">'+(acc.avatar?'<img src="'+esc(acc.avatar)+'" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.parentElement.style.background=\'linear-gradient(135deg,#2563eb,#6d28d9)\';this.parentElement.style.fontSize=\'24px\'">':'<svg width="24" height="24" viewBox="0 0 24 24" stroke="rgba(255,255,255,.3)" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>')+'</div><div><div style="font-size:13px;font-weight:600;color:var(--text2)">'+esc(accName)+'</div><div style="font-size:11px;color:var(--text4)">Fotoğrafı değiştirmek için tıkla</div></div></div>'+
@@ -45,7 +45,7 @@ function showSettingsCat(cat){
         '<label class="toggle"><input type="checkbox" id="background-toggle" onchange="toggleBackground(this.checked)"><span class="toggle-track"></span><span class="toggle-label" style="font-size:12px;color:var(--text2)">Arka Planda Çalıştır</span></label>'+
         '<span style="font-size:10px;color:var(--text4)">Kapatınca tepsiye küçülsün, bildirimler devam etsin</span>'+
       '</div>'+
-      '<div class="field-group"><label>E-posta Adresi <span style="font-size:9px;color:var(--text4);font-weight:400">(şu anlık devre dışı)</span></label><input type="email" id="set-email" value="'+(function(){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===activeAccountId)return esc(a[i].email)}return''})()+'" oninput="document.getElementById(\'save-email-btn\').disabled=!this.value.trim()"></div>'+
+      '<div class="field-group"><label>E-posta Adresi <span style="font-size:9px;color:var(--text4);font-weight:400">(şu anlık devre dışı)</span></label><input type="email" id="set-email" value="'+(function(){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===store.activeAccountId)return esc(a[i].email)}return''})()+'" oninput="document.getElementById(\'save-email-btn\').disabled=!this.value.trim()"></div>'+
       '<div class="field-group" style="margin-top:6px"><button class="btn-primary" id="save-email-btn" onclick="saveEmail()" style="opacity:.5;cursor:not-allowed">E-postayı Kaydet</button></div>'+
       '<div style="margin-top:20px;padding:16px;border-radius:10px;background:var(--surface);border:1px solid var(--border)"><h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px">Şifre Değiştir</h4>'+
       '<div class="field-group"><label>Mevcut Şifre</label><input type="password" id="cur-pass" placeholder="••••••••"></div>'+
@@ -145,7 +145,7 @@ function showSettingsCat(cat){
         '<span style="font-size:12px;color:var(--text3)">'+sc.label+'</span>'+
         '<div style="display:flex;align-items:center;gap:6px" id="sc-group-'+sc.id+'">'+
           '<button onclick="recordShortcut(\''+sc.id+'\')" style="padding:4px 10px;border:none;border-radius:6px;background:var(--bg3);color:var(--text4);font-family:monospace;font-size:11px;cursor:pointer;min-width:70px;text-align:center;transition:all .15s" id="sc-'+sc.id+'" title="Atamak için tıkla">'+(displayKey||'Atama')+'</button>'+
-          (recordingShortcut?'':'<button onclick="resetShortcut(\''+sc.id+'\')" style="width:24px;height:24px;border:none;border-radius:5px;background:transparent;cursor:pointer;color:var(--text4);font-size:12px;display:inline-flex;align-items:center;justify-content:center" title="Sıfırla">↺</button>')+
+          (store.recordingShortcut?'':'<button onclick="resetShortcut(\''+sc.id+'\')" style="width:24px;height:24px;border:none;border-radius:5px;background:transparent;cursor:pointer;color:var(--text4);font-size:12px;display:inline-flex;align-items:center;justify-content:center" title="Sıfırla">↺</button>')+
         '</div></div>'
     }
     html+='</div>';
@@ -172,23 +172,23 @@ function showSettingsCat(cat){
 }
 
 // ===== AUTO-UPDATE =====
-var _updateCheckLock = false;
+store._updateCheckLock = false;
 function checkUpdate(){
-  if(_updateCheckLock) return;
+  if(store._updateCheckLock) return;
   var btn = $('update-btn');
   if(!btn) return;
   btn.textContent = 'Kontrol ediliyor...';
   btn.disabled = true;
-  _updateCheckLock = true;
+  store._updateCheckLock = true;
   if(window.electronAPI && electronAPI.checkForUpdates){
     if(btn.dataset.downloaded === '1') {
       electronAPI.installUpdate();
-      _updateCheckLock = false;
+      store._updateCheckLock = false;
       return;
     }
     showUpdateBar('Güncelleme kontrol ediliyor...', 'info');
     electronAPI.checkForUpdates().then(function(result){
-      _updateCheckLock = false;
+      store._updateCheckLock = false;
       if(result && result.error){
         btn.textContent = 'Güncellemeleri Kontrol Et';
         btn.disabled = false;
@@ -221,13 +221,13 @@ function checkUpdate(){
         showUpdateBar('Zaten en son sürümü kullanıyorsun.', 'info');
       }
     }).catch(function(err){
-      _updateCheckLock = false;
+      store._updateCheckLock = false;
       btn.textContent = 'Güncellemeleri Kontrol Et';
       btn.disabled = false;
       showUpdateBar('Kontrol başarısız: '+(err&&err.message?err.message:err), 'error');
     });
   } else {
-    _updateCheckLock = false;
+    store._updateCheckLock = false;
     showUpdateBar('Güncelleme kontrolü sadece masaüstü uygulamasında çalışır.', 'error');
     btn.textContent = 'Güncellemeleri Kontrol Et';
     btn.disabled = false;

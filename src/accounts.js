@@ -1,6 +1,6 @@
 // ===== SAVED ACCOUNTS =====
 function getAccounts(){return ls('accounts')||[]}
-function groupsStorageKey(){return activeAccountId?'groups_'+activeAccountId:'groups'}
+function groupsStorageKey(){return store.activeAccountId?'groups_'+store.activeAccountId:'groups'}
 function groupBelongsToAccount(g,accountId){
   if(!accountId||!g)return true;
   if(g.creatorId===accountId)return true;
@@ -12,7 +12,7 @@ function getGroups(){
   var scoped=ls(groupsStorageKey());
   if(scoped)return scoped;
   var legacy=ls('groups')||[];
-  var accountId=fbUserId()||activeAccountId;
+  var accountId=fbUserId()||store.activeAccountId;
   if(accountId)legacy=legacy.filter(function(g){return groupBelongsToAccount(g,accountId)});
   return legacy
 }
@@ -31,7 +31,7 @@ function getAccountById(id){var a=getAccounts();for(var i=0;i<a.length;i++){if(a
 function getAccountByEmail(email){email=cleanAccountText(email).toLowerCase();if(!email)return null;var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].email&&a[i].email.toLowerCase()===email)return a[i]}return null}
 function accountFallbackName(acc){var email=cleanAccountText(acc&&acc.email);return cleanAccountText(acc&&(acc.displayName||acc.username))||(email?email.split('@')[0]:'Kullanıcı')}
 function accountFallbackUsername(acc){var email=cleanAccountText(acc&&acc.email);return cleanAccountText(acc&&acc.username)||(email?email.split('@')[0]:accountFallbackName(acc))}
-function getActiveAccount(){return getAccountById(activeAccountId)}
+function getActiveAccount(){return getAccountById(store.activeAccountId)}
 function accountPasswordKey(acc){return 'account_password_'+cleanAccountText(acc&&acc.id)}
 function accountPasswordEmailKey(email){return 'account_password_email_'+cleanAccountText(email).toLowerCase()}
 async function storeAccountSecret(key,password){
@@ -153,7 +153,7 @@ function syncSidebarProfile(acc,status){
       avEl.textContent=initial
     }
   }
-  updateStatusUI(status||currentStatus||'online')
+  updateStatusUI(status||store.currentStatus||'online')
 }
 function mergeAccountProfile(incoming){
   incoming=incoming||{};
@@ -180,7 +180,7 @@ function mergeAccountProfile(incoming){
   acc=getAccountById(acc.id)||getAccountByEmail(acc.email)||acc;
   if(incoming.password)rememberAccountPassword(acc,incoming.password);
   else stripPlainPassword(acc);
-  activeAccountId=acc.id;
+  store.activeAccountId=acc.id;
   setActiveAccount(acc.id);
   return acc
 }
@@ -205,17 +205,17 @@ async function autoLogin(acc){
     showAlert('Bu hesap için kayıtlı güvenli oturum bulunamadı. Lütfen şifreni gir.');
     return
   }
-  _explicitLogin=true;
-  _authTransitioning=true;
+  store._explicitLogin=true;
+  store._authTransitioning=true;
   $('loading-screen').style.display='flex';
   document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});
   auth.signInWithEmailAndPassword(acc.email,password).then(function(cred){
     var u=cred.user;
-    _authTransitioning=false;
+    store._authTransitioning=false;
     hideLoading(function(){doLoginWith({id:u.uid,username:acc.username||u.email.split('@')[0],displayName:acc.displayName||u.displayName||u.email.split('@')[0],email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||'',password:password})})
   }).catch(function(){
-    _explicitLogin=false;
-    _authTransitioning=false;
+    store._explicitLogin=false;
+    store._authTransitioning=false;
     hideLoading(function(){
       goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
       showAlert('Otomatik giriş başarısız. Lütfen şifreni gir.')
@@ -232,10 +232,10 @@ function doLogin(){
   if(!e||!p||!window.auth)return;
   if(!e.endsWith('@gmail.com')){$('fg-login-email').classList.add('invalid');$('fg-login-email').querySelector('.field-error').textContent='Sadece @gmail.com hesapları kabul edilir';return}
   $('login-btn').disabled=true;
-  _pendingLoginPassword=p;
+  store._pendingLoginPassword=p;
   auth.signInWithEmailAndPassword(e,p).then(function(cred){
   }).catch(function(err){
-    _pendingLoginPassword=null;
+    store._pendingLoginPassword=null;
     $('login-btn').disabled=false;
     var msg='',field=$('fg-login-email');
     if(err.code==='auth/user-not-found'){msg='Bu e-posta ile kayıtlı hesap bulunamadı.';field=$('fg-login-email');field.classList.add('invalid');field.querySelector('.field-error').textContent=msg}
@@ -250,14 +250,14 @@ function doLogin(){
 }
 
 // ===== REGISTER =====
-function updateRegStep(){document.querySelectorAll('.register-step').forEach(function(s){s.classList.remove('active')});var el=document.querySelector('.register-step[data-step="'+regStep+'"]');if(el)el.classList.add('active');document.querySelectorAll('.register-dot').forEach(function(d,i){d.className='register-dot';if(i===regStep)d.classList.add('active');else if(i<regStep)d.classList.add('done')});var sb=$('reg-step-back');if(sb)sb.style.display=regStep===0?'none':'flex';var n=$('reg-next');if(n)n.textContent=regStep===2?'Kayıt Ol':'İleri';validateRegister()}
+function updateRegStep(){document.querySelectorAll('.register-step').forEach(function(s){s.classList.remove('active')});var el=document.querySelector('.register-step[data-step="'+store.regStep+'"]');if(el)el.classList.add('active');document.querySelectorAll('.register-dot').forEach(function(d,i){d.className='register-dot';if(i===store.regStep)d.classList.add('active');else if(i<store.regStep)d.classList.add('done')});var sb=$('reg-step-back');if(sb)sb.style.display=store.regStep===0?'none':'flex';var n=$('reg-next');if(n)n.textContent=store.regStep===2?'Kayıt Ol':'İleri';validateRegister()}
 function regNext(){
   if(!validateRegister())return;
   var btn=$('reg-next');
-  function advance(){regStep++;updateRegStep();if(btn)btn.disabled=false}
+  function advance(){store.regStep++;updateRegStep();if(btn)btn.disabled=false}
   function dbError(label){if(btn)btn.disabled=false;showAlert(label+' kontrolü yapılamadı: servis şu anda kullanılamıyor. Lütfen daha sonra tekrar dene.')}
   function dbTimeout(label){if(btn)btn.disabled=false;showAlert(label+' kontrolü zaman aşımına uğradı. İnternet bağlantını kontrol et.')}
-  if(regStep===0){
+  if(store.regStep===0){
     var u=$('reg-username').value.trim();
     if(!/^[a-zA-Z0-9_]+$/.test(u)){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı yalnızca harf, rakam ve alt çizgi içerebilir';showAlert('Kullanıcı adı yalnızca harf, rakam ve alt çizgi (_) içerebilir.');return}
     if(u.length<3){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı en az 3 karakter olmalı';return}
@@ -270,13 +270,13 @@ function regNext(){
       if(!snap.empty){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Bu kullanıcı adı zaten alınmış';showAlert('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');if(btn)btn.disabled=false;return}
       advance()
     }).catch(function(err){clearTimeout(timer);if(!timedOut){dbError('Kullanıcı adı')}})
-  }else if(regStep===1){
+  }else if(store.regStep===1){
     advance()
-  }else if(regStep<2){advance()}
+  }else if(store.regStep<2){advance()}
   else completeRegistration()
 }
-function regPrev(){if(regStep>0){regStep--;updateRegStep()}}
-function validateRegister(){var u=$('reg-username').value.trim(),d=$('reg-display').value.trim(),uOk=u.length>=3&&/^[a-zA-Z0-9_]+$/.test(u),dOk=d.length>=1;$('fg-username').classList.toggle('invalid',u.length>0&&!uOk);$('fg-display').classList.toggle('invalid',d.length>0&&!dOk);var e=$('reg-email').value.trim().toLowerCase(),eOk=e.endsWith('@gmail.com');$('fg-email').classList.toggle('invalid',e.length>0&&!eOk);var p=$('reg-pass').value,p2=$('reg-pass2').value,pOk=p.length>=6,p2Ok=p===p2&&p.length>0,t=$('reg-terms').checked;$('fg-pass').classList.toggle('invalid',p.length>0&&!pOk);$('fg-pass2').classList.toggle('invalid',p2.length>0&&!p2Ok);var steps=[uOk&&dOk,eOk,pOk&&p2Ok&&t];var btn=$('reg-next');if(btn)btn.disabled=!steps[regStep];return steps[regStep]}
+function regPrev(){if(store.regStep>0){store.regStep--;updateRegStep()}}
+function validateRegister(){var u=$('reg-username').value.trim(),d=$('reg-display').value.trim(),uOk=u.length>=3&&/^[a-zA-Z0-9_]+$/.test(u),dOk=d.length>=1;$('fg-username').classList.toggle('invalid',u.length>0&&!uOk);$('fg-display').classList.toggle('invalid',d.length>0&&!dOk);var e=$('reg-email').value.trim().toLowerCase(),eOk=e.endsWith('@gmail.com');$('fg-email').classList.toggle('invalid',e.length>0&&!eOk);var p=$('reg-pass').value,p2=$('reg-pass2').value,pOk=p.length>=6,p2Ok=p===p2&&p.length>0,t=$('reg-terms').checked;$('fg-pass').classList.toggle('invalid',p.length>0&&!pOk);$('fg-pass2').classList.toggle('invalid',p2.length>0&&!p2Ok);var steps=[uOk&&dOk,eOk,pOk&&p2Ok&&t];var btn=$('reg-next');if(btn)btn.disabled=!steps[store.regStep];return steps[store.regStep]}
 function showAlert(msg){
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="var(--accent)" fill="none" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'+
@@ -285,7 +285,7 @@ function showAlert(msg){
   $('delete-confirm-btn').textContent='Tamam';
   $('delete-confirm-btn').onclick=function(){closeModal('modal-delete',function(){hideDeleteModal()})};
   $('modal-delete').classList.add('active');
-  pendingAlert=true
+  store.pendingAlert=true
 }
 function completeRegistration(){
   var u=$('reg-username').value.trim(),d=$('reg-display').value.trim()||u,e=$('reg-email').value.trim().toLowerCase(),p=$('reg-pass').value;
@@ -297,22 +297,22 @@ function completeRegistration(){
   }
   if(!window.db){finishReg('Veritabanı bağlantısı yok.');return}
   var timedOut=false, timer=setTimeout(function(){timedOut=true;finishReg('Sunucu yanıt vermiyor. Lütfen tekrar dene.')},15000);
-  _explicitLogin=true;
-  _pendingLoginPassword=p;
+  store._explicitLogin=true;
+  store._pendingLoginPassword=p;
   auth.createUserWithEmailAndPassword(e,p).then(function(cred){
     clearTimeout(timer);
     var uid=cred.user.uid;
     function cancelCreatedAccount(msg){
-      _explicitLogin=false;
-      _pendingLoginPassword=null;
+      store._explicitLogin=false;
+      store._pendingLoginPassword=null;
       var deletePromise=auth.currentUser?auth.currentUser.delete().catch(function(){return null}):Promise.resolve();
       deletePromise.then(function(){finishReg(msg)})
     }
     function writeUserDoc(){
-      db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()}).then(function(){
-        _explicitLogin=false;
+      db.collection('users').doc(uid).set({username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()}).then(function(){
+        store._explicitLogin=false;
         finishReg();
-        showApp({id:uid,username:u,displayName:d,email:e,avatar:avatarDataUrl||null,status:'online',bio:'',password:p})
+        showApp({id:uid,username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,status:'online',bio:'',password:p})
       }).catch(function(){
         cancelCreatedAccount('Profil oluşturulamadı. Lütfen tekrar dene.')
       })
@@ -332,9 +332,9 @@ function completeRegistration(){
     else if(err.code==='auth/network-request-failed')msg='Ağ hatası. İnternet bağlantını kontrol et.';
     else if(err.code==='auth/invalid-email')msg='Geçersiz e-posta adresi.';
     else msg='Kayıt olunamadı: '+err.message;
-    _explicitLogin=false;
-    _pendingLoginPassword=null;
+    store._explicitLogin=false;
+    store._pendingLoginPassword=null;
     finishReg(msg)
   })
 }
-async function pickAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){avatarDataUrl=r.thumb;var p=$('avatar-picker');p.innerHTML='<img src="'+r.thumb+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.border=\'1px dashed rgba(129,140,248,.2)\';avatarDataUrl=null">';p.style.border='none'}}}catch(e){}}
+async function pickAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){store.avatarDataUrl=r.thumb;var p=$('avatar-picker');p.innerHTML='<img src="'+r.thumb+'" alt="" onerror="this.style.display=\'none\';this.parentElement.style.border=\'1px dashed rgba(129,140,248,.2)\';store.avatarDataUrl=null">';p.style.border='none'}}}catch(e){}}

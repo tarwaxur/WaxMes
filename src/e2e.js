@@ -16,12 +16,12 @@ async function safeLoad(key){
 }
 
 async function initE2E(){
-  if(!activeAccountId||!window.crypto||!window.crypto.subtle)return;
-  var saved=await safeLoad('e2e_private_'+activeAccountId);
+  if(!store.activeAccountId||!window.crypto||!window.crypto.subtle)return;
+  var saved=await safeLoad('e2e_private_'+store.activeAccountId);
   if(saved&&saved.length>0){
     try{
       var privKey=await crypto.subtle.importKey('pkcs8',new Uint8Array(saved),{name:'RSA-OAEP',hash:'SHA-256'},true,['decrypt']);
-      e2eKeys={privateKey:privKey};e2eReady=true
+      store.e2eKeys={privateKey:privKey};store.e2eReady=true
     }catch(e){}
     return
   }
@@ -29,10 +29,10 @@ async function initE2E(){
     var keyPair=await crypto.subtle.generateKey({name:'RSA-OAEP',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['encrypt','decrypt']);
     var pubKey=await crypto.subtle.exportKey('spki',keyPair.publicKey);
     var privKey=await crypto.subtle.exportKey('pkcs8',keyPair.privateKey);
-    await safeStore('e2e_private_'+activeAccountId,Array.from(new Uint8Array(privKey)));
+    await safeStore('e2e_private_'+store.activeAccountId,Array.from(new Uint8Array(privKey)));
     var pubB64=btoa(String.fromCharCode.apply(null,new Uint8Array(pubKey)));
     if(window.db){var fbUid=fbUserId();if(fbUid)db.collection('users').doc(fbUid).update({publicKey:pubB64}).catch(console.error)};
-    e2eKeys={privateKey:keyPair.privateKey};e2eReady=true
+    store.e2eKeys={privateKey:keyPair.privateKey};store.e2eReady=true
   }catch(e){}
 }
 
@@ -83,7 +83,7 @@ async function e2eEncrypt(text,recipientPubKeyB64){
 }
 
 async function e2eDecrypt(packed64){
-  if(!packed64||packed64.indexOf('🔒')!==0||!e2eKeys||!e2eKeys.privateKey)return null;
+  if(!packed64||packed64.indexOf('🔒')!==0||!store.e2eKeys||!store.e2eKeys.privateKey)return null;
   try{
     var raw=Uint8Array.from(atob(packed64.slice(2)),function(c){return c.charCodeAt(0)});
     var ver=raw[0];
@@ -92,7 +92,7 @@ async function e2eDecrypt(packed64){
       var keyLen=(raw[13]<<8)|raw[14];
       var encKey=raw.slice(15,15+keyLen);
       var encMsg=raw.slice(15+keyLen);
-      var aesRaw=await crypto.subtle.decrypt({name:'RSA-OAEP'},e2eKeys.privateKey,encKey);
+      var aesRaw=await crypto.subtle.decrypt({name:'RSA-OAEP'},store.e2eKeys.privateKey,encKey);
       var aesKey=await crypto.subtle.importKey('raw',aesRaw,{name:'AES-GCM',length:256},false,['decrypt']);
       var dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:iv},aesKey,encMsg);
       return new TextDecoder().decode(dec)
@@ -103,7 +103,7 @@ async function e2eDecrypt(packed64){
         var kl=(raw[off]<<8)|raw[off+1];
         var ek=raw.slice(off+2,off+2+kl);
         off+=2+kl;
-        if(!foundKey){try{var maybe=await crypto.subtle.decrypt({name:'RSA-OAEP'},e2eKeys.privateKey,ek);foundKey=new Uint8Array(maybe)}catch(e){}}
+        if(!foundKey){try{var maybe=await crypto.subtle.decrypt({name:'RSA-OAEP'},store.e2eKeys.privateKey,ek);foundKey=new Uint8Array(maybe)}catch(e){}}
       }
       if(!foundKey)return null;
       var iv=raw.slice(off,off+12);
@@ -202,7 +202,7 @@ function resetFirebaseAll(){
       $('delete-password-field').style.display='none';
       $('delete-password-input').value='';
       localStorage.clear();
-      conversations=[];messages={};activeConvId=null;activeAccountId=null;avatarDataUrl=null;
+      store.conversations=[];store.messages={};store.activeConvId=null;store.activeAccountId=null;store.avatarDataUrl=null;
       hideSettings();showScreen('screen-welcome');renderSavedAccounts();
       hideDeleteModal()
     })
@@ -220,7 +220,7 @@ function resetAllData(){
   $('delete-confirm-btn').textContent='Hesabı Sil';
   $('delete-confirm-btn').onclick=async function(){
     hideDeleteModal();
-    var localId=activeAccountId,fbUid=fbUserId(),email=window.auth&&auth.currentUser?auth.currentUser.email:null;
+    var localId=store.activeAccountId,fbUid=fbUserId(),email=window.auth&&auth.currentUser?auth.currentUser.email:null;
     var acc=getAccountById(localId)||getAccountById(fbUid)||getAccountByEmail(email);
     if(window.auth&&auth.currentUser){
       try{
@@ -259,7 +259,7 @@ function resetAllData(){
     var accs=getAccounts();
     for(var ri=accs.length-1;ri>=0;ri--){if(accs[ri].id===localId||accs[ri].id===fbUid||(email&&accs[ri].email===email)){accs.splice(ri,1)}}
     ls('accounts',accs);
-    conversations=[];messages={};activeConvId=null;activeAccountId=null;avatarDataUrl=null;
+    store.conversations=[];store.messages={};store.activeConvId=null;store.activeAccountId=null;store.avatarDataUrl=null;
     hideSettings();showScreen('screen-welcome');renderSavedAccounts()
   };
   $('modal-delete').classList.add('active')
