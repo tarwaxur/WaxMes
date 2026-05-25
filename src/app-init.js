@@ -130,7 +130,7 @@ if(window.electronAPI&&electronAPI.getAppVersion)electronAPI.getAppVersion().the
 function hideLoading(cb){
   var ls=$('loading-screen');
   if(ls&&ls.style.display!=='none'){
-    document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});
+    showScreen(null);
     ls.style.animation='loadFadeOut .3s ease forwards';
     setTimeout(function(){ls.style.display='none';ls.style.animation='';if(cb)cb()},300)
   }else{if(cb)cb()}

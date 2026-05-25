@@ -1,0 +1,46 @@
+*{margin:0;padding:0;box-sizing:border-box;outline:none}
+html,body{width:100%;height:100%;overflow:hidden;margin:0;padding:0}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:flex;background:transparent;user-select:none}
+.window{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;transition:background .3s;background:var(--bg)}
+
+.titlebar{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 10px 18px;-webkit-app-region:drag;flex-shrink:0;z-index:400;position:relative;background:var(--bg)}
+.titlebar-left{display:flex;align-items:center;gap:9px}
+.titlebar-icon{width:16px;height:16px;fill:var(--accent)}
+.titlebar-text{font-size:12px;font-weight:600;color:var(--text4);letter-spacing:.4px}
+.titlebar-actions{display:flex;gap:5px;-webkit-app-region:no-drag}
+.titlebar-btn{width:34px;height:26px;border:none;background:transparent;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;color:var(--text4)}
+.titlebar-btn:hover{background:var(--hover);color:var(--text3)}
+.titlebar-btn.close:hover{background:rgba(239,68,68,.2);color:#ef4444}
+.titlebar-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.maximized .titlebar-btn{width:30px;height:24px}
+.maximized .titlebar-btn svg{width:13px;height:13px}
+
+.conversations::-webkit-scrollbar,.chat-messages::-webkit-scrollbar,.modal-body::-webkit-scrollbar,.settings-content::-webkit-scrollbar,.profile-panel-body::-webkit-scrollbar{width:4px;height:4px}
+.conversations::-webkit-scrollbar-track,.chat-messages::-webkit-scrollbar-track,.modal-body::-webkit-scrollbar-track,.settings-content::-webkit-scrollbar-track,.profile-panel-body::-webkit-scrollbar-track{background:transparent}
+.conversations::-webkit-scrollbar-thumb,.chat-messages::-webkit-scrollbar-thumb,.modal-body::-webkit-scrollbar-thumb,.settings-content::-webkit-scrollbar-thumb,.profile-panel-body::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px;min-height:30px}
+.conversations::-webkit-scrollbar-thumb:hover,.chat-messages::-webkit-scrollbar-thumb:hover,.modal-body::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+#forward-contact-list::-webkit-scrollbar{width:4px}
+#forward-contact-list::-webkit-scrollbar-track{background:transparent}
+#forward-contact-list::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
+#forward-contact-list::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.media-thumb{width:56px;height:56px;border-radius:10px;overflow:hidden;cursor:pointer;flex-shrink:0;border:2px solid transparent}
+.media-files-list-inner::-webkit-scrollbar{height:4px}
+.media-files-list-inner::-webkit-scrollbar-track{background:transparent}
+.media-files-list-inner::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px;min-width:30px}
+.media-files-list-inner::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.call-member-avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;overflow:hidden}
+#emoji-body::-webkit-scrollbar{width:4px}
+#emoji-body::-webkit-scrollbar-track{background:transparent}
+#emoji-body::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
+#emoji-cats::-webkit-scrollbar{height:2px}
+
+@keyframes incomingPulse{0%,100%{opacity:1}50%{opacity:.6}}
+@keyframes menuFadeIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+@keyframes modalBg{from{opacity:0}to{opacity:1}}
+@keyframes loadingBar{0%{transform:translateX(-100%)}50%{transform:translateX(200%)}100%{transform:translateX(400%)}}
+@keyframes loadFadeOut{from{opacity:1}to{opacity:0;pointer-events:none}}

@@ -817,3 +817,8 @@ function showConvContext(x,y,convId){var conv=findConv(convId);if(!conv)return;v
   if(!conv.isGroup&&!archived){items.push({sep:true});var gs=[];for(var gi=0;gi<conversations.length;gi++){(function(gc){if(gc.isGroup)gs.push({label:gc.name,icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',action:function(){addToGroup(gc.id,convId)}})})(conversations[gi])}gs.push({sep:true});gs.push({label:'+ Yeni Grup',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',action:function(){newGroup()}});items.push({label:'Gruba Ekle',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',action:function(){},sub:gs})}
   showContextMenu(x,y,items)}
 function toggleArchiveView(){_showArchived=!_showArchived;renderConversations()}
+var currentScreen='screen-welcome',regStep=0,avatarDataUrl=null;
+var showScreen=function(id){document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});if(id){$(id).classList.add('active');currentScreen=id}};
+var goToWelcome=function(){renderSavedAccounts();showScreen('screen-welcome')};
+var goToLogin=function(){showScreen('screen-login');$('login-email').value='';$('login-pass').value='';avatarDataUrl=null;validateLogin()};
+var goToRegister=function(){var accs=getAccounts();if(accs.length>=3){showAlert('En fazla 3 hesap bulundurabilirsin. Yeni hesap eklemek için önce kayıtlı bir hesabı sil.');return}regStep=0;updateRegStep();showScreen('screen-register')};
