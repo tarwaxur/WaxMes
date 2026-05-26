@@ -147,7 +147,7 @@ function syncSidebarProfile(acc,status){
   if(avEl){
     if(acc.avatar){
       avEl.style.background='transparent';
-      avEl.innerHTML='<img src="'+esc(acc.avatar)+'" alt="" data-err-bg="linear-gradient(135deg,#2563eb,#6d28d9)" data-err-text="'+escJs(initial)+'" data-err-avatar="1">';
+      avEl.innerHTML='<img src="'+esc(sanitizeUrl(acc.avatar))+'" alt="" data-err-bg="linear-gradient(135deg,#2563eb,#6d28d9)" data-err-text="'+escJs(initial)+'" data-err-avatar="1">';
     }else{
       avEl.style.background='linear-gradient(135deg,#2563eb,#6d28d9)';
       avEl.textContent=initial
@@ -191,7 +191,7 @@ function renderSavedAccounts(){
   for(var i=0;i<a.length;i++){(function(acc){
     var d=document.createElement('div');d.className='saved-account';
     var display=accountFallbackName(acc),initial=display.charAt(0).toUpperCase();
-    d.innerHTML='<div class="sa-avatar"'+(acc.avatar?' style="background:none"':'')+'>'+(acc.avatar?'<img src="'+esc(acc.avatar)+'" alt="" data-err-bg="linear-gradient(135deg,#2563eb,#6d28d9)" data-err-text="'+escJs(initial)+'" data-err-avatar="1">':esc(initial))+'</div><div class="sa-info"><div class="sa-name">'+esc(display)+'</div><div class="sa-email" title="'+esc(acc.email||'')+'">'+esc(acc.email||'')+'</div></div><button class="sa-remove" data-action="remove-account" data-acc-id="'+escJs(acc.id)+'"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+    d.innerHTML='<div class="sa-avatar"'+(acc.avatar?' style="background:none"':'')+'>'+(acc.avatar?'<img src="'+esc(sanitizeUrl(acc.avatar))+'" alt="" data-err-bg="linear-gradient(135deg,#2563eb,#6d28d9)" data-err-text="'+escJs(initial)+'" data-err-avatar="1">':esc(initial))+'</div><div class="sa-info"><div class="sa-name">'+esc(display)+'</div><div class="sa-email" title="'+esc(acc.email||'')+'">'+esc(acc.email||'')+'</div></div><button class="sa-remove" data-action="remove-account" data-acc-id="'+escJs(acc.id)+'"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
     d.onclick=function(){autoLogin(acc)};
     el.appendChild(d)
   })(a[i])}
@@ -335,4 +335,4 @@ async function completeRegistration(){
     finishReg(msg)
   }
 }
-async function pickAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){store.avatarDataUrl=r.thumb;var p=$('avatar-picker');p.innerHTML='<img src="'+r.thumb+'" alt="" data-err-border="1px dashed rgba(129,140,248,.2)" data-err-clear="avatarDataUrl">';p.style.border='none'}}}catch(e){}}
+async function pickAvatar(){try{if(window.electronAPI&&electronAPI.selectFile){var r=await electronAPI.selectFile();if(r&&r.thumb){store.avatarDataUrl=r.thumb;var p=$('avatar-picker');p.innerHTML='<img src="'+escJs(sanitizeUrl(r.thumb))+'" alt="" data-err-border="1px dashed rgba(129,140,248,.2)" data-err-clear="avatarDataUrl">';p.style.border='none'}}}catch(e){}}

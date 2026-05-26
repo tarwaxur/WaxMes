@@ -22,6 +22,12 @@ function esc(t){
 function escJs(s){
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\x27").replace(/"/g,"\\x22")
 }
+function sanitizeUrl(url){
+  if(!url)return '';
+  var s=String(url);
+  if(/^(https?:|blob:|data:)/i.test(s)||s.indexOf('/')===0)return s;
+  return ''
+}
 
 function timeNow(){
   var d=new Date();

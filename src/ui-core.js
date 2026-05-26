@@ -273,7 +273,7 @@ var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTION
       else{
         var html='<div style="font-size:11px;color:var(--text4);margin-bottom:8px">'+friends.length+' arkadaş</div>';
         friends.forEach(function(f){
-          var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+fAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(f.name.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{fAvHtml=esc(f.name.charAt(0).toUpperCase())}
+          var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.indexOf('data:')===0){fAvHtml='<img src="'+escJs(sanitizeUrl(fAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(f.name.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{fAvHtml=esc(f.name.charAt(0).toUpperCase())}
           html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .15s" data-action="start-conv" data-friend-name="'+escJs(f.name)+'" data-friend-id="'+escJs(f.id)+'" data-context="friend-menu"><div style="width:34px;height:34px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;overflow:hidden">'+fAvHtml+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text2)">'+esc(f.name)+'</div><div style="font-size:10px;color:var(--text4)">Çevrimiçi</div></div></div>'
         });
         html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><button class="btn-primary" data-action="create-group" style="padding:8px 16px;font-size:11px;border-radius:8px;width:100%">Grup Oluştur</button></div>';
@@ -295,7 +295,7 @@ var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTION
       if(incoming.length>0){
         html+='<div style="font-size:11px;color:var(--text4);margin-bottom:6px">Gelen istekler</div>';
         incoming.forEach(function(r){
-          var rAv=r.data.fromAvatar;var rAvHtml;if(rAv&&rAv.indexOf('data:')===0){rAvHtml='<img src="'+rAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(r.data.fromName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{rAvHtml=esc(r.data.fromName.charAt(0).toUpperCase())}
+          var rAv=r.data.fromAvatar;var rAvHtml;if(rAv&&rAv.indexOf('data:')===0){rAvHtml='<img src="'+escJs(sanitizeUrl(rAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(r.data.fromName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{rAvHtml=esc(r.data.fromName.charAt(0).toUpperCase())}
           html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);margin-bottom:4px"><div style="width:34px;height:34px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;overflow:hidden">'+rAvHtml+'</div><div style="flex:1;font-size:12px;color:var(--text2)">'+esc(r.data.fromName)+'</div><button data-action="accept-friend" data-req-id="'+escJs(r.id)+'" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(34,197,94,.15);color:#22c55e;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Kabul Et</button><button data-action="decline-friend" data-req-id="'+escJs(r.id)+'" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Reddet</button></div>'
         })
       }
@@ -303,7 +303,7 @@ var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTION
         if(html)html+='<div style="margin-top:10px"></div>';
         html+='<div style="font-size:11px;color:var(--text4);margin-bottom:6px">Bekleyen isteklerin</div>';
         sent.forEach(function(r){
-          var sAv=r.data.toAvatar;var sAvHtml;if(sAv&&sAv.indexOf('data:')===0){sAvHtml='<img src="'+sAv+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--bg3)" data-err-text="'+esc(r.data.toName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{sAvHtml=esc(r.data.toName.charAt(0).toUpperCase())}
+          var sAv=r.data.toAvatar;var sAvHtml;if(sAv&&sAv.indexOf('data:')===0){sAvHtml='<img src="'+escJs(sanitizeUrl(sAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--bg3)" data-err-text="'+esc(r.data.toName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{sAvHtml=esc(r.data.toName.charAt(0).toUpperCase())}
           html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);margin-bottom:4px"><div style="width:34px;height:34px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text4);font-size:12px;overflow:hidden">'+sAvHtml+'</div><div style="flex:1;font-size:12px;color:var(--text2)">'+esc(r.data.toName)+'</div><button data-action="withdraw-request" data-req-id="'+escJs(r.id)+'" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-family:inherit;font-size:10px;font-weight:600">İsteği Geri Al</button></div>'
         })
       }
@@ -413,7 +413,7 @@ async function pickGroupAvatar(){
       if(r&&r.thumb){
         store.groupAvatarDataUrl=r.thumb;
         var picker=$('group-avatar-picker');
-        if(picker){picker.innerHTML='<img src="'+r.thumb+'" style="width:100%;height:100%;object-fit:cover" data-err-clear="groupAvatarDataUrl">';picker.style.border='none';picker.style.background='transparent'}
+        if(picker){picker.innerHTML='<img src="'+escJs(sanitizeUrl(r.thumb))+'" style="width:100%;height:100%;object-fit:cover" data-err-clear="groupAvatarDataUrl">';picker.style.border='none';picker.style.background='transparent'}
         // If editing an existing group, update immediately
         if(store.activeConvId){
           var conv=findConv(store.activeConvId);
@@ -425,7 +425,7 @@ async function pickGroupAvatar(){
             for(var gi=0;gi<gs.length;gi++){if(gs[gi].id==store.activeConvId){gs[gi].avatar=r.thumb;saveGroups(gs);break}}
             // Update UI
             var headerAvatar=$('chat-header-avatar');
-            if(headerAvatar&&store.activeConvId==conv.id)headerAvatar.innerHTML='<img src="'+r.thumb+'" style="width:100%;height:100%;object-fit:cover" data-err-avatar="1">';
+            if(headerAvatar&&store.activeConvId==conv.id)headerAvatar.innerHTML='<img src="'+escJs(sanitizeUrl(r.thumb))+'" style="width:100%;height:100%;object-fit:cover" data-err-avatar="1">';
             addGroupLog(conv.id,'👑 Grup fotoğrafı değiştirildi');
             fbSyncMembers(conv.id);
             if(store.activeConvId)renderMessages(store.activeConvId);
@@ -512,7 +512,7 @@ function renderGroupMembers(selectedIds){
     addedIds[member.id]=true;
     var sel=selected.indexOf(member.id)>-1||(convId&&selected.indexOf(convId)>-1);
     var d=document.createElement('div');d.className='modal-member-item'+(sel?' selected':'');
-    var av=member.avatar,html;if(av&&av.indexOf('data:')===0){html='<img src="'+av+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(member.color||color||'var(--grad)')+'" data-err-text="?" data-err-avatar="1">'}else{html='<span>'+esc(av||((member.name||'?').charAt(0).toUpperCase()))+'</span>'}
+    var av=member.avatar,html;if(av&&av.indexOf('data:')===0){html='<img src="'+escJs(sanitizeUrl(av))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(member.color||color||'var(--grad)')+'" data-err-text="?" data-err-avatar="1">'}else{html='<span>'+esc(av||((member.name||'?').charAt(0).toUpperCase()))+'</span>'}
     d.innerHTML='<div class="mm-avatar" style="background:'+(member.color||color||'var(--grad)')+'">'+html+'</div><div class="mm-name">'+esc(member.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
     d.onclick=function(){d.classList.toggle('selected');validateGroup()};
     d._memberId=member.id;d._convId=convId||null;d._memberData=member;ml.appendChild(d)

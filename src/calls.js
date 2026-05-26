@@ -39,7 +39,7 @@ async function startCall(){
     el.style.cssText='width:36px;height:36px;border-radius:50%;flex-shrink:0;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center';
     if(avatarUrl){
       el.style.background='transparent';
-      el.innerHTML='<img src="'+avatarUrl+'" style="width:100%;height:100%;object-fit:cover">'
+      el.innerHTML='<img src="'+escJs(sanitizeUrl(avatarUrl))+'" style="width:100%;height:100%;object-fit:cover">'
     }else{
       el.style.background=bgColor||'var(--grad)';
       el.style.color='#fff';
@@ -70,7 +70,7 @@ async function startCall(){
       for(var mai=0;mai<accs.length;mai++){
         if(accs[mai].id==m.id||accs[mai].displayName===m.name){
           if(accs[mai].avatar){
-            ma.innerHTML='<img src="'+accs[mai].avatar+'" style="width:100%;height:100%;object-fit:cover">';
+            ma.innerHTML='<img src="'+escJs(sanitizeUrl(accs[mai].avatar))+'" style="width:100%;height:100%;object-fit:cover">';
             ma.style.background='transparent'
           }
           break
