@@ -144,7 +144,6 @@ function previewTheme(t){
     var pe=document.getElementById('theme-preview-style');
     if(!pe){pe=document.createElement('style');pe.id='theme-preview-style';document.head.appendChild(pe)}
     clearThemes(w);
-    applyThemeToBody(t);
     if(t!=='default'){
       var p=lightThemes.indexOf(t)!==-1?'l-':'t-';
       w.classList.add(p+t);
@@ -166,9 +165,13 @@ function unpreviewTheme(){
   clearTimeout(_previewTimer);
   var pe=document.getElementById('theme-preview-style');
   if(pe)pe.textContent='';
-  applyTheme(getTheme())
+  var w=$('app-window');if(!w)return;
+  clearThemes(w);
+  var t=getTheme();
+  if(t&&t!=='default'&&validThemes.indexOf(t)!==-1){var p=lightThemes.indexOf(t)!==-1?'l-':'t-';w.classList.add(p+t)}
+  applyThemeToBody(t)
 }
-function selectTheme(t){unpreviewTheme();ls(STORAGE_KEYS.THEME,t);applyTheme(t);showSettingsCat('theme')}
+function selectTheme(t){ls(STORAGE_KEYS.THEME,t);applyTheme(t);showSettingsCat('theme')}
 
 function toggleAutoStart(val){
   if(window.electronAPI&&electronAPI.setAutoStart)electronAPI.setAutoStart(val)
