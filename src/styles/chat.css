@@ -122,9 +122,6 @@
 .cm-sub:hover .cm-submenu{display:block}
 
 .edit-input{background:var(--input-bg);border:1px solid var(--accent);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text2);outline:none;width:100%;margin:2px 0;resize:vertical;min-height:60px}
-.edit-input::-webkit-scrollbar{width:4px}
-.edit-input::-webkit-scrollbar-track{background:transparent}
-.edit-input::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
 .edit-actions{display:flex;gap:6px;margin-top:4px}
 .edit-actions button{padding:4px 12px;border:none;border-radius:6px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
 .edit-save{background:var(--accent);color:#fff}

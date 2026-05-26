@@ -15,10 +15,10 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
 .maximized .titlebar-btn{width:30px;height:24px}
 .maximized .titlebar-btn svg{width:13px;height:13px}
 
-.conversations::-webkit-scrollbar,.chat-messages::-webkit-scrollbar,.modal-body::-webkit-scrollbar,.settings-content::-webkit-scrollbar,.profile-panel-body::-webkit-scrollbar{width:4px;height:4px}
-.conversations::-webkit-scrollbar-track,.chat-messages::-webkit-scrollbar-track,.modal-body::-webkit-scrollbar-track,.settings-content::-webkit-scrollbar-track,.profile-panel-body::-webkit-scrollbar-track{background:transparent}
-.conversations::-webkit-scrollbar-thumb,.chat-messages::-webkit-scrollbar-thumb,.modal-body::-webkit-scrollbar-thumb,.settings-content::-webkit-scrollbar-thumb,.profile-panel-body::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px;min-height:30px}
-.conversations::-webkit-scrollbar-thumb:hover,.chat-messages::-webkit-scrollbar-thumb:hover,.modal-body::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.conversations::-webkit-scrollbar,.chat-messages::-webkit-scrollbar,.modal-body::-webkit-scrollbar,.settings-content::-webkit-scrollbar,.profile-panel-body::-webkit-scrollbar,.modal-member-list::-webkit-scrollbar,.edit-input::-webkit-scrollbar{width:4px;height:4px}
+.conversations::-webkit-scrollbar-track,.chat-messages::-webkit-scrollbar-track,.modal-body::-webkit-scrollbar-track,.settings-content::-webkit-scrollbar-track,.profile-panel-body::-webkit-scrollbar-track,.modal-member-list::-webkit-scrollbar-track,.edit-input::-webkit-scrollbar-track{background:transparent}
+.conversations::-webkit-scrollbar-thumb,.chat-messages::-webkit-scrollbar-thumb,.modal-body::-webkit-scrollbar-thumb,.settings-content::-webkit-scrollbar-thumb,.profile-panel-body::-webkit-scrollbar-thumb,.modal-member-list::-webkit-scrollbar-thumb,.edit-input::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px;min-height:30px}
+.conversations::-webkit-scrollbar-thumb:hover,.chat-messages::-webkit-scrollbar-thumb:hover,.modal-body::-webkit-scrollbar-thumb:hover,.modal-member-list::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 #forward-contact-list::-webkit-scrollbar{width:4px}
 #forward-contact-list::-webkit-scrollbar-track{background:transparent}
 #forward-contact-list::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
@@ -33,6 +33,17 @@ body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:
 #emoji-body::-webkit-scrollbar-track{background:transparent}
 #emoji-body::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
 #emoji-cats::-webkit-scrollbar{height:2px}
+
+.thin-scrollbar::-webkit-scrollbar{width:4px;height:4px}
+.thin-scrollbar::-webkit-scrollbar-track{background:transparent}
+.thin-scrollbar::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px;min-height:30px;min-width:30px}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.thin-scrollbar--xs::-webkit-scrollbar{width:3px;height:3px}
+.thin-scrollbar--xs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.flex{display:flex}.flex-col{flex-direction:column}.flex-center{align-items:center;justify-content:center}.flex-between{align-items:center;justify-content:space-between}.flex-items-center{display:flex;align-items:center}.flex-1{flex:1}.flex-shrink-0{flex-shrink:0}.min-w-0{min-width:0}.gap-4{gap:4px}.gap-6{gap:6px}.gap-8{gap:8px}.gap-10{gap:10px}.gap-12{gap:12px}.overflow-hidden{overflow:hidden}.text-ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pointer{cursor:pointer}.text-2{color:var(--text2)}.text-3{color:var(--text3)}.text-4{color:var(--text4)}.f-11{font-size:11px}.f-12{font-size:12px}.f-13{font-size:13px}.f-15{font-size:15px}.fw-6{font-weight:600}.fw-7{font-weight:700}.btn-circle{width:40px;height:40px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}.btn-circle-sm{width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}.btn-circle-xs{width:32px;height:32px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.emoji-cat-btn{cursor:pointer;padding:4px 8px;border-radius:6px;font-size:15px;transition:all .15s}.emoji-cat-btn:hover{background:var(--hover)}
+.mt-4{margin-top:4px}.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.p-0{padding:0}.text-center{text-align:center}
 
 @keyframes incomingPulse{0%,100%{opacity:1}50%{opacity:.6}}
 @keyframes menuFadeIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}

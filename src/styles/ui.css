@@ -33,7 +33,7 @@
 .settings-content-anim>:nth-child(4){animation-delay:.09s}
 .settings-content-anim>:nth-child(5){animation-delay:.12s}
 .settings-content-anim>:nth-child(6){animation-delay:.15s}
-.settings-content::-webkit-scrollbar{width:4px}
+.settings-content::-webkit-scrollbar{width:4px;height:4px}
 .settings-content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 .settings-cat{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--text4);transition:all .15s}
 .settings-cat:hover{background:var(--hover);color:var(--text3)!important}

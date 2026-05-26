@@ -128,7 +128,7 @@
 .modal-close:hover{background:var(--hover);color:var(--text3)}
 .modal-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5}
 .modal-body{padding:20px;overflow-y:auto;flex:1;font-size:12px;color:var(--text3);line-height:1.7;min-height:0}
-.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar{width:4px;height:4px}
 .modal-body::-webkit-scrollbar-track{background:transparent}
 .modal-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 .modal-footer{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--border);flex-shrink:0;justify-content:flex-end}
@@ -138,10 +138,6 @@
 .modal-btn-secondary{background:rgba(255,255,255,.03);color:var(--text3);border:1px solid var(--border)}
 .modal-btn-secondary:hover{background:var(--hover);color:var(--text2)}
 .modal-member-list{max-height:180px;overflow-y:auto;margin:8px 0}
-.modal-member-list::-webkit-scrollbar{width:4px}
-.modal-member-list::-webkit-scrollbar-track{background:transparent}
-.modal-member-list::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
-.modal-member-list::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 .modal-member-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .15s}
 .modal-member-item:hover{background:var(--hover)}
 .modal-member-item.selected{background:rgba(129,140,248,.08)}
