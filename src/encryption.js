@@ -139,7 +139,16 @@ function applyTheme(t){
 }
 function getTheme(){var t=ls(STORAGE_KEYS.THEME);return t&&validThemes.indexOf(t)!==-1?t:'default'}
 function previewTheme(t){
-  if(!t||t==='default'||validThemes.indexOf(t)===-1){unpreviewTheme();return}
+  if(t==='default'){
+    var pe=document.getElementById('theme-preview-style');
+    if(pe)pe.textContent='';
+    var w=$('app-window');
+    if(w)validThemes.forEach(function(c){w.classList.remove('t-'+c,'l-'+c)});
+    var b=document.body;
+    validThemes.forEach(function(c){b.classList.remove('t-'+c,'l-'+c)});
+    return
+  }
+  if(!t||validThemes.indexOf(t)===-1){unpreviewTheme();return}
   var pe=document.getElementById('theme-preview-style');
   if(!pe){pe=document.createElement('style');pe.id='theme-preview-style';document.head.appendChild(pe)}
   var w=$('app-window');
