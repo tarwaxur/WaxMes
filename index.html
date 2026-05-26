@@ -186,7 +186,7 @@
             </button>
           </div>
         </div>
-        <div class="chat-messages thin-scrollbar" id="chat-messages"></div>
+        <div class="chat-messages thin-scrollbar thin-scrollbar--border2" id="chat-messages"></div>
         <div class="chat-input-area" id="chat-input-area">
           <button class="chat-upload-btn" id="emoji-btn" title="Emoji" style="font-size:20px;line-height:1">😊</button>
           <button class="chat-upload-btn" id="upload-btn" title="Ekle"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
@@ -239,7 +239,7 @@
   <!-- Settings page (outside app-main to cover full window) -->
   <div class="settings-page" id="settings-page">
     <div class="settings-body">
-      <div class="settings-sidebar thin-scrollbar--xs">
+      <div class="settings-sidebar thin-scrollbar thin-scrollbar--xs">
         <button class="settings-back"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Geri</button>
         <div class="settings-cat active" data-cat="profile"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Profil</div>
         <div class="settings-cat" data-cat="theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Tema</div>
@@ -249,7 +249,7 @@
             <div class="settings-cat" data-cat="shortcuts"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01"/></svg> Kısayollar</div>
             <div class="settings-cat" data-cat="about"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Hakkında</div>
         </div>
-        <div class="settings-content thin-scrollbar" id="settings-content"></div>
+        <div class="settings-content thin-scrollbar thin-scrollbar--border2" id="settings-content"></div>
       </div>
     </div>
   </div>
@@ -258,7 +258,7 @@
 <!-- TOS MODAL -->
 <div class="modal-overlay" id="modal-tos">
   <div class="modal"><div class="modal-header"><h3>Kullanım Koşulları</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div class="modal-body thin-scrollbar">
+    <div class="modal-body thin-scrollbar thin-scrollbar--border2">
       <h4>1. Kabul</h4><p>WaxMes'i kullanarak koşulları kabul etmiş olursun.</p>
       <h4>2. Hesap</h4><p>Şifreni kimseyle paylaşma.</p>
       <h4>3. Kullanım</h4><p>Yasa dışı, spam veya taciz amaçlı kullanım yasaktır.</p>
@@ -273,7 +273,7 @@
 <!-- PINNED MESSAGES MODAL -->
 <div class="modal-overlay" id="modal-pinned">
   <div class="modal" style="width:460px;height:420px"><div class="modal-header"><h3>📌 Sabitlenmiş Mesajlar</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div class="modal-body thin-scrollbar" id="pinned-msg-list" style="font-size:12px;color:var(--text4)">
+    <div class="modal-body thin-scrollbar thin-scrollbar--border2" id="pinned-msg-list" style="font-size:12px;color:var(--text4)">
       <div style="text-align:center;padding:30px">Sabitlenmiş mesaj yok.</div>
     </div>
   </div>
@@ -282,7 +282,7 @@
 <!-- SEARCH MODAL -->
 <div class="modal-overlay" id="modal-search">
   <div class="modal" style="width:480px;height:400px"><div class="modal-header"><h3>Ara</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div class="modal-body thin-scrollbar" style="display:flex;flex-direction:column">
+    <div class="modal-body thin-scrollbar thin-scrollbar--border2" style="display:flex;flex-direction:column">
       <input type="text" id="search-input" placeholder="Mesajlarda ara..." style="width:100%;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:10px;font-family:inherit;font-size:13px;color:var(--text2);outline:none;flex-shrink:0">
       <div id="search-results" class="thin-scrollbar" style="flex:1;overflow-y:auto;margin-top:10px;font-size:12px;color:var(--text4)"></div>
     </div>
@@ -292,7 +292,7 @@
 <!-- MEDIA GALLERY MODAL -->
 <div class="modal-overlay" id="modal-gallery">
   <div class="modal" style="width:560px;height:460px"><div class="modal-header"><h3>📷 Medya Galerisi</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div class="modal-body thin-scrollbar" id="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;padding:14px;overflow-y:auto;align-content:start"></div>
+    <div class="modal-body thin-scrollbar thin-scrollbar--border2" id="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;padding:14px;overflow-y:auto;align-content:start"></div>
   </div>
 </div>
 
@@ -316,7 +316,7 @@
 <!-- MEDIA PREVIEW MODAL -->
 <div class="modal-overlay" id="modal-media">
   <div class="modal" style="width:520px"><div class="modal-header"><h3>Medya Önizleme</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div class="modal-body" style="text-align:center;padding-bottom:8px">
+    <div class="modal-body thin-scrollbar thin-scrollbar--border2" style="text-align:center;padding-bottom:8px">
       <div id="media-files-list" style="margin-bottom:12px"></div>
       <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:10px">
         <button class="modal-btn modal-btn-secondary" id="media-prev-btn" style="display:none">←</button>
@@ -333,7 +333,7 @@
 <!-- GROUP MODAL -->
 <div class="modal-overlay" id="modal-group">
   <div class="modal" style="width:420px"><div class="modal-header"><h3>Grup Oluştur</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div class="modal-body">
+    <div class="modal-body thin-scrollbar thin-scrollbar--border2">
       <div class="field-group"><label>Grup Fotoğrafı</label><div style="display:flex;align-items:center;gap:12px;margin-top:4px"><div id="group-avatar-picker" style="width:56px;height:56px;border-radius:50%;background:rgba(129,140,248,.1);border:1px dashed rgba(129,140,248,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden"><svg width="22" height="22" viewBox="0 0 24 24" stroke="rgba(129,140,248,.4)" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div><span style="font-size:11px;color:var(--text4)">İsteğe bağlı</span></div></div>
       <div class="field-group"><label>Grup Adı</label><input type="text" id="group-name" placeholder="Örn: Arkadaşlar" maxlength="30"></div>
       <label style="font-size:11px;color:var(--text4);display:block;margin:8px 0 6px">Üyeleri Seç</label>
@@ -361,7 +361,7 @@
 <!-- FORWARD MODAL -->
 <div class="modal-overlay" id="modal-forward">
   <div class="modal" style="width:420px"><div class="modal-header"><h3>Mesajı İlet</h3><button class="modal-close" id="forward-close-btn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div class="modal-body">
+    <div class="modal-body thin-scrollbar thin-scrollbar--border2">
       <div class="field-group"><label>Yorum</label><input type="text" id="forward-caption" placeholder="İletilen mesaja yorum ekle..." maxlength="200"></div>
       <div class="field-group"><label>Kişi veya Grup Ara</label><input type="text" id="forward-search" placeholder="Ara..."></div>
       <div style="font-size:10px;color:var(--text4);margin-bottom:4px">Birden fazla seçmek için tıklayın</div>

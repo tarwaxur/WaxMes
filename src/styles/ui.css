@@ -23,8 +23,6 @@
 
 .settings-body{flex:1;display:flex;min-height:0}
 .settings-sidebar{width:200px;min-width:200px;border-right:1px solid var(--border);padding:12px 8px;overflow-y:auto;display:flex;flex-direction:column;background:var(--surface)}
-.settings-sidebar::-webkit-scrollbar{width:3px}
-.settings-sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 .settings-content{flex:1;padding:24px 28px;overflow-y:auto;min-height:0}
 .settings-content-anim>*{animation:slideUp .25s ease both}
 .settings-content-anim>:nth-child(1){animation-delay:0s}
@@ -33,8 +31,6 @@
 .settings-content-anim>:nth-child(4){animation-delay:.09s}
 .settings-content-anim>:nth-child(5){animation-delay:.12s}
 .settings-content-anim>:nth-child(6){animation-delay:.15s}
-.settings-content::-webkit-scrollbar{width:4px;height:4px}
-.settings-content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 .settings-cat{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--text4);transition:all .15s}
 .settings-cat:hover{background:var(--hover);color:var(--text3)!important}
 .settings-cat.active{background:rgba(129,140,248,.08);color:var(--text2)!important}

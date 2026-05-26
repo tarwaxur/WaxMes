@@ -990,7 +990,7 @@ function editMessage(msgId){
   var el=$('msg-'+msgId);if(!el)return;
   var oldT=msg._decrypted||msg.text||'';
   if(oldT.indexOf('🔒')===0)oldT='';
-  el.innerHTML='<textarea class="edit-input" id="ei-'+msgId+'" rows="3" style="resize:none">'+esc(oldT)+'</textarea><div class="edit-actions"><button class="edit-save" data-action="save-edit" data-msg-id="'+msgId+'">Kaydet</button><button class="edit-cancel" data-action="cancel-edit" data-msg-id="'+msgId+'">İptal</button></div>';
+  el.innerHTML='<textarea class="edit-input thin-scrollbar" id="ei-'+msgId+'" rows="3" style="resize:none">'+esc(oldT)+'</textarea><div class="edit-actions"><button class="edit-save" data-action="save-edit" data-msg-id="'+msgId+'">Kaydet</button><button class="edit-cancel" data-action="cancel-edit" data-msg-id="'+msgId+'">İptal</button></div>';
   var inp=document.getElementById('ei-'+msgId);
   if(inp){inp.focus();inp.onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();saveEdit(msgId)}else if(e.key==='Escape')cancelEdit(msgId)}}
 }
