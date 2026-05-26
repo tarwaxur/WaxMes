@@ -6,7 +6,7 @@ Thumbs.db
 .vscode/
 .idea/
 scripts/*.js
-!deep/
+\!deep/
 anchored_summary.md
 scripts/clean-dist.ps1
 *.bak
