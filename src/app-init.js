@@ -117,8 +117,9 @@ function initSessionListeners(){
 }
 initSessionListeners();
 
-// ===== MAXIMIZE (app-lifetime, no signal) =====
+// ===== MAXIMIZE + RESIZE (app-lifetime, no signal) =====
 if(window.electronAPI&&electronAPI.onMaximized){electronAPI.onMaximized(function(v){$('app-window').classList.toggle('maximized',v)})}
+window.addEventListener('resize',function(){$('app-window').style.width=''});
 
 // ===== INIT =====
 if(!ls(STORAGE_KEYS.VERSION)){localStorage.clear();ls(STORAGE_KEYS.VERSION,'0.5.0')}
