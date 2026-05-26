@@ -63,7 +63,7 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
     else if(txt.indexOf('Ayar')===0)el.onclick=function(){hideAvatarMenu();showSettings()};
     else if(txt.indexOf('Çıkış')===0)el.onclick=function(){doLogout()}
   });
-  var af=$('sidebar-actions');if(af){
+  var af=document.querySelector('.sidebar-actions');if(af){
     var afBtn=af.querySelector('.sidebar-action-btn');
     if(afBtn)afBtn.onclick=function(){showFriendsPanel()}
   }

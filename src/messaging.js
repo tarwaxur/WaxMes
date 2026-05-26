@@ -389,7 +389,7 @@ function renderImageViewer(){
   if(!store.imageViewerOpen||store.imageViewerMsgs.length===0){store.imageViewerOpen=false;return}
   var overlay=document.createElement('div');
   overlay.id='image-viewer';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:800;display:flex;align-items:center;justify-content:center;flex-direction:column';
   overlay.addEventListener('click',function(e){
     if(e.target===overlay){closeImageViewer();return}
     var btn=e.target.closest('[data-action]');if(!btn)return;
