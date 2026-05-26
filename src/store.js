@@ -104,6 +104,7 @@ var store = (function(){
     vadTimer: null,
     _callSignalUnsub: null,
     _callSigOfferId: null,
+    _callSigInit: false,
     pendingCallData: null,
     callCamStream: null,
     callScreenStream: null,

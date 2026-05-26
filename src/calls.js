@@ -211,14 +211,28 @@ function fbListenCallSignals(convId){
   if(store._callSignalUnsub){store._callSignalUnsub();store._callSignalUnsub=null}
   if(!window.db||!convId||!fbUserId())return;
   var uid=fbUserId();
+  store._callSigInit=false;
   store._callSignalUnsub=db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).collection(COLLECTIONS.CALL_SIGNALS).orderBy('timestamp','asc').onSnapshot(function(snap){
+    // Skip initial snapshot — only process real-time changes to avoid stale signals
+    if(!store._callSigInit){store._callSigInit=true;return}
     snap.docChanges().forEach(function(change){
       if(change.type!=='added')return;
       var d=change.doc.data(),sid=change.doc.id;
       if(d.from===uid)return;
+      // Skip signals older than 10 seconds
+      if(d.timestamp){
+        var st=d.timestamp.toMillis?d.timestamp.toMillis():Date.now();
+        if(Date.now()-st>10000)return
+      }
       if(!store.callState||store.callState===STATUS.IDLE){
         // Incoming offer
         if(d.action==='offer'&&d.sdp){
+          // Verify caller is a member of this conversation
+          var conv=findConv(convId);
+          if(!conv)return;
+          if(conv.memberIds&&conv.memberIds.indexOf(d.from)===-1)return;
+          // Skip if caller is offline (DM only)
+          if(!conv.isGroup&&conv.online===false)return;
           store._callSigOfferId=sid;
           var callerName=d.callerName||'Birisi';
           $('incoming-caller-name').textContent=callerName;
@@ -266,7 +280,8 @@ function fbListenCallSignals(convId){
 
 function fbStopCallSignals(){
   if(store._callSignalUnsub){store._callSignalUnsub();store._callSignalUnsub=null}
-  store._callSigOfferId=null
+  store._callSigOfferId=null;
+  store._callSigInit=false
 }
 
 function checkIncomingCalls(){} // Replaced by fbListenCallSignals

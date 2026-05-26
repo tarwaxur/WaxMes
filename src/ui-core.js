@@ -706,6 +706,7 @@ function resetSessionState(){
 
   // Call state
   if(store.callState==='connected'||store.callState==='ringing'||store.callState==='calling'){endCall()}
+  fbStopCallSignals();
   store.callState=null;store.callPeerConn=null;store.callLocalStream=null;
   if(store.callTimerInterval){clearInterval(store.callTimerInterval);store.callTimerInterval=null}
   store.callStartTime=0;store.callMicMuted=false;store.callSpeakerMuted=false;store.pendingCallMsgId=null;
