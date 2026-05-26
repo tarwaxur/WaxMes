@@ -73,9 +73,9 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
   if(ab)ab.onclick=function(){toggleArchiveView()};
 
   // --- Chat header ---
-  var chb=$('chat-header-btn');
-  if(chb)chb.onclick=function(){showProfilePanel()};
-  var chActions=document.querySelectorAll('#chat-header-btn ~ div button');
+  var chbAvatar=$('chat-header-avatar');
+  if(chbAvatar)chbAvatar.onclick=function(){showProfilePanel()};
+  var chActions=document.querySelectorAll('#chat-header-btn .flex-items-center button');
   if(chActions.length>=4){
     chActions[0].onclick=function(e){e.stopPropagation();startCall()};
     chActions[1].onclick=function(e){e.stopPropagation();openSearch()};
