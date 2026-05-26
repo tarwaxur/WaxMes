@@ -2,15 +2,15 @@
 async function showApp(profileOrUsername,display,email,avatar,status,bio,password){
   var profile=(profileOrUsername&&typeof profileOrUsername==='object')?profileOrUsername:{username:profileOrUsername,displayName:display,email:email,avatar:avatar,status:status,bio:bio,password:password};
   resetSessionState();
-  status=profile.status||'online';store.currentStatus=status;
+  status=profile.status||STATUS.ONLINE;store.currentStatus=status;
   try{
     var acc=mergeAccountProfile(profile);
-    status=acc.status||status||'online';store.currentStatus=status;
+    status=acc.status||status||STATUS.ONLINE;store.currentStatus=status;
     showScreen(null);
     var appMain=$('app-main');if(appMain)appMain.classList.add('active');
     syncSidebarProfile(acc,status);
     await loadMessages();
-    var savedStatus=ls('status_'+store.activeAccountId);if(savedStatus)updateStatusUI(savedStatus);
+    var savedStatus=ls(STORAGE_KEYS.STATUS+store.activeAccountId);if(savedStatus)updateStatusUI(savedStatus);
     // Load conversations: merge encrypted + localStorage data
     var localConvs=loadConversations();
     if(localConvs&&localConvs.length>0){
@@ -29,7 +29,7 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
     }
     if(savedGroups.length)saveGroups(savedGroups);
     // Restore unread counts and last activity
-    var savedUnread=ls('unreadCounts')||{};
+    var savedUnread=ls(STORAGE_KEYS.UNREAD)||{};
     var savedActivity=ls('lastActivity')||{};
     for(var uci=0;uci<store.conversations.length;uci++){
       var cid=store.conversations[uci].id;
@@ -701,7 +701,7 @@ function requestNotify(){Notification.requestPermission()}
 function showNotification(title,body,convId){
   if(!ls('notifications')&&ls('notifications')!==false){ls('notifications',true)}
   if(ls('notifications')===false)return;
-  if(store.currentStatus==='dnd')return;
+  if(store.currentStatus===STATUS.DND)return;
   if(convId&&isMuted(convId))return;
   if(convId&&isArchived(convId))return;
   if(window.electronAPI&&electronAPI.notify){electronAPI.notify(title,body)}

@@ -12,9 +12,9 @@ function finishRecord(id){
   var keys=store._recKeys;store._recKeys=null;
   var btn=$('sc-'+id);if(!btn)return;
   if(!keys||(!keys.key&&!keys.ctrl&&!keys.alt)){renderSettingsShortcuts();return}
-  var saved=ls('shortcuts')||{};
+  var saved=ls(STORAGE_KEYS.SHORTCUTS)||{};
   saved[id]=keys;
-  ls('shortcuts',saved);
+  ls(STORAGE_KEYS.SHORTCUTS,saved);
   renderSettingsShortcuts()
 }
 function getShortcutDisplay(keys){
@@ -62,8 +62,8 @@ document.addEventListener('keyup',function(e){
 function resetShortcut(id){
   if(store.recordingShortcut){store.recordingShortcut=null;store._recKeys=null}
   var def=defaultShortcutsMap[id];if(!def)return;
-  var saved=ls('shortcuts')||{};
-  delete saved[id];ls('shortcuts',saved);
+  var saved=ls(STORAGE_KEYS.SHORTCUTS)||{};
+  delete saved[id];ls(STORAGE_KEYS.SHORTCUTS,saved);
   renderSettingsShortcuts()
 }
 function renderSettingsShortcuts(){showSettingsCat('shortcuts')}

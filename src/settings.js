@@ -135,7 +135,7 @@ async function showSettingsCat(cat){
       {id:'voiceCall',label:'Sesli arama',key:'',ctrl:false,alt:false},
       {id:'editLast',label:'Son mesajı düzenle',key:'ArrowUp',ctrl:false,alt:false}
     ];
-    var savedShortcuts=ls('shortcuts')||{};
+    var savedShortcuts=ls(STORAGE_KEYS.SHORTCUTS)||{};
     var html='<div class="stitle">Kısayollar</div><div class="stitle-sub">Klavye kısayollarını özelleştir</div><div style="display:flex;flex-direction:column;gap:6px">';
     for(var si=0;si<defaultShortcuts.length;si++){
       var sc=defaultShortcuts[si];

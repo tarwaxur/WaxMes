@@ -214,7 +214,7 @@ function fbSyncOnlineStatus(convId){
           if(!udoc.exists)return;
           var uData=udoc.data();
           conv.online=!!uData.online;
-          conv._status=uData.status||'online';
+          conv._status=uData.status||STATUS.ONLINE;
           var statusEl=$('chat-header-status');
           if(statusEl)statusEl.textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);
           renderConversations()
@@ -236,23 +236,23 @@ async function fbUploadFile(dataUrl,path){
 // Update online status on app focus/blur (only on actual close, not tab switch)
 document.addEventListener('visibilitychange',function(){
   if(window.db&&document.hidden){
-    fbUpdateOnlineStatus(true,'idle')
+    fbUpdateOnlineStatus(true,STATUS.IDLE)
   }
 })
 
 
-function getArchived(){return ls('archived')||[]}
+function getArchived(){return ls(STORAGE_KEYS.ARCHIVED)||[]}
 function isArchived(id){var a=getArchived();return a.indexOf(id)>-1}
 function toggleArchive(id){
   var a=getArchived();var i=a.indexOf(id);
   if(i>-1)a.splice(i,1);else a.push(id);
-  ls('archived',a);renderConversations()
+  ls(STORAGE_KEYS.ARCHIVED,a);renderConversations()
 }
 
 // ===== MESSAGE & CONVERSATION PERSISTENCE =====
 async function saveMessages(){
   if(!store.activeAccountId)return;
-  ls('messages_'+store.activeAccountId,store.messages);
+  ls(STORAGE_KEYS.MESSAGES+'_'+store.activeAccountId,store.messages);
   saveConversations();
   if(window.electronAPI&&electronAPI.safeEncrypt){
     var data=JSON.stringify(store.messages);
@@ -277,17 +277,17 @@ async function loadMessages(){
     var cenc=localStorage.getItem('wm_conversations_'+store.activeAccountId);
     if(cenc){var cdec=await electronAPI.safeDecrypt(cenc);if(cdec){try{store.conversations=JSON.parse(cdec)}catch(e){}}}
   }
-  if(!loaded){var m=ls('messages_'+store.activeAccountId);if(m)store.messages=m}
+  if(!loaded){var m=ls(STORAGE_KEYS.MESSAGES+'_'+store.activeAccountId);if(m)store.messages=m}
 }
 function saveConversations(){
   if(!store.activeAccountId)return;
-  ls('conversations_'+store.activeAccountId,store.conversations);
+  ls(STORAGE_KEYS.CONVERSATIONS+'_'+store.activeAccountId,store.conversations);
   // Also save to global backup
   ls('conv_backup',{id:store.activeAccountId,convs:store.conversations})
 }
 function loadConversations(){
   if(store.activeAccountId){
-    var c=ls('conversations_'+store.activeAccountId);
+    var c=ls(STORAGE_KEYS.CONVERSATIONS+'_'+store.activeAccountId);
     if(c&&c.length>0)return c;
     // Try backup
     var bk=ls('conv_backup');
@@ -298,7 +298,7 @@ function loadConversations(){
 
 // Init
 (function initMsgs(){
-  if(store.activeAccountId){var saved=ls('messages_'+store.activeAccountId);if(saved)store.messages=saved}
+  if(store.activeAccountId){var saved=ls(STORAGE_KEYS.MESSAGES+'_'+store.activeAccountId);if(saved)store.messages=saved}
 })();
 
 // Save on close

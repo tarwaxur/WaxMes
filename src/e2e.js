@@ -135,9 +135,9 @@ function applyTheme(t){
     var p=lightThemes.indexOf(t)!==-1?'l-':'t-';w.classList.add(p+t)
   }else{t='default'}
   applyThemeToBody(t);
-  ls('theme',t||'default')
+  ls(STORAGE_KEYS.THEME,t||'default')
 }
-function getTheme(){var t=ls('theme');return t&&validThemes.indexOf(t)!==-1?t:'default'}
+function getTheme(){var t=ls(STORAGE_KEYS.THEME);return t&&validThemes.indexOf(t)!==-1?t:'default'}
 function previewTheme(t){
   var w=$('app-window');if(!w)return;
   if(t&&(t==='default'||validThemes.indexOf(t)!==-1)){
@@ -168,7 +168,7 @@ function unpreviewTheme(){
   if(pe)pe.textContent='';
   applyTheme(getTheme())
 }
-function selectTheme(t){unpreviewTheme();ls('theme',t);applyTheme(t);showSettingsCat('theme')}
+function selectTheme(t){unpreviewTheme();ls(STORAGE_KEYS.THEME,t);applyTheme(t);showSettingsCat('theme')}
 
 function toggleAutoStart(val){
   if(window.electronAPI&&electronAPI.setAutoStart)electronAPI.setAutoStart(val)
@@ -258,7 +258,7 @@ db.collection(COLLECTIONS.FRIENDS).doc(otherId).collection(COLLECTIONS.LIST).doc
     forgetAccountPassword(acc||{id:localId,email:email});
     var accs=getAccounts();
     for(var ri=accs.length-1;ri>=0;ri--){if(accs[ri].id===localId||accs[ri].id===fbUid||(email&&accs[ri].email===email)){accs.splice(ri,1)}}
-    ls('accounts',accs);
+    ls(STORAGE_KEYS.ACCOUNTS,accs);
     store.conversations=[];store.messages={};store.activeConvId=null;store.activeAccountId=null;store.avatarDataUrl=null;
     hideSettings();showScreen('screen-welcome');renderSavedAccounts()
   };

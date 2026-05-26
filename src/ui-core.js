@@ -6,20 +6,20 @@ function acceptTos(){$('reg-terms').checked=true;hideTos();validateRegister()}
 // ===== STATUS =====
 
 function updateStatusUI(s){store.currentStatus=s;
-  var sidebar=$('sidebar-status');if(sidebar){var sd=sidebar.querySelector('.sd-dot');var st=$('sidebar-status-text');if(sd)sd.className='sd-dot';if(s==='online'){if(sd)sd.classList.add('sd-online');if(st)st.textContent='Çevrimiçi'}else if(s==='idle'){if(sd)sd.classList.add('sd-idle');if(st)st.textContent='Boşta'}else if(s==='dnd'){if(sd)sd.classList.add('sd-dnd');if(st)st.textContent='Rahatsız Etme'}}
-  var ad=$('avatar-dropdown').querySelector('.ad-status');if(ad){var addot=ad.querySelector('.sd-dot');var adtxt=ad.querySelector('#ad-status-text')||ad.querySelector('span:last-child');if(addot)addot.className='sd-dot ad-dot';if(s==='online'){if(addot)addot.classList.add('sd-online');if(adtxt)adtxt.textContent='Çevrimiçi'}else if(s==='idle'){if(addot)addot.classList.add('sd-idle');if(adtxt)adtxt.textContent='Boşta'}else if(s==='dnd'){if(addot)addot.classList.add('sd-dnd');if(adtxt)adtxt.textContent='Rahatsız Etme'}}
+  var sidebar=$('sidebar-status');if(sidebar){var sd=sidebar.querySelector('.sd-dot');var st=$('sidebar-status-text');if(sd)sd.className='sd-dot';if(s===STATUS.ONLINE){if(sd)sd.classList.add('sd-online');if(st)st.textContent='Çevrimiçi'}else if(s===STATUS.IDLE){if(sd)sd.classList.add('sd-idle');if(st)st.textContent='Boşta'}else if(s===STATUS.DND){if(sd)sd.classList.add('sd-dnd');if(st)st.textContent='Rahatsız Etme'}}
+  var ad=$('avatar-dropdown').querySelector('.ad-status');if(ad){var addot=ad.querySelector('.sd-dot');var adtxt=ad.querySelector('#ad-status-text')||ad.querySelector('span:last-child');if(addot)addot.className='sd-dot ad-dot';if(s===STATUS.ONLINE){if(addot)addot.classList.add('sd-online');if(adtxt)adtxt.textContent='Çevrimiçi'}else if(s===STATUS.IDLE){if(addot)addot.classList.add('sd-idle');if(adtxt)adtxt.textContent='Boşta'}else if(s===STATUS.DND){if(addot)addot.classList.add('sd-dnd');if(adtxt)adtxt.textContent='Rahatsız Etme'}}
 }
 
 function resetIdleTimer(){
   if(store.idleTimer){clearTimeout(store.idleTimer)}
   // Restore previous status on activity
-  if(store.prevStatus&&store.currentStatus==='idle'&&store.prevStatus!=='idle'){setStatus(store.prevStatus,true)}
+  if(store.prevStatus&&store.currentStatus===STATUS.IDLE&&store.prevStatus!==STATUS.IDLE){setStatus(store.prevStatus,true)}
   store.prevStatus=null;
   // Start idle timer (15 minutes = 900000ms)
   store.idleTimer=setTimeout(function(){
-    if(store.currentStatus!=='idle'){
+    if(store.currentStatus!==STATUS.IDLE){
       store.prevStatus=store.currentStatus;
-      setStatus('idle',true)
+      setStatus(STATUS.IDLE,true)
     }
   },900000)
 }
@@ -32,12 +32,12 @@ setTimeout(resetIdleTimer,1000);
 
 function statusText(conv){
   if(!conv||conv.isGroup)return'';
-  if(conv._status==='idle')return'Boşta';
-  if(conv._status==='dnd')return'Rahatsız Etme';
+  if(conv._status===STATUS.IDLE)return'Boşta';
+  if(conv._status===STATUS.DND)return'Rahatsız Etme';
   return conv.online?'Çevrimiçi':'Çevrimdışı'
 }
 function cycleStatus(){var o=['online','idle','dnd'],i=o.indexOf(store.currentStatus);if(i===-1)i=0;setStatus(o[(i+1)%3])}
-function setStatus(s,skipSave){updateStatusUI(s);if(!skipSave)ls('status_'+store.activeAccountId,s);hideAvatarMenu();fbUpdateOnlineStatus(true,s);if(window.db&&fbUserId()){db.collection(COLLECTIONS.USERS).doc(fbUserId()).update({status:s}).catch(console.error)}}
+function setStatus(s,skipSave){updateStatusUI(s);if(!skipSave)ls(STORAGE_KEYS.STATUS+store.activeAccountId,s);hideAvatarMenu();fbUpdateOnlineStatus(true,s);if(window.db&&fbUserId()){db.collection(COLLECTIONS.USERS).doc(fbUserId()).update({status:s}).catch(console.error)}}
 
 // ===== AVATAR DROPDOWN =====
 function toggleAvatarMenu(){
@@ -542,12 +542,12 @@ async function newGroup(){
 function hideGroupModal(){closeModal('modal-group')}
 
 // ===== PIN CONVERSATIONS =====
-function getPinned(){return ls('pinned')||[]}
+function getPinned(){return ls(STORAGE_KEYS.PINNED)||[]}
 function togglePin(id){
   var p=getPinned();
   var idx=p.indexOf(id);
   if(idx>-1)p.splice(idx,1);else p.push(id);
-  ls('pinned',p);
+  ls(STORAGE_KEYS.PINNED,p);
   renderConversations()
 }
 function isPinned(id){var p=getPinned();return p.indexOf(id)>-1}
@@ -558,7 +558,7 @@ function saveUnreadCounts(){
     if(c.unread)counts[c.id]=c.unread;
     if(c.lastActivity)lastActs[c.id]=c.lastActivity
   }
-  ls('unreadCounts',counts);
+  ls(STORAGE_KEYS.UNREAD,counts);
   ls('lastActivity',lastActs)
 }
 
@@ -584,9 +584,9 @@ document.addEventListener('mousedown',function(e){
 });
 
 // ===== MUTE / CLOSE =====
-function getMuted(){return ls('muted')||[]}
+function getMuted(){return ls(STORAGE_KEYS.MUTED)||[]}
 function isMuted(id){var m=getMuted();for(var i=0;i<m.length;i++){if(m[i]===id)return true}return false}
-function toggleMute(id){var m=getMuted();var found=false;for(var i=0;i<m.length;i++){if(m[i]===id){m.splice(i,1);found=true;break}}if(!found)m.push(id);ls('muted',m);renderConversations()}
+function toggleMute(id){var m=getMuted();var found=false;for(var i=0;i<m.length;i++){if(m[i]===id){m.splice(i,1);found=true;break}}if(!found)m.push(id);ls(STORAGE_KEYS.MUTED,m);renderConversations()}
 
 function clearConversation(id){
   store.pendingClearConvId=id;

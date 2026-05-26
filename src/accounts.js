@@ -1,5 +1,5 @@
 // ===== SAVED ACCOUNTS =====
-function getAccounts(){return ls('accounts')||[]}
+function getAccounts(){return ls(STORAGE_KEYS.ACCOUNTS)||[]}
 function groupsStorageKey(){return store.activeAccountId?'groups_'+store.activeAccountId:'groups'}
 function groupBelongsToAccount(g,accountId){
   if(!accountId||!g)return true;
@@ -11,21 +11,21 @@ function groupBelongsToAccount(g,accountId){
 function getGroups(){
   var scoped=ls(groupsStorageKey());
   if(scoped)return scoped;
-  var legacy=ls('groups')||[];
+  var legacy=ls(STORAGE_KEYS.GROUPS)||[];
   var accountId=fbUserId()||store.activeAccountId;
   if(accountId)legacy=legacy.filter(function(g){return groupBelongsToAccount(g,accountId)});
   return legacy
 }
 function saveGroups(groups){ls(groupsStorageKey(),groups||[]);return groups||[]}
-function saveAccount(acc){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===acc.id){for(var k in acc){if(k!=='password'&&acc[k]!==undefined&&acc[k]!==null)a[i][k]=acc[k]}a[i].lastLogin=acc.lastLogin||a[i].lastLogin;if(a[i].password!==undefined)delete a[i].password;ls('accounts',a);return}}for(var i=0;i<a.length;i++){if(a[i].email===acc.email){for(var k in acc){if(k!=='password'&&acc[k]!==undefined&&acc[k]!==null)a[i][k]=acc[k]}a[i].lastLogin=acc.lastLogin||a[i].lastLogin;if(a[i].password!==undefined)delete a[i].password;ls('accounts',a);return}}if(acc.password!==undefined)delete acc.password;a.unshift(acc);ls('accounts',a)}
+function saveAccount(acc){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===acc.id){for(var k in acc){if(k!=='password'&&acc[k]!==undefined&&acc[k]!==null)a[i][k]=acc[k]}a[i].lastLogin=acc.lastLogin||a[i].lastLogin;if(a[i].password!==undefined)delete a[i].password;ls(STORAGE_KEYS.ACCOUNTS,a);return}}for(var i=0;i<a.length;i++){if(a[i].email===acc.email){for(var k in acc){if(k!=='password'&&acc[k]!==undefined&&acc[k]!==null)a[i][k]=acc[k]}a[i].lastLogin=acc.lastLogin||a[i].lastLogin;if(a[i].password!==undefined)delete a[i].password;ls(STORAGE_KEYS.ACCOUNTS,a);return}}if(acc.password!==undefined)delete acc.password;a.unshift(acc);ls(STORAGE_KEYS.ACCOUNTS,a)}
 function saveGroup(g){var grps=getGroups();for(var i=0;i<grps.length;i++){if(grps[i].id===g.id){grps[i]=g;saveGroups(grps);return}}grps.push(g);saveGroups(grps)}
 function removeAccount(id){var accs=getAccounts();var acc=null;for(var i=0;i<accs.length;i++){if(accs[i].id===id){acc=accs[i];break}}if(!acc)return;var body=$('modal-delete').querySelector('.modal-body');body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>'+
   '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Hesabı Kaldır</h4>'+
   '<p style="color:var(--text4);font-size:12px">"'+esc(accountFallbackName(acc))+'" hesabı silinsin mi? Bu işlem geri alınamaz.</p>';
 $('delete-confirm-btn').textContent='Kaldır';
-$('delete-confirm-btn').onclick=function(){closeModal('modal-delete',function(){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===id){forgetAccountPassword(a[i]);a.splice(i,1);break}}ls('accounts',a);renderSavedAccounts();hideDeleteModal()})};
+$('delete-confirm-btn').onclick=function(){closeModal('modal-delete',function(){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===id){forgetAccountPassword(a[i]);a.splice(i,1);break}}ls(STORAGE_KEYS.ACCOUNTS,a);renderSavedAccounts();hideDeleteModal()})};
 $('modal-delete').classList.add('active')}
-function setActiveAccount(id){ls('activeAccount',id)}
+function setActiveAccount(id){ls(STORAGE_KEYS.ACTIVE_ACCOUNT,id)}
 function cleanAccountText(v){return (v===undefined||v===null?'':String(v)).trim()}
 function getAccountById(id){var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].id===id)return a[i]}return null}
 function getAccountByEmail(email){email=cleanAccountText(email).toLowerCase();if(!email)return null;var a=getAccounts();for(var i=0;i<a.length;i++){if(a[i].email&&a[i].email.toLowerCase()===email)return a[i]}return null}
@@ -58,7 +58,7 @@ function stripPlainPassword(acc){
       if(accs[i].password!==undefined){delete accs[i].password;changed=true}
     }
   }
-  if(changed)ls('accounts',accs);
+  if(changed)ls(STORAGE_KEYS.ACCOUNTS,accs);
   delete acc.password
 }
 async function rememberAccountPassword(acc,password){
@@ -153,7 +153,7 @@ function syncSidebarProfile(acc,status){
       avEl.textContent=initial
     }
   }
-  updateStatusUI(status||store.currentStatus||'online')
+  updateStatusUI(status||store.currentStatus||STATUS.ONLINE)
 }
 function mergeAccountProfile(incoming){
   incoming=incoming||{};
@@ -187,7 +187,7 @@ function mergeAccountProfile(incoming){
 
 function renderSavedAccounts(){
   var el=$('saved-accounts');if(!el)return;
-  var a=getAccounts(),changed=false;for(var ai=0;ai<a.length;ai++){if(!a[ai].id){a[ai].id=uid();changed=true}}if(changed)ls('accounts',a);el.innerHTML='';
+  var a=getAccounts(),changed=false;for(var ai=0;ai<a.length;ai++){if(!a[ai].id){a[ai].id=uid();changed=true}}if(changed)ls(STORAGE_KEYS.ACCOUNTS,a);el.innerHTML='';
   for(var i=0;i<a.length;i++){(function(acc){
     var d=document.createElement('div');d.className='saved-account';
     var display=accountFallbackName(acc),initial=display.charAt(0).toUpperCase();
@@ -212,7 +212,7 @@ async function autoLogin(acc){
     var cred=await auth.signInWithEmailAndPassword(acc.email,password);
     var u=cred.user;
     store._authTransitioning=false;
-    hideLoading(function(){doLoginWith({id:u.uid,username:acc.username||u.email.split('@')[0],displayName:acc.displayName||u.displayName||u.email.split('@')[0],email:u.email,avatar:acc.avatar||null,status:'online',bio:acc.bio||'',password:password})})
+    hideLoading(function(){doLoginWith({id:u.uid,username:acc.username||u.email.split('@')[0],displayName:acc.displayName||u.displayName||u.email.split('@')[0],email:u.email,avatar:acc.avatar||null,status:STATUS.ONLINE,bio:acc.bio||'',password:password})})
   }catch(e){
     store._explicitLogin=false;
     store._authTransitioning=false;
@@ -229,11 +229,11 @@ function doLoginWithUsername(user){
   var accs=getAccounts();
   for(var i=0;i<accs.length;i++){
     if(accs[i].email&&accs[i].email.toLowerCase()===email){
-      doLoginWith({id:user.uid,username:accs[i].username,displayName:accs[i].displayName,email:user.email,avatar:accs[i].avatar||null,status:'online',bio:accs[i].bio||'',password:store._pendingLoginPassword});
+      doLoginWith({id:user.uid,username:accs[i].username,displayName:accs[i].displayName,email:user.email,avatar:accs[i].avatar||null,status:STATUS.ONLINE,bio:accs[i].bio||'',password:store._pendingLoginPassword});
       return
     }
   }
-  doLoginWith({id:user.uid,username:user.email.split('@')[0],displayName:user.displayName||user.email.split('@')[0],email:user.email,avatar:null,status:'online',bio:'',password:store._pendingLoginPassword})
+  doLoginWith({id:user.uid,username:user.email.split('@')[0],displayName:user.displayName||user.email.split('@')[0],email:user.email,avatar:null,status:STATUS.ONLINE,bio:'',password:store._pendingLoginPassword})
 }
 
 // ===== LOGIN =====
@@ -317,10 +317,10 @@ async function completeRegistration(){
     try {
       var snap=await db.collection(COLLECTIONS.USERS).where('username','==',u).limit(1).get();
       if(!snap.empty){cancelCreatedAccount('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');return}
-      await db.collection(COLLECTIONS.USERS).doc(uid).set({username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,bio:'',status:'online',createdAt:Date.now()});
+      await db.collection(COLLECTIONS.USERS).doc(uid).set({username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,bio:'',status:STATUS.ONLINE,createdAt:Date.now()});
       store._explicitLogin=false;
       finishReg();
-      showApp({id:uid,username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,status:'online',bio:'',password:p})
+      showApp({id:uid,username:u,displayName:d,email:e,avatar:store.avatarDataUrl||null,status:STATUS.ONLINE,bio:'',password:p})
     }catch(err){cancelCreatedAccount('Profil oluşturulamadı. Lütfen tekrar dene.')}
   }catch(err){
     clearTimeout(timer);

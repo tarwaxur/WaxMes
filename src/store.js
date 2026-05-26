@@ -110,7 +110,7 @@ var store = (function(){
     callPollTimer: null,
 
     // User status
-    currentStatus: 'online',
+    currentStatus: STATUS.ONLINE,
     prevStatus: null,
     idleTimer: null,
 

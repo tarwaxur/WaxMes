@@ -216,7 +216,7 @@ function fbListenCallSignals(convId){
       if(change.type!=='added')return;
       var d=change.doc.data(),sid=change.doc.id;
       if(d.from===uid)return;
-      if(!store.callState||store.callState==='idle'){
+      if(!store.callState||store.callState===STATUS.IDLE){
         // Incoming offer
         if(d.action==='offer'&&d.sdp){
           store._callSigOfferId=sid;

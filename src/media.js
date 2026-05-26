@@ -102,7 +102,7 @@ async function pickSettingsAvatar(){
         var a=getAccounts();
         for(var i=0;i<a.length;i++){
           if(a[i].id===store.activeAccountId){
-            a[i].avatar=r.thumb;ls('accounts',a);
+            a[i].avatar=r.thumb;ls(STORAGE_KEYS.ACCOUNTS,a);
             syncSidebarProfile(a[i],store.currentStatus);
             showSettingsCat('profile');
             var fbUid=fbUserId();if(window.db&&fbUid)db.collection(COLLECTIONS.USERS).doc(fbUid).update({avatar:r.thumb});
@@ -119,7 +119,7 @@ function saveProfileSettings(){
   for(var i=0;i<accs.length;i++){
     if(accs[i].id===store.activeAccountId){
       accs[i].displayName=d;accs[i].username=u;accs[i].bio=b;
-      var av=accs[i].avatar||null;ls('accounts',accs);
+      var av=accs[i].avatar||null;ls(STORAGE_KEYS.ACCOUNTS,accs);
       var fbUid=fbUserId();if(window.db&&fbUid)db.collection(COLLECTIONS.USERS).doc(fbUid).update({displayName:d,username:u,bio:b,avatar:av});
       syncSidebarProfile(accs[i],store.currentStatus);
       showSettingsCat('profile');
