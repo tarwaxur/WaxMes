@@ -196,11 +196,13 @@ function fbUnlistenMessages(convId){
   if(store._fbListeners[convId]){store._fbListeners[convId]();delete store._fbListeners[convId]}
 }
 
-function fbUpdateOnlineStatus(online,status){
-  if(!window.db||!fbUserId())return;
+function fbUpdateOnlineStatus(online,status,uid){
+  if(!window.db)return;
+  var targetUid=uid||fbUserId();
+  if(!targetUid)return;
   var data={online:online,lastSeen:Date.now()};
   if(status!==undefined)data.status=status;
-  db.collection(COLLECTIONS.USERS).doc(fbUserId()).update(data).catch(console.error)
+  db.collection(COLLECTIONS.USERS).doc(targetUid).update(data).catch(console.error)
 }
 function fbSyncOnlineStatus(convId){
   if(!window.db||!fbUserId())return;
@@ -233,10 +235,13 @@ async function fbUploadFile(dataUrl,path){
   }catch(e){return dataUrl}
 }
 
-// Update online status on app focus/blur (only on actual close, not tab switch)
+// Update online status on visibility change
 document.addEventListener('visibilitychange',function(){
-  if(window.db&&document.hidden){
-    fbUpdateOnlineStatus(true,STATUS.IDLE)
+  if(!window.db)return;
+  if(document.hidden){
+    fbUpdateOnlineStatus(false)
+  }else{
+    fbUpdateOnlineStatus(true,store.currentStatus||STATUS.ONLINE)
   }
 })
 

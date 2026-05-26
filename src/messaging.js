@@ -1,6 +1,9 @@
 // ===== MAIN APP =====
 async function showApp(profileOrUsername,display,email,avatar,status,bio,password){
   var profile=(profileOrUsername&&typeof profileOrUsername==='object')?profileOrUsername:{username:profileOrUsername,displayName:display,email:email,avatar:avatar,status:status,bio:bio,password:password};
+  // Set old account offline before switching
+  var oldUid=fbUserId();
+  if(oldUid)fbUpdateOnlineStatus(false,null,oldUid);
   resetSessionState();
   status=profile.status||STATUS.ONLINE;store.currentStatus=status;
   try{

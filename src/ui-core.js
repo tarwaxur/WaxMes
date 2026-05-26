@@ -32,9 +32,10 @@ setTimeout(resetIdleTimer,1000);
 
 function statusText(conv){
   if(!conv||conv.isGroup)return'';
+  if(!conv.online)return'Çevrimdışı';
   if(conv._status===STATUS.IDLE)return'Boşta';
   if(conv._status===STATUS.DND)return'Rahatsız Etme';
-  return conv.online?'Çevrimiçi':'Çevrimdışı'
+  return'Çevrimiçi'
 }
 function cycleStatus(){var o=[STATUS.ONLINE,STATUS.IDLE,STATUS.DND],i=o.indexOf(store.currentStatus);if(i===-1)i=0;setStatus(o[(i+1)%3])}
 function setStatus(s,skipSave){updateStatusUI(s);if(!skipSave)ls(STORAGE_KEYS.STATUS+store.activeAccountId,s);hideAvatarMenu();fbUpdateOnlineStatus(true,s);if(window.db&&fbUserId()){db.collection(COLLECTIONS.USERS).doc(fbUserId()).update({status:s}).catch(console.error)}}
@@ -677,6 +678,9 @@ function showContextMenu(x,y,items){
 // ===== SESSION STATE MANAGEMENT =====
 // All session-specific state that MUST be reset on account switch
 function resetSessionState(){
+  // Set current account offline before cleanup
+  var oldUid=fbUserId();
+  if(oldUid)fbUpdateOnlineStatus(false,null,oldUid);
   store._authTransitioning=true;
   // Abort DOM event listeners
   if(store._ac){store._ac.abort();store._ac=new AbortController()}
