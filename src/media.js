@@ -90,7 +90,7 @@ async function testScreenShare(){
   }catch(e){
     var preview=$('screen-share-preview');
     preview.style.display='flex';
-    preview.innerHTML='<span style="font-size:11px;color:#ef4444">Hata: '+(e.message||'Erişim reddedildi')+'</span>'
+    preview.innerHTML='<span style="font-size:11px;color:#ef4444">Hata: '+esc(e.message||'Erişim reddedildi')+'</span>'
   }
 }
 

@@ -240,7 +240,7 @@ function showUpdateBar(msg, type){
   if(!bar) return;
   var colors = {info: 'var(--accent)', success: '#22c55e', error: '#ef4444'};
   bar.style.display = 'block';
-  bar.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:'+(colors[type]||colors.info)+'20;border:1px solid '+(colors[type]||colors.info)+'40;font-size:12px;color:var(--text3)">'+msg+'</div>';
+  bar.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:'+(colors[type]||colors.info)+'20;border:1px solid '+(colors[type]||colors.info)+'40;font-size:12px;color:var(--text3)">'+esc(msg)+'</div>';
 }
 
 function setAppVersion(ver){
