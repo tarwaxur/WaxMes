@@ -161,7 +161,6 @@ function previewTheme(t){
   pe.textContent=':root,body{'+styles+'}'
 }
 function unpreviewTheme(){
-  clearTimeout(_previewTimer);
   var pe=document.getElementById('theme-preview-style');
   if(pe)pe.textContent='';
   var w=$('app-window');
