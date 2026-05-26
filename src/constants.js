@@ -34,7 +34,14 @@ var STORAGE_KEYS = {
   SHORTCUTS: 'shortcuts',
   VERSION: 'version',
   FRIENDS_CACHE: 'friendsCache',
-  OUTGOING_UNREAD: 'outgoingUnread'
+  OUTGOING_UNREAD: 'outgoingUnread',
+  BACKGROUND_MODE: 'backgroundMode',
+  CONV_BACKUP: 'conv_backup',
+  NOISE_SUPPRESSION: 'noiseSuppression',
+  NOISE_LEVEL: 'noiseLevel',
+  VOLUME: 'volume',
+  LAST_ACTIVITY: 'lastActivity',
+  NOTIFICATIONS: 'notifications'
 };
 
 var STATUS = {

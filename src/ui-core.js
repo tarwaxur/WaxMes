@@ -36,7 +36,7 @@ function statusText(conv){
   if(conv._status===STATUS.DND)return'Rahatsız Etme';
   return conv.online?'Çevrimiçi':'Çevrimdışı'
 }
-function cycleStatus(){var o=['online','idle','dnd'],i=o.indexOf(store.currentStatus);if(i===-1)i=0;setStatus(o[(i+1)%3])}
+function cycleStatus(){var o=[STATUS.ONLINE,STATUS.IDLE,STATUS.DND],i=o.indexOf(store.currentStatus);if(i===-1)i=0;setStatus(o[(i+1)%3])}
 function setStatus(s,skipSave){updateStatusUI(s);if(!skipSave)ls(STORAGE_KEYS.STATUS+store.activeAccountId,s);hideAvatarMenu();fbUpdateOnlineStatus(true,s);if(window.db&&fbUserId()){db.collection(COLLECTIONS.USERS).doc(fbUserId()).update({status:s}).catch(console.error)}}
 
 // ===== AVATAR DROPDOWN =====
@@ -559,7 +559,7 @@ function saveUnreadCounts(){
     if(c.lastActivity)lastActs[c.id]=c.lastActivity
   }
   ls(STORAGE_KEYS.UNREAD,counts);
-  ls('lastActivity',lastActs)
+  ls(STORAGE_KEYS.LAST_ACTIVITY,lastActs)
 }
 
 // ===== CLOSE HELPERS WITH ANIMATION =====

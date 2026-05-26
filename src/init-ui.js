@@ -56,9 +56,9 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
   if(adStatus)adStatus.onclick=function(){cycleStatus()};
   document.querySelectorAll('.ad-item').forEach(function(el){
     var txt=el.textContent.trim();
-    if(txt.indexOf('Çevrimiçi')===0)el.onclick=function(){setStatus('online');hideAvatarMenu()};
-    else if(txt.indexOf('Boşta')===0)el.onclick=function(){setStatus('idle');hideAvatarMenu()};
-    else if(txt.indexOf('Rahatsız')===0)el.onclick=function(){setStatus('dnd');hideAvatarMenu()};
+    if(txt.indexOf('Çevrimiçi')===0)el.onclick=function(){setStatus(STATUS.ONLINE);hideAvatarMenu()};
+    else if(txt.indexOf('Boşta')===0)el.onclick=function(){setStatus(STATUS.IDLE);hideAvatarMenu()};
+    else if(txt.indexOf('Rahatsız')===0)el.onclick=function(){setStatus(STATUS.DND);hideAvatarMenu()};
     else if(txt.indexOf('Grup')===0)el.onclick=function(){hideAvatarMenu();newGroup()};
     else if(txt.indexOf('Ayar')===0)el.onclick=function(){hideAvatarMenu();showSettings()};
     else if(txt.indexOf('Çıkış')===0)el.onclick=function(){doLogout()}
@@ -174,15 +174,15 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
       if(a==='toggle-setting'&&t.dataset.key)ls(t.dataset.key,t.checked);
       else if(a==='toggle-autostart')toggleAutoStart(t.checked);
       else if(a==='toggle-background')toggleBackground(t.checked);
-      else if(a==='toggle-noise')ls('noiseSuppression',t.checked);
-      else if(a==='set-noise-level')ls('noiseLevel',t.value)
+      else if(a==='toggle-noise')ls(STORAGE_KEYS.NOISE_SUPPRESSION,t.checked);
+      else if(a==='set-noise-level')ls(STORAGE_KEYS.NOISE_LEVEL,t.value)
     });
     sh.addEventListener('input',function(e){
       var t=e.target;
       if(t.id==='set-email'){var b=$('save-email-btn');if(b)b.disabled=!t.value.trim()}
       else if(t.id==='new-pass'){var b=$('save-pass-btn'),p2=$('new-pass2');if(b)b.disabled=t.value.length<6||(p2&&p2.value!==t.value)}
       else if(t.id==='new-pass2'){var b=$('save-pass-btn'),p1=$('new-pass');if(b)b.disabled=!p1||p1.value.length<6||t.value!==p1.value}
-      else if(t.dataset.action==='set-volume'){var v=$('vol-value');if(v)v.textContent=t.value+'%';ls('volume',t.value/100)}
+      else if(t.dataset.action==='set-volume'){var v=$('vol-value');if(v)v.textContent=t.value+'%';ls(STORAGE_KEYS.VOLUME,t.value/100)}
     });
     sh.addEventListener('mouseover',function(e){
       var t=e.target.closest('[data-action="select-theme"]');

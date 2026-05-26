@@ -174,7 +174,7 @@ function toggleAutoStart(val){
   if(window.electronAPI&&electronAPI.setAutoStart)electronAPI.setAutoStart(val)
 }
 function toggleBackground(val){
-  ls('backgroundMode',val);
+  ls(STORAGE_KEYS.BACKGROUND_MODE,val);
   if(window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(val)
 }
 function resetFirebaseAll(){

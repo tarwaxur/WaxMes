@@ -283,14 +283,14 @@ function saveConversations(){
   if(!store.activeAccountId)return;
   ls(STORAGE_KEYS.CONVERSATIONS+'_'+store.activeAccountId,store.conversations);
   // Also save to global backup
-  ls('conv_backup',{id:store.activeAccountId,convs:store.conversations})
+  ls(STORAGE_KEYS.CONV_BACKUP,{id:store.activeAccountId,convs:store.conversations})
 }
 function loadConversations(){
   if(store.activeAccountId){
     var c=ls(STORAGE_KEYS.CONVERSATIONS+'_'+store.activeAccountId);
     if(c&&c.length>0)return c;
     // Try backup
-    var bk=ls('conv_backup');
+    var bk=ls(STORAGE_KEYS.CONV_BACKUP);
     if(bk&&bk.id===store.activeAccountId&&bk.convs&&bk.convs.length>0)return bk.convs
   }
   return null

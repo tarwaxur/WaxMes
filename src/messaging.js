@@ -30,7 +30,7 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
     if(savedGroups.length)saveGroups(savedGroups);
     // Restore unread counts and last activity
     var savedUnread=ls(STORAGE_KEYS.UNREAD)||{};
-    var savedActivity=ls('lastActivity')||{};
+    var savedActivity=ls(STORAGE_KEYS.LAST_ACTIVITY)||{};
     for(var uci=0;uci<store.conversations.length;uci++){
       var cid=store.conversations[uci].id;
       if(savedUnread[cid]!==undefined)store.conversations[uci].unread=savedUnread[cid];
@@ -49,7 +49,7 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
     var currentFbUid=fbUserId();
     if(window.db&&currentFbUid){fbListenConversations(currentFbUid);startPendingListener(currentFbUid)}
     // Init background mode
-    if(ls('backgroundMode')&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
+    if(ls(STORAGE_KEYS.BACKGROUND_MODE)&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
     initE2E();
   }catch(e){console.error('[showApp] Error:',e)}
   // Always render and finalize, even on error
@@ -699,8 +699,8 @@ function searchMessages(q){
 // ===== NOTIFICATIONS =====
 function requestNotify(){Notification.requestPermission()}
 function showNotification(title,body,convId){
-  if(!ls('notifications')&&ls('notifications')!==false){ls('notifications',true)}
-  if(ls('notifications')===false)return;
+  if(!ls(STORAGE_KEYS.NOTIFICATIONS)&&ls(STORAGE_KEYS.NOTIFICATIONS)!==false){ls(STORAGE_KEYS.NOTIFICATIONS,true)}
+  if(ls(STORAGE_KEYS.NOTIFICATIONS)===false)return;
   if(store.currentStatus===STATUS.DND)return;
   if(convId&&isMuted(convId))return;
   if(convId&&isArchived(convId))return;

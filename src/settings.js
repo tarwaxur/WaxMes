@@ -27,7 +27,7 @@ async function showSettingsCat(cat){
       ['default','royal','forest','wine','slate','plum','coffee','teal','ember','navy','emerald','cloud','pearl','mist','cream','sage','lilac','coral','sky','linen','frost'].map(function(t){return '<div class="theme-card tp-'+t+(cur===t?' active':'')+'" data-theme="'+t+'" data-action="select-theme"><div class="theme-card-preview"><div class="tcp-dot"></div><div class="tcp-bar"><div></div><div></div><div></div></div></div><div class="theme-card-name">'+themes[t]+'</div></div>'}).join('')+
       '</div>'
   }else if(cat==='privacy'){
-    var notifChecked=ls('notifications')!==false?'checked':'';
+    var notifChecked=ls(STORAGE_KEYS.NOTIFICATIONS)!==false?'checked':'';
     var autoStartChecked='';var bgChecked='';
     if(window.electronAPI&&electronAPI.getAutoStart){try{var as=await electronAPI.getAutoStart();$('autostart-toggle').checked=as}catch(e){}}
     if(window.electronAPI&&electronAPI.getBackgroundMode){try{var bg=await electronAPI.getBackgroundMode();$('background-toggle').checked=bg}catch(e){}}
@@ -112,15 +112,15 @@ async function showSettingsCat(cat){
           '<div style="font-size:22px;margin-bottom:8px">🔇</div>'+
           '<h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">Gürültü Engelleme</h4>'+
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
-            '<label class="toggle"><input type="checkbox" id="noise-toggle" '+(ls('noiseSuppression')?'checked':'')+' data-action="toggle-noise"><span class="toggle-track"></span><span class="toggle-label" style="font-size:11px;color:var(--text4)">Arka plan gürültüsünü engelle</span></label>'+
+            '<label class="toggle"><input type="checkbox" id="noise-toggle" '+(ls(STORAGE_KEYS.NOISE_SUPPRESSION)?'checked':'')+' data-action="toggle-noise"><span class="toggle-track"></span><span class="toggle-label" style="font-size:11px;color:var(--text4)">Arka plan gürültüsünü engelle</span></label>'+
           '</div>'+
           '<div style="font-size:11px;color:var(--text4);line-height:1.5;margin-bottom:10px">Mikrofonunuzdaki arka plan seslerini (fan, klavye, trafik vb.) otomatik olarak azaltır.</div>'+
           '<div style="display:flex;gap:8px;align-items:center">'+
             '<span style="font-size:10px;color:var(--text4)">Seviye:</span>'+
             '<select id="noise-level" style="flex:1;padding:6px 10px;font-size:11px;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;color:var(--text2);outline:none" data-action="set-noise-level">'+
-              '<option value="low" '+(ls('noiseLevel')==='low'?'selected':'')+'>Düşük</option>'+
-              '<option value="medium" '+(ls('noiseLevel')==='medium'?'selected':'')+'>Orta</option>'+
-              '<option value="high" '+(ls('noiseLevel')==='high'?'selected':'')+'>Yüksek</option>'+
+              '<option value="low" '+(ls(STORAGE_KEYS.NOISE_LEVEL)==='low'?'selected':'')+'>Düşük</option>'+
+              '<option value="medium" '+(ls(STORAGE_KEYS.NOISE_LEVEL)==='medium'?'selected':'')+'>Orta</option>'+
+              '<option value="high" '+(ls(STORAGE_KEYS.NOISE_LEVEL)==='high'?'selected':'')+'>Yüksek</option>'+
             '</select>'+
           '</div>'+
         '</div>'+
