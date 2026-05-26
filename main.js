@@ -86,7 +86,7 @@ function createWindow() {
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, cb) => {
     cb({ responseHeaders: {
       ...details.responseHeaders,
-      'Content-Security-Policy': ["default-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app https://www.gstatic.com blob: data: mediastream:; style-src 'self' 'unsafe-inline'; script-src 'self'"]
+      'Content-Security-Policy': ["default-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app https://www.gstatic.com blob: data: mediastream:; style-src 'self' 'unsafe-inline'; script-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app"]
     }});
   });
 
