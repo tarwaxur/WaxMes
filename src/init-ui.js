@@ -190,7 +190,7 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
     });
     sh.addEventListener('mouseout',function(e){
       var t=e.target.closest('[data-action="select-theme"]');
-      if(t){var r=e.relatedTarget;if(!r||!t.contains(r))unpreviewTheme()}
+      if(t)unpreviewTheme()
     })
   }
   document.querySelectorAll('.settings-cat').forEach(function(el){
