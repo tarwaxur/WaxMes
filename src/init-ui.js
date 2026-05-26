@@ -189,8 +189,7 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
       if(t&&t.dataset.theme)previewTheme(t.dataset.theme)
     });
     sh.addEventListener('mouseout',function(e){
-      var t=e.target.closest('[data-action="select-theme"]');
-      if(t){var r=e.relatedTarget;if(!r||!t.contains(r))unpreviewTheme()}
+      if(e.target.closest('[data-action="select-theme"]'))unpreviewTheme()
     })
   }
   document.querySelectorAll('.settings-cat').forEach(function(el){
