@@ -1,10 +1,10 @@
 // ===== FIREBASE DATA LAYER =====
 
 function fbListenConversations(uid){
-  if(store._fbConvUnsub){store._fbConvUnsub();store._fbConvUnsub=null}
+  if(store._fbConversationUnsub){store._fbConversationUnsub();store._fbConversationUnsub=null}
   if(!window.db)return;
   store._convListenerActive=true;
-  store._fbConvUnsub=db.collection(COLLECTIONS.CONVERSATIONS).where('memberIds','array-contains',uid).onSnapshot(function(snap){
+  store._fbConversationUnsub=db.collection(COLLECTIONS.CONVERSATIONS).where('memberIds','array-contains',uid).onSnapshot(function(snap){
     snap.docChanges().forEach(function(change){
       var d=change.doc.data(),cid=change.doc.id;
       if(change.type==='removed'){
@@ -57,7 +57,7 @@ function convListenerAddConv(newConv){
 }
 
 function fbStopConversations(){
-  if(store._fbConvUnsub){store._fbConvUnsub();store._fbConvUnsub=null}
+  if(store._fbConversationUnsub){store._fbConversationUnsub();store._fbConversationUnsub=null}
   store._convListenerActive=false;
 }
 

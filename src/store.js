@@ -21,7 +21,7 @@ var store = (function(){
     // Firestore listeners
     _fbListeners: {},
     _fbMsgCache: {},
-    _fbConvUnsub: null,
+    _fbConversationUnsub: null,
     _convListenerActive: false,
     _onlineStatusListeners: {},
 

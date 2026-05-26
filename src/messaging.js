@@ -137,7 +137,7 @@ function parseTime(t){
   return -9999
 }
 
-function selectConversation(id){hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();store._hasNewMsg=false;if(store.activeConvId&&store.activeConvId!==id)fbUnlistenMessages(store.activeConvId);fbUnlistenTyping();fbStopCallSignals();stopTyping();store.activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();renderConversations();$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.indexOf('data:')===0){ca.innerHTML='<img src="'+escJs(sanitizeUrl(conv.avatar))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(conv.color||'var(--grad)')+'" data-err-text="'+(conv.isGroup?'G':'?')+'" data-err-avatar="1">';ca.style.background='transparent'}else{ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);store._forceScrollBottom=true;renderMessages(id);fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
+function selectConversation(id){hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();store._hasNewMsg=false;if(store.activeConvId&&store.activeConvId!==id)fbUnlistenMessages(store.activeConvId);fbStopTypingListener();fbStopCallSignals();stopTyping();store.activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();renderConversations();$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.indexOf('data:')===0){ca.innerHTML='<img src="'+escJs(sanitizeUrl(conv.avatar))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(conv.color||'var(--grad)')+'" data-err-text="'+(conv.isGroup?'G':'?')+'" data-err-avatar="1">';ca.style.background='transparent'}else{ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);store._forceScrollBottom=true;renderMessages(id);fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
 if(!conv.isGroup&&window.db&&fbUserId()){var otherId=null;for(var ti=0;ti<(conv.memberIds||[]).length;ti++){if(conv.memberIds[ti]!==fbUserId()){otherId=conv.memberIds[ti];break}}if(otherId)fbListenTyping(id,otherId)}
 fbListenCallSignals(id)}
 
@@ -754,7 +754,7 @@ function fbListenTyping(convId,otherUserId){
     }
   },function(){})
 }
-function fbUnlistenTyping(){
+function fbStopTypingListener(){
   if(store._typingRemoteUnsub){store._typingRemoteUnsub();store._typingRemoteUnsub=null}
   store._typingLocalUid=null;
 }

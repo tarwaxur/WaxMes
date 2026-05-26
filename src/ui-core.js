@@ -638,7 +638,7 @@ function closeConversation(id){
   var conv=findConv(id);
   if(conv){conv.hidden=true}
   fbUnlistenMessages(id);
-  fbUnlistenTyping();
+  fbStopTypingListener();
   stopTyping();
   if(store.activeConvId===id){$('chat-empty').style.display='flex';$('chat-active').style.display='none';store.activeConvId=null}
   saveConversations();
@@ -684,9 +684,9 @@ function resetSessionState(){
   for(var kl in store._fbListeners){store._fbListeners[kl]();delete store._fbListeners[kl]}
   store._fbListeners={};
   store._fbMsgCache={};
-  if(store._fbConvUnsub){store._fbConvUnsub();store._fbConvUnsub=null}
+  if(store._fbConversationUnsub){store._fbConversationUnsub();store._fbConversationUnsub=null}
   store._convListenerActive=false;
-  fbUnlistenTyping();
+  fbStopTypingListener();
 
   // Friend request listeners
   if(store._pendingUnsub){store._pendingUnsub();store._pendingUnsub=null}
