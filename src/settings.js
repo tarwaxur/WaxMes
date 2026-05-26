@@ -64,7 +64,7 @@ async function showSettingsCat(cat){
       });
       var ms=$('media-mic-select');if(ms)ms.innerHTML=micOptions;
       var ss=$('media-spk-select');if(ss)ss.innerHTML=spkOptions
-    }catch(e){console.error(e)}}catch(e){}
+    }catch(e){console.error(e)}
     
     content.innerHTML='<div class="stitle">Ses ve Görüntü</div>'+
       '<div class="stitle-sub" style="margin-bottom:18px">Mikrofon, hoparlör, kamera ve ekran ayarlarını yönet</div>'+
