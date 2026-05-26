@@ -1,0 +1,6 @@
+-- Dikkat Edilmesi Gerekilen Hususlar --
+
+- Kodlar her seferinde baştan sona incelensin ve özellikle yeni bir eklenti yapıldıktan sonra kodlarda bozulma var mı kontrol edilsin.
+- Her güncellemeden sonra kullanıcıya (prompt verene) GitHub sürümü yayınlansın mı? Yayınlanacaksa sürüm ne olacak ve yayınlanmayacaksa ne yapılacak sorularını iletilsin.
+- Kodlarda otomasyon kurulacak, testler otomatik yapılacak ve gerekli güvenlik güncellemeleri düzenli kontrol edilecek.
+- Her güncellemeden sonra win-unpacked klasöründeki kurulum ve dist klasöründeki WaxMesSetup.exe dosyası güncellenecek.
