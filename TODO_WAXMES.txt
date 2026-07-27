@@ -1,31 +1,18 @@
-Yapılacaklar Listesi
+WaxMes - Android Native Sürüm Durumu
+======================================
+✅ = Tamamlandı  ⏳ = Sırada  ❌ = İptal
 
----------------
-
-1- WaxMes öncelikle verileri kaydedebilmeli, hesabımı giriş yapıyorum fakat uygulamayı kapatıp tekrar açtığımda hesabımdan falan çıkış yapılmış, tema sıfırlanmış halde görüyorum ve diğer birçok şey muhtemelen böyledir o yüzden bu hafızada kaydetme olayını tamamen çözmeni istiyorum.
-
-2- Hesabımı giriş yaptıktan sonra karşıma çıkan kullanıcıların klonları mevcut. Mesela daha önceden bahsettiğim hyper ve waxur_test hesaplarından sadece 1 tane varken sovekaii isimli hesaptan tam 5 tane farklı sohbetimiz var yani chat'ler klonlanmış. Bu sorunu da çözmeni istiyorum.
-
-3- Uygulamanın sağ üst köşesine ... ekleyelim, dikey olacak şekilde 3 nokta ekleyelim ve ona tıkladığımızda ayarlar ve diğer ileride ekleyebileceğimiz özellikler orada barınsın. Yani ayarlar butonu altta olmasın, o sağ üstte olacak 3 noktaya tıkladığımızda açılacak listede olsun.
-
-4- Sağ üste yapacağın 3 noktanın yanına bir tane arama butonu koymanı istiyorum. O arama butonuna tıkladığımız zaman bir arama sayfası açılacak, o arama sayfasında herkes listelenecek ve klavyemiz otomatik açılacak. Aradığımız isme göre kullanıcılar filtrelenecek ve gözükmeyecek veya gözükecek, kısacası bilgisayar sürümünde yaptığımız arama sistemi burada da olacak.
-
-5- Arşiv sistemini bu uygulamaya da ekleyelim, arşiv diye bir buton olsun kullanıcıların listelendiği yerde uzunluğu fazla olmayan fakat yatay olarak kullanıcıların listelendiği boyutta aynı olacak şekilde. Arşiv boşsa arşive girdiğimiz zaman ortada arşiv boş gibi bir şeyler yazsın. Bilgisayar sürümünde nasılsa öyle olsun, kullanıcılara basılı tuttuğumuz zaman (ana menüde kullanıcılar listelenmişken kullanıcılara basılı tuttuğumuzda) susturma, sabitleme, arşivleme, sohbeti temizleme butonları olsun. Sohbeti kapatma ve gruba ekleme butonu olmasın.
-
-6- Bazı butonlar ekranın çok altında, navigasyon tuşları kullanan insanlar için tuşlar navigasyon tuşlarının içerisinde kalıyor neredeyse, bu da tıklamayı imkânsız hale getiriyor. Bu sorunu da düzeltelim eğer kullanıcılar navigasyon tuşları kullanıyorsa altta olan butonlar navigasyon tuşlarının üstünde olsun, olur da navigasyon tuşları kullanmıyorlarsa butonlar altta olabilir yani ekranın tam altında olabillir fakat navigasyon tuşları kullanıyorlarsa butonlar biraz üstte olsun.
-
-7- Ana menüde sağ üstte arama butonuna tıklayıp arama yapacağımız zaman arama yapmak için metin yazacağımız yer klavyemizin hemen üstüne gelsin, normal birisine mesaj atarken de klavyemiz açıldığı zaman mesaj yazma kısmı klavyemizin üstüne gelsin böylece ne yazdığımızı rahatlıkla görebilelim, klavyenin altında kalmasın. Klavye açıldığı zaman uygulama kısalsın kısaca, güncel mesajlar da klavyenin arkasında kalabilir o yüzden güncel mesajlar da klavyenin üstünde olsun ya kısaca klavyeyi açtığımız zaman klavyenin arkasında bir şey olmasın bu her zaman böyle olsun diğer şeylerde de.
-
-8- Alttaki durum butonunu değiştirelim ismi durum değil başka bir şey olsun artık aklına hangi isim gelirse. O butona tıkladığımızda önümüze arkadaşlarımız listelensin ve arkadaşlarımızın listelendiği yerin üstünde de yani onların da üstünde kim ne story'si atmış onlar listelensin yatay şekilde. Yani Instagram ana sayfası gibi düşünebilirsin üstte story'ler olur da altta postlar olur ya, bizde postlar yerine arkadaş olduğumuz kullanıcılar listelenecek alt alta. Story'lerin olduğu hizada sağ tarafta bir buton olacak fakat story'lerle karışmaması için arka planı fade yani gradyanlı şeffaf olacak şekilde kapatabilirsin böylece butonun arkasına story kaçmaz ve görüntü bozulması yaşanmaz, o buton da + butonu olacak altında arkadaş ekle yazabilir ufak bir şey. Ona tıkladığımız zaman arkadaş ekleme sayfası, beklenen sayfası falan gelecek. Arkadaş ekleyebileceğiz veya güncel olarak arkadaşlık isteğimiz kabul edilmiş mi veya arkadaşlık isteği gelmiş mi kontrol edebileceğiz.
-
-9- Herhangi bir kullanıcıyla olan sohbetimize girdiğimizde kullanıcının üstte sohbet yazan yerde sohbet yazması yerine kullanıcının profil fotoğrafı olsun, yanında ismi ve durumunun ne olduğu yazsın yani çevrimiçi mi boşta mı rahatsız etmede mi yoksa çevrimdışı mı falan o yazsın. Üstüne tıkladığımızda ise karşımıza onun profili çıksın, alttan kayarak çıksın tam ekran olmasın uygulama biraz kararsın eğer parmağımız ile profili tutup yukarı kaydırırsak tam ekran olsun geri aşağı indirdiğimizde veya sol üste ekleyeceğin geri butonuna tıkladığımızda ise profili geri kapansın.
-
-10- Kullanıcıya basılı tutup açılan pencerede sohbeti temizle dedikten sonra hem tüm sohbeti silsin hem de dm kutusundan kullanıcıyı kaldırsın, arkadaşlar sayfasından tekrar kullanıcıya tıkladığım zaman sohbeti açılsın. Ekstra sohbeti kapat olmasın kullanıcıyı yormayalım.
-
-11- Kullanıcıya basılı tutup arşivle dediğimizde arşive göndersin arşivdeyken basılı tuttuğumuzda arşivden çıkarma butonu olsun ona tıklayınca arşivden çıkarsın 5. maddede belirttiğim gibi.
-
-12- Dm kutusu sıralaması düzgün olsun, sabitlenenlerde, genel olarak son etkileşimlerde ve uygulamayı kapatıp açtığımızda falan sıralama kesinlikle bozulmasın. Buna çok dikkat edelim.
-
-13- Bir güncelleme geldiği zaman uygulamanın ana menüsünde sağ üstte arama ve 3 yıldızın olduğu butonların en solunda yani en başında bir aşağı ok butonu olsun güncelleme geldiği zaman buton otomatik olarak gözüksün ona tıkladığımız zaman artık nasıl yaparsın bilmem de güncelleme geldiği zaman otomatik sonraki sürümün dosyasını indirsin çeksin kursun falan işte bir şeyler yapsın uygulamayı güncellesin o tarafını ben pek bilmiyorum.
-
-14- Sohbete görsel, medya içerik yüklemeyi ekleyelim. Aynı şekilde uygulamaya emojileri de ekleyelim. Uygulamanın mesaj yazmanın sol tarafında olsun bu iki buton. Aslında iki buton koymak yerine yerden tasarruf etmek için tek buton koyup ona tıklayınca üste doğru açılan bir liste olabilir medya gönderme veya emoji paneli falan diye.
+✅ 1. Veri kalıcılığı: Hesap/tema kaydediliyor (SharedPrefs + Firebase Auth persist)
+✅ 2. Konuşma tekrarları: Dedup ile aynı kullanıcıdan tek kayıt
+✅ 3. Sağ üst ⋮ menü (Ayarlar, Çıkış)
+✅ 4. Arama butonu + arama sayfası (filtreleme)
+✅ 5. Arşiv sistemi + uzun basma menüsü (Sustur/Sabitle/Arşivle/Temizle)
+✅ 6. Navigator tuşları için padding (navigationBarsPadding)
+✅ 7. Klavye yönetimi (adjustResize + insets)
+⏳ 8. Arkadaşlar sekmesi (stories + arkadaş listesi + ekleme)
+✅ 9. Sohbet başlığı: avatar + isim + durum
+✅ 10. Temizleme DM listesinden kaldırır
+✅ 11. Arşive gönderme/çıkarma (uzun basma)
+✅ 12. DM sıralaması (lastActivity + pinned)
+⏳ 13. Güncelleme butonu (GitHub API)
+✅ 14. Medya/Emoji butonları (göndergeç)
