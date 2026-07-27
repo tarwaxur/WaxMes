@@ -676,6 +676,7 @@ function toggleClosedView(){store._showClosed=!store._showClosed;renderConversat
 
 // ===== CONTEXT MENU =====
 function showContextMenu(x,y,items){
+  console.log('[scm] show',x,y,items.length,'items');
   var m=$('context-menu');m.innerHTML='';
   for(var i=0;i<items.length;i++){(function(it){
     if(it.sep){var d=document.createElement('div');d.className='cm-sep';m.appendChild(d)}else{
@@ -843,7 +844,7 @@ function deleteGroup(convId){
   saveMessages()
 }
 
-function showConvContext(x,y,convId){var conv=findConv(convId);if(!conv)return;var muted=isMuted(convId);var pinned=isPinned(convId);var archived=isArchived(convId);
+function showConvContext(x,y,convId){var conv=findConv(convId);if(!conv){console.log('[scc] no conv');return}console.log('[scc] show for',conv.name);var muted=isMuted(convId);var pinned=isPinned(convId);var archived=isArchived(convId);
   var items=[{label:muted?'Susturmayı Kaldır':'Sustur',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>',action:function(){toggleMute(convId)}}];
   items.push({label:pinned?'Sabitlemeyi Kaldır':'Sabitle',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg>',action:function(){togglePin(convId)}});
   items.push({sep:true});
