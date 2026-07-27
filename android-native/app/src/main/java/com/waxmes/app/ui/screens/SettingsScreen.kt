@@ -1,6 +1,5 @@
 package com.waxmes.app.ui.screens
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,13 +18,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.waxmes.app.data.Repository
 import com.waxmes.app.ui.theme.*
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (String) -> Unit, onLogout: () -> Unit, onBack: () -> Unit) {
     val t = LocalTheme.current
-    val scope = rememberCoroutineScope()
     var selectedCategory by remember { mutableStateOf("profile") }
 
     ModalNavigationDrawer(
@@ -36,12 +33,32 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
                 Spacer(Modifier.height(16.dp))
                 HorizontalDivider(color = t.border, modifier = Modifier.padding(horizontal = 16.dp))
                 Spacer(Modifier.height(8.dp))
-                DrawerItem(t, "Profile", Icons.Default.Person, selectedCategory == "profile") { selectedCategory = "profile"; scope.launch {  } }
-                DrawerItem(t, "Themes", Icons.Default.Palette, selectedCategory == "themes") { selectedCategory = "themes"; scope.launch {  } }
-                DrawerItem(t, "About", Icons.Default.Info, selectedCategory == "about") { selectedCategory = "about"; scope.launch {  } }
+                // Profile
+                Row(modifier = Modifier.fillMaxWidth().clickable { selectedCategory = "profile" }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Person, contentDescription = null, tint = if (selectedCategory == "profile") t.accent else t.text3, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Text("Profile", color = if (selectedCategory == "profile") t.accent else t.text, fontSize = 15.sp, fontWeight = if (selectedCategory == "profile") FontWeight.SemiBold else FontWeight.Normal)
+                }
+                // Themes
+                Row(modifier = Modifier.fillMaxWidth().clickable { selectedCategory = "themes" }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Palette, contentDescription = null, tint = if (selectedCategory == "themes") t.accent else t.text3, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Text("Themes", color = if (selectedCategory == "themes") t.accent else t.text, fontSize = 15.sp, fontWeight = if (selectedCategory == "themes") FontWeight.SemiBold else FontWeight.Normal)
+                }
+                // About
+                Row(modifier = Modifier.fillMaxWidth().clickable { selectedCategory = "about" }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = if (selectedCategory == "about") t.accent else t.text3, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Text("About", color = if (selectedCategory == "about") t.accent else t.text, fontSize = 15.sp, fontWeight = if (selectedCategory == "about") FontWeight.SemiBold else FontWeight.Normal)
+                }
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider(color = t.border, modifier = Modifier.padding(horizontal = 16.dp))
-                DrawerItem(t, "Logout", Icons.Default.Logout, false, onLogout, Color(0xFFef4444))
+                // Logout
+                Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onLogout).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFef4444), modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Text("Logout", color = Color(0xFFef4444), fontSize = 15.sp)
+                }
                 Spacer(Modifier.height(16.dp))
             }
         }
@@ -50,17 +67,8 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
             containerColor = t.bg,
             topBar = {
                 TopAppBar(title = { Text("Settings", color = t.text) },
-                    navigationIcon = { IconButton(onClick = { scope.launch {  } }) { Icon(Icons.Default.Menu, contentDescription = null, tint = t.text) } },
+                    navigationIcon = { IconButton(onClick = {  }) { Icon(Icons.Default.Menu, contentDescription = null, tint = t.text) } },
                     actions = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = null, tint = t.text) } })
-            },
-            bottomBar = {
-                Surface(color = t.bg2, shadowElevation = 0.dp) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        FilterChip(selected = selectedCategory == "profile", onClick = { selectedCategory = "profile" }, label = { Text("Profile", fontSize = 12.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = t.accent.copy(alpha = 0.15f), selectedLabelColor = t.accent))
-                        FilterChip(selected = selectedCategory == "themes", onClick = { selectedCategory = "themes" }, label = { Text("Themes", fontSize = 12.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = t.accent.copy(alpha = 0.15f), selectedLabelColor = t.accent))
-                        FilterChip(selected = selectedCategory == "about", onClick = { selectedCategory = "about" }, label = { Text("About", fontSize = 12.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = t.accent.copy(alpha = 0.15f), selectedLabelColor = t.accent))
-                    }
-                }
             }
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg)) {
@@ -71,15 +79,6 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
                 }
             }
         }
-    }
-}
-
-@Composable
-fun DrawerItem(t: ThemeColors, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, selected: Boolean, onClick: () -> Unit, color: Color? = null) {
-    Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = color ?: if (selected) t.accent else t.text3, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(16.dp))
-        Text(label, color = color ?: if (selected) t.accent else t.text, fontSize = 15.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
     }
 }
 
@@ -100,7 +99,6 @@ fun ProfileSection(t: ThemeColors, repo: Repository) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ThemesSection(t: ThemeColors, currentTheme: String, onThemeChange: (String) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp)) {
