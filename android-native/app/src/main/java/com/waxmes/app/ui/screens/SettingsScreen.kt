@@ -25,58 +25,27 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
     val t = LocalTheme.current
     var selectedCategory by remember { mutableStateOf("profile") }
 
-    ModalNavigationDrawer(
-        drawerContent = {
-            ModalDrawerSheet(containerColor = t.bg2) {
-                Spacer(Modifier.height(24.dp))
-                Text("WaxMes", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = t.text, modifier = Modifier.padding(horizontal = 20.dp))
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider(color = t.border, modifier = Modifier.padding(horizontal = 16.dp))
-                Spacer(Modifier.height(8.dp))
-                // Profile
-                Row(modifier = Modifier.fillMaxWidth().clickable { selectedCategory = "profile" }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Person, contentDescription = null, tint = if (selectedCategory == "profile") t.accent else t.text3, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(16.dp))
-                    Text("Profile", color = if (selectedCategory == "profile") t.accent else t.text, fontSize = 15.sp, fontWeight = if (selectedCategory == "profile") FontWeight.SemiBold else FontWeight.Normal)
+    Scaffold(
+        containerColor = t.bg,
+        topBar = {
+            TopAppBar(title = { Text("Settings", color = t.text) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = null, tint = t.text) } })
+        },
+        bottomBar = {
+            Surface(color = t.bg2, shadowElevation = 0.dp) {
+                Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    FilterChip(selected = selectedCategory == "profile", onClick = { selectedCategory = "profile" }, label = { Text("Profile", fontSize = 12.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = t.accent.copy(alpha = 0.15f), selectedLabelColor = t.accent))
+                    FilterChip(selected = selectedCategory == "themes", onClick = { selectedCategory = "themes" }, label = { Text("Themes", fontSize = 12.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = t.accent.copy(alpha = 0.15f), selectedLabelColor = t.accent))
+                    FilterChip(selected = selectedCategory == "about", onClick = { selectedCategory = "about" }, label = { Text("About", fontSize = 12.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = t.accent.copy(alpha = 0.15f), selectedLabelColor = t.accent))
                 }
-                // Themes
-                Row(modifier = Modifier.fillMaxWidth().clickable { selectedCategory = "themes" }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Palette, contentDescription = null, tint = if (selectedCategory == "themes") t.accent else t.text3, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(16.dp))
-                    Text("Themes", color = if (selectedCategory == "themes") t.accent else t.text, fontSize = 15.sp, fontWeight = if (selectedCategory == "themes") FontWeight.SemiBold else FontWeight.Normal)
-                }
-                // About
-                Row(modifier = Modifier.fillMaxWidth().clickable { selectedCategory = "about" }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = if (selectedCategory == "about") t.accent else t.text3, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(16.dp))
-                    Text("About", color = if (selectedCategory == "about") t.accent else t.text, fontSize = 15.sp, fontWeight = if (selectedCategory == "about") FontWeight.SemiBold else FontWeight.Normal)
-                }
-                Spacer(Modifier.weight(1f))
-                HorizontalDivider(color = t.border, modifier = Modifier.padding(horizontal = 16.dp))
-                // Logout
-                Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onLogout).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFef4444), modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(16.dp))
-                    Text("Logout", color = Color(0xFFef4444), fontSize = 15.sp)
-                }
-                Spacer(Modifier.height(16.dp))
             }
         }
-    ) {
-        Scaffold(
-            containerColor = t.bg,
-            topBar = {
-                TopAppBar(title = { Text("Settings", color = t.text) },
-                    navigationIcon = { IconButton(onClick = {  }) { Icon(Icons.Default.Menu, contentDescription = null, tint = t.text) } },
-                    actions = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = null, tint = t.text) } })
-            }
-        ) { padding ->
-            Box(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg)) {
-                when (selectedCategory) {
-                    "profile" -> ProfileSection(t, repo)
-                    "themes" -> ThemesSection(t, currentTheme, onThemeChange)
-                    "about" -> AboutSection(t)
-                }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg)) {
+            when (selectedCategory) {
+                "profile" -> ProfileSection(t, repo)
+                "themes" -> ThemesSection(t, currentTheme, onThemeChange)
+                "about" -> AboutSection(t, onLogout)
             }
         }
     }
@@ -122,7 +91,7 @@ fun ThemesSection(t: ThemeColors, currentTheme: String, onThemeChange: (String) 
 }
 
 @Composable
-fun AboutSection(t: ThemeColors) {
+fun AboutSection(t: ThemeColors, onLogout: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
         Text("About", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = t.text)
         Spacer(Modifier.height(20.dp))
@@ -130,5 +99,7 @@ fun AboutSection(t: ThemeColors) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) { Text("Platform", color = t.text3, fontSize = 13.sp, modifier = Modifier.width(100.dp)); Text("Android Native", color = t.text, fontSize = 13.sp) }
         Spacer(Modifier.height(20.dp))
         Text("\u00A9 2026 Waxur", color = t.text4, fontSize = 12.sp)
+        Spacer(Modifier.height(32.dp))
+        Button(onClick = onLogout, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFef4444)), modifier = Modifier.fillMaxWidth()) { Text("Logout", color = Color.White, fontWeight = FontWeight.SemiBold) }
     }
 }
