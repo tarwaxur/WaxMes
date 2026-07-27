@@ -850,7 +850,6 @@ function showConvContext(x,y,convId){var conv=findConv(convId);if(!conv){console
   items.push({label:archived?'Arşivden Çıkar':'Arşivle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>',action:function(){toggleArchive(convId)}});
   items.push({sep:true});
   items.push({label:'Sohbeti Temizle',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){clearConversation(convId)}});
-  items.push({label:'Sohbeti Kapat',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',action:function(){closeConversation(convId)}});
   if(conv.isGroup){
     var isGroupAdmin=conv.adminIds&&conv.adminIds.indexOf(store.activeAccountId)!==-1;
     var isGroupCreator=conv.creatorId===store.activeAccountId;
