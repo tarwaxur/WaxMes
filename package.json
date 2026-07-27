@@ -11,6 +11,8 @@
     "generate-icon": "node scripts/generate-icon.js",
     "shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
     "release": "npm run build -- --publish always",
+    "cap-sync": "node scripts/copy-www.js && npx cap sync",
+    "cap-build": "node scripts/copy-www.js && npx cap sync && cd android && gradlew assembleDebug",
     "test": "node tests/e2e.test.js",
     "postinstall": "node scripts/generate-icon.js"
   },
