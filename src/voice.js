@@ -152,8 +152,8 @@ function startAudioProgress(msgId,msg){
   },100)
 }
 
-function seekAudio(e,msgId){
-  var bar=e.currentTarget;
+function seekAudio(e,msgId,seekEl){
+  var bar=seekEl||e.currentTarget;
   var rect=bar.getBoundingClientRect();
   var pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
   
