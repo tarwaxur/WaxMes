@@ -34,9 +34,9 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
         containerColor = Bg,
         topBar = { TopAppBar(title = { Text("Sohbet", color = Text) }, navigationIcon = {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Text) }
-        }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface, titleContentColor = Text)) },
+        }) },
         bottomBar = {
-            Surface(color = InputBg, tonalElevation = 0.dp) {
+            Surface(color = InputBg) {
                 Row(modifier = Modifier.padding(8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(value = text, onValueChange = { text = it }, placeholder = { Text("Mesaj yaz...", color = Text4) },
                         modifier = Modifier.weight(1f), singleLine = true,
@@ -52,8 +52,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
             items(msgs) { msg ->
                 val isMine = msg.type == "sent"
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
-                    Surface(shape = RoundedCornerShape(12.dp, if (isMine) 12.dp else 4.dp, if (isMine) 4.dp else 12.dp, 12.dp),
-                        color = if (isMine) Accent.copy(alpha = 0.15f) else Surface2) {
+                    Surface(shape = RoundedCornerShape(12.dp, if (isMine) 12.dp else 4.dp, if (isMine) 4.dp else 12.dp, 12.dp), color = if (isMine) Accent.copy(alpha = 0.15f) else Surface2) {
                         Text(msg.text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), color = Text, fontSize = 14.sp, maxLines = 10)
                     }
                 }
