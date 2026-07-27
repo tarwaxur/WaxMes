@@ -20,12 +20,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Install dependencies (skip Electron)
+      - name: Install Capacitor only
         run: |
-          npm install --ignore-scripts
-          npm install @capacitor/core @capacitor/android --ignore-scripts
+          npm install @capacitor/core @capacitor/android @capacitor/filesystem @capacitor/preferences @capacitor/local-notifications --ignore-scripts --no-optional
 
       - name: Sync Capacitor
         run: npx cap sync android
