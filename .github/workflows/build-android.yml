@@ -22,24 +22,19 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
+      - name: Install dependencies (skip Electron)
         run: |
-          npm install
-          npx cap sync android
+          npm install --ignore-scripts
+          npm install @capacitor/core @capacitor/android --ignore-scripts
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x android/gradlew
+      - name: Sync Capacitor
+        run: npx cap sync android
 
       - name: Build APK
-        run: cd android && ./gradlew assembleDebug
-
-      - name: Sign APK (if keystore provided)
-        if: ${{ secrets.ANDROID_KEYSTORE != '' }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > keystore.jks
-          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore keystore.jks \
-            android/app/build/outputs/apk/debug/app-debug.apk waxmes-key
-        working-directory: ${{ github.workspace }}
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2
