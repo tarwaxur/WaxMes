@@ -1,0 +1,32 @@
+/* ===== MOBILE LAYOUT (Capacitor/Android) ===== */
+@media (max-width: 720px), (.is-mobile) {
+  .titlebar{display:none!important}
+  .app-sidebar{width:100%!important;min-width:100%!important}
+  .sidebar-header{padding:8px 12px!important}
+  .sidebar-user-info .sidebar-username{font-size:15px!important}
+  .sidebar-search{padding:6px 10px!important}
+  .conversations{padding:2px 4px!important}
+  .conv-item{padding:10px 8px!important;border-radius:0!important}
+  .profile-panel{width:100%!important;right:-100%!important}
+  .profile-panel.open{right:0!important}
+}
+
+.is-mobile .app-main{position:fixed;inset:0;z-index:50;transform:translateX(100%);transition:transform .25s ease}
+.is-mobile .app-main.open{transform:translateX(0)}
+.is-mobile .app-main .chat-header{padding:8px 10px!important}
+.is-mobile .app-main .chat-header-name{font-size:15px!important}
+.is-mobile #chat-messages{padding:4px 6px!important}
+.is-mobile .chat-input-area{padding:4px 6px!important}
+.is-mobile .chat-input-area #chat-input{font-size:16px!important}
+.is-mobile #emoji-body{max-height:200px!important}
+.is-mobile .msg{max-width:85%!important}
+.is-mobile .story-bar-wrap{border-bottom:none!important}
+.is-mobile .sidebar-search{display:none!important}
+
+.is-mobile .mobile-nav{display:flex!important}
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--surface);border-top:1px solid var(--border);z-index:100;align-items:center;justify-content:space-around;padding:0 4px}
+.mobile-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:none;background:none;color:var(--text4);font-size:10px;cursor:pointer;transition:color .15s;border-radius:8px;font-family:inherit;min-width:60px}
+.mobile-nav-item.active{color:var(--accent)}
+.mobile-nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5}
+.mobile-nav-item .badge{position:absolute;top:2px;right:2px;background:#ef4444;color:#fff;font-size:8px;font-weight:700;min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center}
+.mobile-nav-item-wrap{position:relative;display:flex;align-items:center;justify-content:center}
