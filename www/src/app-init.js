@@ -1,0 +1,197 @@
+// ===== SESSION-SCOPED EVENT LISTENERS =====
+var _sessListenersActive=false;
+function initSessionListeners(){
+  if(_sessListenersActive)return;_sessListenersActive=true;
+  document.addEventListener('keydown',function(e){
+    if(store.recordingShortcut)return;
+    if($('settings-page').classList.contains('active')&&e.key!=='Escape'&&e.key!=='Enter')return;
+    if(e.key==='Escape'){
+      e.preventDefault();
+      if(document.activeElement)document.activeElement.blur();
+      if($('modal-tos').classList.contains('active')){closeModal('modal-tos')}
+      else if($('modal-group').classList.contains('active')){closeModal('modal-group')}
+      else if($('modal-delete').classList.contains('active')){closeModal('modal-delete',function(){hideDeleteModal()})}
+      else if($('modal-media').classList.contains('active')){closeModal('modal-media',function(){store.pendingMediaFiles=[];store.mediaThumbCount=0})}
+      else if($('modal-forward').classList.contains('active')){closeModal('modal-forward',function(){store.forwardMsgData=null;store.forwardingLock=false})}
+      else if($('modal-search').classList.contains('active')){closeModal('modal-search')}
+      else if($('modal-pinned').classList.contains('active')){closeModal('modal-pinned')}
+      else if($('modal-gallery').classList.contains('active')){closeModal('modal-gallery')}
+      else if($('modal-friends').classList.contains('active')){closeModal('modal-friends')}
+      else if($('upload-menu').classList.contains('active')){hideUploadMenu()}
+      else if(store.emojiPickerVisible){$('emoji-picker').style.display='none';store.emojiPickerVisible=false}
+      else if(store.profilePanelOpen){closeProfilePanel()}
+      else if($('settings-page').classList.contains('active')){hideSettings()}
+      else if($('avatar-dropdown').classList.contains('active')){hideAvatarMenu()}
+      else if($('context-menu').classList.contains('active')){hideContextMenu()}
+    }
+    if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.altKey){
+      e.preventDefault();
+      if(document.activeElement)document.activeElement.blur();
+      if($('modal-delete').classList.contains('active')){
+        e.preventDefault();
+        if(store.pendingAlert){closeModal('modal-delete',function(){hideDeleteModal()})}
+        else if(store.pendingRemoveMember)removeFromGroupConfirm();
+        else if(store.pendingDeleteGroupId)confirmDeleteGroup();
+        else if(store.pendingClearConvId)confirmClearConversation();
+        else confirmDelete()
+      }
+      else if($('modal-media').classList.contains('active')){e.preventDefault();confirmSendMedia()}
+      else if($('modal-group').classList.contains('active')){if(!$('group-create-btn').disabled){e.preventDefault();$('group-create-btn').onclick()}}
+      else if($('modal-forward').classList.contains('active')){e.preventDefault();forwardToSelected()}
+    }
+    var tag=e.target.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||e.target.isContentEditable)return;
+    var saved=ls(STORAGE_KEYS.SHORTCUTS)||{};
+    for(var sid in saved){
+      var s=saved[sid];
+      if(s.key&&e.key===s.key&&e.ctrlKey===!!s.ctrl&&e.altKey===!!s.alt&&e.shiftKey===!!s.shift&&e.metaKey===!!s.meta){
+        e.preventDefault();
+        if(sid==='upload')toggleUploadMenu();
+        else if(sid==='voiceMsg')startVoice();
+        else if(sid==='micToggle')toggleCallMic();
+        else if(sid==='speakerToggle')toggleCallSpeaker();
+        else if(sid==='statusCycle')cycleStatus();
+        else if(sid==='voiceCall'&&store.activeConvId)startCall();
+        else if(sid==='editLast'&&store.activeConvId)editLastMessage();
+        return
+      }
+    }
+    var _s=ls(STORAGE_KEYS.SHORTCUTS)||{};
+    if(e.altKey&&e.key==='g'&&!_s['upload']){e.preventDefault();toggleUploadMenu()}
+    if(e.altKey&&e.key==='m'&&!_s['voiceMsg']){e.preventDefault();startVoice()}
+    if(e.key==='Escape'&&document.getElementById('call-video-overlay')){closeCallVideo();e.preventDefault()}
+    if(e.ctrlKey&&e.key==='f'&&!_s['search']){e.preventDefault();openSearch()}
+  },{signal:store._ac.signal});
+
+  document.addEventListener('paste',function(e){
+    var items=e.clipboardData&&e.clipboardData.items;
+    if(!items||!store.activeConvId)return;
+    var imageBlobs=[];
+    for(var pi=0;pi<items.length;pi++){
+      if(items[pi].type.indexOf('image')!==-1){
+        e.preventDefault();
+        var blob=items[pi].getAsFile();
+        if(blob)imageBlobs.push(blob)
+      }
+    }
+    if(imageBlobs.length>0){
+      var loaded=0;
+      imageBlobs.forEach(function(blob){
+        var reader=new FileReader();
+        reader.onload=function(ev){
+          store.push('pendingMediaFiles', {path:'Pasted image',dataUrl:ev.target.result,name:'Pasted image '+loaded,type:'image'});
+          loaded++;
+          if(loaded===imageBlobs.length){
+            store.mediaIndex=0;
+            showMediaPreview()
+          }
+        };
+        reader.readAsDataURL(blob)
+      })
+    }
+  },{signal:store._ac.signal});
+
+  var ci=$('chat-input');if(ci)ci.addEventListener('input',function(){$('chat-send').disabled=this.value.trim().length===0},{signal:store._ac.signal});$('chat-send').disabled=true;
+
+  // Scroll handling
+  document.addEventListener('wheel',function(e){
+    var t=e.target;
+    var mediaList=t.closest('.media-files-list-inner');
+    if(mediaList){
+      e.preventDefault();
+      mediaList.scrollLeft+=e.deltaY
+    }else if(!t.closest('.chat-messages')&&!t.closest('.conversations')&&!t.closest('.modal-body')&&!t.closest('.auth-inner')&&!t.closest('.settings-content')&&!t.closest('.profile-panel-body')&&!t.closest('#emoji-body')&&!t.closest('#emoji-cats')&&!t.closest('.devtools-overlay')){
+      e.preventDefault()
+    }
+  },{signal:store._ac.signal,passive:false});
+
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('.context-menu')&&!e.target.closest('.conv-item')&&!e.target.closest('.msg'))hideContextMenu();
+    if(e.target.classList.contains('modal-overlay')){hideTos();hideDeleteModal();hideMediaModal();$('modal-forward').classList.remove('active');store.forwardMsgData=null;store.forwardingLock=false}
+    if(!e.target.closest('.upload-menu')&&!e.target.closest('#upload-btn'))hideUploadMenu()
+  },{signal:store._ac.signal});
+  document.addEventListener('mousedown',function(e){if(!e.target.closest('.sidebar-user')&&!e.target.closest('.avatar-dropdown'))hideAvatarMenu()},{signal:store._ac.signal});
+
+  var cm=$('chat-messages');
+  if(cm)cm.addEventListener('scroll',function(){
+    if(store.contextMenuMsgId)hideContextMenu();
+    store._nearBottom=cm.scrollHeight-cm.scrollTop-cm.clientHeight<150;
+    if(store._nearBottom&&store._hasNewMsg){store._hasNewMsg=false;var cv=findConv(store.activeConvId);if(cv&&cv.unread>0){cv.unread=0;saveUnreadCounts();renderConversations()};updateNewMsgIndicator()}
+    // Load more messages when scrolled to top
+    if(cm.scrollTop<=10&&store.activeConvId&&typeof loadMoreMessages==='function'){
+      loadMoreMessages(store.activeConvId)
+    }
+  },{signal:store._ac.signal,passive:true});
+}
+initSessionListeners();
+
+// ===== MAXIMIZE + RESIZE (app-lifetime, no signal) =====
+if(window.electronAPI&&electronAPI.onMaximized){electronAPI.onMaximized(function(v){$('app-window').classList.toggle('maximized',v)})}
+window.addEventListener('resize',function(){$('app-window').style.width=''});
+
+// ===== INIT =====
+if(!ls(STORAGE_KEYS.VERSION)){localStorage.clear();ls(STORAGE_KEYS.VERSION,'0.5.0')}
+applyTheme(getTheme());
+(async function(){if(window.electronAPI&&electronAPI.getAppVersion)try{var v=await electronAPI.getAppVersion();setAppVersion(v)}catch(e){console.error(e)}})();
+
+function hideLoading(cb){
+  var ls=$('loading-screen');
+  if(ls&&ls.style.display!=='none'){
+    showScreen(null);
+    ls.style.animation='loadFadeOut .3s ease forwards';
+    setTimeout(function(){ls.style.display='none';ls.style.animation='';if(cb)cb()},300)
+  }else{if(cb)cb()}
+}
+
+async function initWelcome(){
+  hideLoading(async function(){
+    await migratePlainAccountPasswords();
+      var accs=getAccounts();
+      if(accs.length===1){showScreen('screen-login');$('login-email').value=accs[0].email;validateLogin();$('login-pass').focus()}
+      else{renderSavedAccounts();showScreen('screen-welcome')}
+    })
+}
+
+$('loading-screen').style.display='flex';
+
+function loadFirebase(cb){
+  var scripts=['https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js','https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js','https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js','https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js'];
+  var loaded=0;
+  scripts.forEach(function(src){
+    var s=document.createElement('script');s.src=src;
+    s.onload=s.onerror=function(){loaded++;if(loaded===scripts.length&&cb)cb()};
+    document.head.appendChild(s);
+  });
+  setTimeout(function(){if(loaded<scripts.length&&cb)cb()},8000);
+}
+
+loadFirebase(function(){
+  try{firebase.initializeApp(firebaseConfig);window.db=firebase.firestore();window.auth=firebase.auth();window.storage=firebase.storage()}catch(e){}
+  if(window.auth){
+    auth.onAuthStateChanged(function(user){
+      var authSeq=++store._authStateSeq;
+      function staleAuthEvent(){return authSeq!==store._authStateSeq||!auth.currentUser||auth.currentUser.uid!==user.uid}
+      if(user){
+        if(store._explicitLogin){store._explicitLogin=false;return}
+        var accs=getAccounts(),acc=null;
+        var loginEmail=(user.email||'').toLowerCase();for(var ai=0;ai<accs.length;ai++){if(accs[ai].email&&accs[ai].email.toLowerCase()===loginEmail){acc=accs[ai];break}}
+        var pendingPassword=store._pendingLoginPassword;
+        if(acc){
+          if(acc.password)rememberAccountPassword(acc,acc.password);
+          store._pendingLoginPassword=null;hideLoading(function(){if(staleAuthEvent())return;doLoginWith({id:user.uid,username:acc.username||user.email.split('@')[0],displayName:acc.displayName||user.displayName||user.email.split('@')[0],email:user.email,avatar:acc.avatar||null,status:acc.status||STATUS.ONLINE,bio:acc.bio||'',password:pendingPassword||null})})
+        }else{
+          (async function(){try{var doc=await db.collection(COLLECTIONS.USERS).doc(user.uid).get();if(staleAuthEvent())return;if(doc.exists){var d=doc.data();store._pendingLoginPassword=null;hideLoading(function(){if(staleAuthEvent())return;doLoginWith({id:user.uid,username:d.username,displayName:d.displayName,email:user.email,avatar:d.avatar,status:d.status||STATUS.ONLINE,bio:d.bio||'',password:pendingPassword||null})})}else{store._pendingLoginPassword=null;initWelcome()}}catch(e){if(!staleAuthEvent()){store._pendingLoginPassword=null;initWelcome()}}})()
+        }
+      }else{
+        if(store._authTransitioning)return;
+        resetSessionState();
+        store._authTransitioning=false;
+        store._pendingLoginPassword=null;
+        initWelcome()
+      }
+    })
+  }else{initWelcome()}
+});
+
+// Wire up store events for reactive UI
+store.on('conversations', renderConversations);

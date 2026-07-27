@@ -1,0 +1,26 @@
+WAXMES LICENSE AGREEMENT
+
+Last Updated: May 2026
+
+1. ACCEPTANCE
+By using this application you agree to the following terms.
+
+2. LICENSE
+WaxMes is completely free and open source software.
+You may use, copy, and distribute it without any fee.
+
+3. PRIVACY
+- Messages are end-to-end encrypted (RSA-2048).
+- No personal data is shared with third parties.
+- Firebase infrastructure is used only for messaging and authentication.
+- User passwords are secured by Firebase Auth.
+
+4. TERMS OF USE
+- Illegal, spam, or harassment use is prohibited.
+- The application is provided "as is" with no guarantees.
+
+5. LIABILITY
+The developer is not liable for any damages arising from the use of this software.
+
+6. CONTACT
+For issues: GitHub Issues page.

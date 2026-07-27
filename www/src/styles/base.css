@@ -1,0 +1,54 @@
+*{margin:0;padding:0;box-sizing:border-box;outline:none}
+html,body{width:100%;height:100%;overflow:hidden;margin:0;padding:0}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;display:flex;background:transparent;user-select:none}
+.window{position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden;transition:background .3s;background:var(--bg)}
+
+.titlebar{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 10px 18px;-webkit-app-region:drag;flex-shrink:0;z-index:400;position:relative;background:var(--bg)}
+.titlebar-left{display:flex;align-items:center;gap:9px}
+.titlebar-icon{width:16px;height:16px;fill:var(--accent)}
+.titlebar-text{font-size:12px;font-weight:600;color:var(--text4);letter-spacing:.4px}
+.titlebar-actions{display:flex;gap:5px;-webkit-app-region:no-drag}
+.titlebar-btn{width:34px;height:26px;border:none;background:transparent;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;color:var(--text4)}
+.titlebar-btn:hover{background:var(--hover);color:var(--text3)}
+.titlebar-btn.close:hover{background:rgba(239,68,68,.2);color:#ef4444}
+.titlebar-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.maximized .titlebar-btn{width:30px;height:24px}
+.maximized .titlebar-btn svg{width:13px;height:13px}
+
+#forward-contact-list::-webkit-scrollbar{width:4px}
+#forward-contact-list::-webkit-scrollbar-track{background:transparent}
+#forward-contact-list::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
+#forward-contact-list::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.media-thumb{width:56px;height:56px;border-radius:10px;overflow:hidden;cursor:pointer;flex-shrink:0;border:2px solid transparent}
+.media-files-list-inner::-webkit-scrollbar{height:4px}
+.media-files-list-inner::-webkit-scrollbar-track{background:transparent}
+.media-files-list-inner::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px;min-width:30px}
+.media-files-list-inner::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.call-member-avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;overflow:hidden}
+#emoji-body::-webkit-scrollbar{width:4px}
+#emoji-body::-webkit-scrollbar-track{background:transparent}
+#emoji-body::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px}
+#emoji-cats::-webkit-scrollbar{height:2px}
+
+.thin-scrollbar::-webkit-scrollbar{width:4px;height:4px}
+.thin-scrollbar::-webkit-scrollbar-track{background:transparent}
+.thin-scrollbar::-webkit-scrollbar-thumb{background:var(--text4);border-radius:4px;min-height:30px;min-width:30px}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+.thin-scrollbar--xs::-webkit-scrollbar{width:3px;height:3px}
+.thin-scrollbar--xs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.thin-scrollbar--border2::-webkit-scrollbar-thumb{background:var(--border2)}
+
+.flex{display:flex}.flex-col{flex-direction:column}.flex-center{align-items:center;justify-content:center}.flex-between{align-items:center;justify-content:space-between}.flex-items-center{display:flex;align-items:center}.flex-1{flex:1}.flex-shrink-0{flex-shrink:0}.min-w-0{min-width:0}.gap-4{gap:4px}.gap-6{gap:6px}.gap-8{gap:8px}.gap-10{gap:10px}.gap-12{gap:12px}.overflow-hidden{overflow:hidden}.text-ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pointer{cursor:pointer}.text-2{color:var(--text2)}.text-3{color:var(--text3)}.text-4{color:var(--text4)}.f-11{font-size:11px}.f-12{font-size:12px}.f-13{font-size:13px}.f-15{font-size:15px}.fw-6{font-weight:600}.fw-7{font-weight:700}.btn-circle{width:40px;height:40px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}.btn-circle-sm{width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}.btn-circle-xs{width:32px;height:32px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.emoji-cat-btn{cursor:pointer;padding:4px 8px;border-radius:6px;font-size:15px;transition:all .15s}.emoji-cat-btn:hover{background:var(--hover)}
+.mt-4{margin-top:4px}.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}.p-0{padding:0}.text-center{text-align:center}
+
+@keyframes incomingPulse{0%,100%{opacity:1}50%{opacity:.6}}
+@keyframes menuFadeIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+@keyframes modalBg{from{opacity:0}to{opacity:1}}
+@keyframes loadingBar{0%{transform:translateX(-100%)}50%{transform:translateX(200%)}100%{transform:translateX(400%)}}
+@keyframes loadFadeOut{from{opacity:1}to{opacity:0;pointer-events:none}}

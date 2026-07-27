@@ -1,0 +1,13 @@
+{
+  "appId": "com.waxmes.app",
+  "appName": "WaxMes",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
