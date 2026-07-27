@@ -1,8 +1,10 @@
 package com.waxmes.app.ui.screens
 
 import android.content.Context
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,24 +28,33 @@ import com.waxmes.app.data.Conversation
 import com.waxmes.app.data.Repository
 import com.waxmes.app.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsClick: () -> Unit) {
     val t = LocalTheme.current
     val ctx = LocalContext.current
+    val prefs = ctx.getSharedPreferences("waxmes", Context.MODE_PRIVATE)
     var convs by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var showMenu by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
+    var contextConvId by remember { mutableStateOf<String?>(null) }
+
+    fun savePin(id: String, pinned: Boolean) { prefs.edit().putBoolean("pin_$id", pinned).apply() }
+    fun saveMute(id: String, muted: Boolean) { prefs.edit().putBoolean("mute_$id", muted).apply() }
+    fun saveArchive(id: String, archived: Boolean) { prefs.edit().putBoolean("arch_$id", archived).apply() }
+    fun isPinned(id: String) = prefs.getBoolean("pin_$id", false)
+    fun isMuted(id: String) = prefs.getBoolean("mute_$id", false)
+    fun isArchived(id: String) = prefs.getBoolean("arch_$id", false)
 
     LaunchedEffect(Unit) {
-        repo.getConversations { convs = it }
-        repo.listenConversations { convs = it }
+        repo.getConversations { convs = it.map { c -> c.copy(isPinned = isPinned(c.id), isMuted = isMuted(c.id), isArchived = isArchived(c.id)) } }
+        repo.listenConversations { convs = it.map { c -> c.copy(isPinned = isPinned(c.id), isMuted = isMuted(c.id), isArchived = isArchived(c.id)) } }
     }
 
-    val filtered = if (searchQuery.isBlank()) convs else convs.filter {
+    val displayConvs = if (searchQuery.isBlank()) convs.filter { !it.isArchived } else convs.filter {
         it.name.contains(searchQuery, ignoreCase = true) || it.lastMsg.contains(searchQuery, ignoreCase = true)
-    }
+    }.filter { !it.isArchived }
 
     Scaffold(
         containerColor = t.bg,
@@ -74,8 +85,12 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         }
     ) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding(), contentPadding = PaddingValues(vertical = 4.dp)) {
-            items(filtered) { conv ->
-                Row(modifier = Modifier.fillMaxWidth().clickable { onChatClick(conv.id) }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            items(displayConvs) { conv ->
+                Box {
+                    Row(modifier = Modifier.fillMaxWidth().combinedClickable(
+                        onClick = { onChatClick(conv.id) },
+                        onLongClick = { contextConvId = conv.id }
+                    ).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(conv.color)), contentAlignment = Alignment.Center) {
                         Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold)
                     }
@@ -93,5 +108,26 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 item { Text("No conversations match", color = t.text4, modifier = Modifier.padding(20.dp).fillMaxWidth(), fontSize = 13.sp) }
             }
         }
+    // Context menu dialog
+    if (contextConvId != null) {
+        val conv = convs.find { it.id == contextConvId }
+        if (conv != null) {
+            AlertDialog(onDismissRequest = { contextConvId = null }, containerColor = t.bg2, titleContentColor = t.text, textContentColor = t.text3) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(conv.name, fontWeight = FontWeight.Bold, color = t.text, modifier = Modifier.padding(bottom = 16.dp))
+                    ContextMenuItem(t, if (conv.isMuted) "Unmute" else "Mute") { saveMute(conv.id, !conv.isMuted); convs = convs.toMutableList().also { it.find { it.id == conv.id }?.isMuted = !conv.isMuted }; contextConvId = null }
+                    ContextMenuItem(t, if (conv.isPinned) "Unpin" else "Pin") { savePin(conv.id, !conv.isPinned); convs = convs.toMutableList().also { it.find { it.id == conv.id }?.isPinned = !conv.isPinned }; contextConvId = null }
+                    ContextMenuItem(t, if (conv.isArchived) "Unarchive" else "Archive") { saveArchive(conv.id, !conv.isArchived); convs = convs.toMutableList().also { it.find { it.id == conv.id }?.isArchived = !conv.isArchived }; contextConvId = null }
+                    ContextMenuItem(t, "Clear Chat", Color(0xFFef4444)) { repo.clearMessages(conv.id); convs = convs.toMutableList().also { it.find { it.id == conv.id }?.lastMsg = ""; it.removeAll { c -> c.id == conv.id } }; contextConvId = null }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { contextConvId = null }, modifier = Modifier.align(Alignment.End)) { Text("Cancel", color = t.accent) }
+                }
+            }
+        }
     }
+}
+
+@Composable
+fun ContextMenuItem(t: ThemeColors, label: String, color: Color? = null, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(label, color = color ?: t.text, modifier = Modifier.fillMaxWidth()) }
 }

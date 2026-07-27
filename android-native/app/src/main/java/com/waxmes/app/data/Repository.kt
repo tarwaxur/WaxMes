@@ -118,4 +118,13 @@ class Repository {
             .set(mapOf("lastMsg" to text, "lastActivity" to com.google.firebase.firestore.FieldValue.serverTimestamp()),
                 com.google.firebase.firestore.SetOptions.merge())
     }
+
+    fun clearMessages(convId: String) {
+        db.collection("conversations").document(convId).collection("messages").get().addOnSuccessListener { snap ->
+            val batch = db.batch()
+            snap.documents.forEach { batch.delete(it.reference) }
+            batch.commit()
+        }
+        db.collection("conversations").document(convId).set(mapOf("lastMsg" to ""), com.google.firebase.firestore.SetOptions.merge())
+    }
 }
