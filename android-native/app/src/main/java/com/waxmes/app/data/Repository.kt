@@ -67,6 +67,15 @@ class Repository {
 
     fun logout() = auth.signOut()
 
+    fun dedup(convs: List<Conversation>): List<Conversation> {
+        val seen = mutableMapOf<String, Conversation>()
+        convs.forEach { c ->
+            val existing = seen[c.otherId]
+            if (existing == null || c.lastActivity > existing.lastActivity) seen[c.otherId] = c
+        }
+        return seen.values.sortedByDescending { it.lastActivity }
+    }
+
     fun getConversations(onResult: (List<Conversation>) -> Unit) {
         if (uid.isEmpty()) { onResult(emptyList()); return }
         db.collection("conversations").whereArrayContains("memberIds", uid).get(Source.SERVER)
@@ -84,14 +93,14 @@ class Repository {
                         }
                     }
                 }
-                if (pending == 0) onResult(convs.sortedByDescending { it.lastActivity })
+                if (pending == 0) onResult(dedup(convs).sortedByDescending { it.lastActivity })
             }
     }
 
     fun listenConversations(onChange: (List<Conversation>) -> Unit) =
         db.collection("conversations").whereArrayContains("memberIds", uid).addSnapshotListener { snap, _ ->
             if (snap == null) return@addSnapshotListener
-            onChange(snap.documents.mapNotNull { docToConversation(it, uid, nameCache) }.sortedByDescending { it.lastActivity })
+            onChange(dedup(snap.documents.mapNotNull { docToConversation(it, uid, nameCache) }))
         }
 
     fun listenMessages(convId: String, onChange: (List<Message>) -> Unit) =

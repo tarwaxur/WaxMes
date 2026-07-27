@@ -1,111 +1,31 @@
-===============================================================================
-WAXMES HATA RAPORU (27.07.2026)
-Her satirin basindaki kutucugu [ ] -> [x] yaparak cozuldugunu isaretleyebilirsin.
-===============================================================================
+Yapılacaklar Listesi
 
-[ ] 1. STORY MEDYA YUKLEMESI EKSIK (FIREBASE STORAGE)
-     Dosya: src/story.js:713
-     Sorun: confirmCreateStory'de medya story'si olusturulurken dosya
-            Firebase Storage'a yuklenmiyor. payload.mediaUrl dogrudan
-            local dataUrl olarak ataniyor (var mediaUrl = dataUrl).
-            Bu dataUrl baska kullanicilar tarafindan goruntulenemez.
-            Ayrica Firestore dokuman boyutu sinirini (1MB) asar.
-     Cozum: Storage'a yukleme kodu eklenmeli (fbUploadFile cagrisi):
-            var url = await fbUploadFile(dataUrl, 'stories/'+fbUserId()+'/'+Date.now());
-            payload.mediaUrl = url;
-     Not:  Eski kodda bu upload varmis ama kaldirilmis.
+---------------
 
-[ ] 2. fbListenStories 'in' SORGUSU 30 DEGERLE PATLIYOR
-     Dosya: src/story.js:59
-     Sorun: Firestore's 'in' operatoru en fazla 10 deger destekler.
-            Kod friendIds.slice(0, 30) ile 30'a kadar deger gonderiyor.
-            10'dan fazla arkadas varsa sorgu sessizce basarisiz oluyor
-            ve story'ler yuklenmiyor (hata sadece console'da loglaniyor).
-     Cozum: .slice(0, 30) yerine .slice(0, 10) yap. 10'dan fazla
-            arkadas icin birden fazla sorguyla batch halinde getir.
+1- WaxMes öncelikle verileri kaydedebilmeli, hesabımı giriş yapıyorum fakat uygulamayı kapatıp tekrar açtığımda hesabımdan falan çıkış yapılmış, tema sıfırlanmış halde görüyorum ve diğer birçok şey muhtemelen böyledir o yüzden bu hafızada kaydetme olayını tamamen çözmeni istiyorum.
 
-[ ] 3. FIRESTORE SECURITY RULES EKSIK (stories koleksiyonu)
-     Dosya: src/story.js:165 (fbCreateStory)
-     Sorun: db.collection('stories').add(storyData) yazma islemi icin
-            Firestore rules'da stories koleksiyonuna izin yok.
-            Hata: "Missing or insufficient permissions."
-     Cozum: Firebase Console > Firestore > Rules'a su kural eklenmeli:
-            match /stories/{storyId} {
-              allow create: if request.auth != null
-                && request.resource.data.authorId == request.auth.uid;
-              allow read: if request.auth != null;
-              allow delete: if request.auth != null
-                && resource.data.authorId == request.auth.uid;
-            }
+2- Hesabımı giriş yaptıktan sonra karşıma çıkan kullanıcıların klonları mevcut. Mesela daha önceden bahsettiğim hyper ve waxur_test hesaplarından sadece 1 tane varken sovekaii isimli hesaptan tam 5 tane farklı sohbetimiz var yani chat'ler klonlanmış. Bu sorunu da çözmeni istiyorum.
 
-[ ] 4. FIREBASE STORAGE RULES EKSIK (story medya yuklemesi)
-     Dosya: src/story.js (fbUploadFile cagrisi)
-     Sorun: Storage'a yuklenen dosyalar 404 hatasi aliyor.
-            Firebase Storage rules'da stories/ path'ine yazma izni yok.
-     Cozum: Firebase Console > Storage > Rules'a su kural eklenmeli:
-            match /stories/{userId}/{allPaths=**} {
-              allow write: if request.auth != null
-                && request.auth.uid == userId;
-              allow read: if request.auth != null;
-            }
+3- Uygulamanın sağ üst köşesine ... ekleyelim, dikey olacak şekilde 3 nokta ekleyelim ve ona tıkladığımızda ayarlar ve diğer ileride ekleyebileceğimiz özellikler orada barınsın. Yani ayarlar butonu altta olmasın, o sağ üstte olacak 3 noktaya tıkladığımızda açılacak listede olsun.
 
-[ ] 5. .btn-danger CSS SINIFI TANIMSIZ
-     Dosya: src/messaging.js:539 (kullanim), CSS dosyalarinda tanim yok
-     Sorun: Grup silme butonu class="btn-danger" kullaniyor ama
-            bu sinif auth.css veya ui.css'de tanimli degil.
-            Buton tamamen stilsiz gorunuyor (varsayilan browser stili).
-            Karsilastirma: .btn-primary tanimli (auth.css:107),
-            .btn-back tanimli (auth.css:105), .btn-danger yok.
-     Cozum: CSS'e .btn-danger kurali eklenmeli:
-            .btn-danger{background:#ef4444;color:#fff;...}
+4- Sağ üste yapacağın 3 noktanın yanına bir tane arama butonu koymanı istiyorum. O arama butonuna tıkladığımız zaman bir arama sayfası açılacak, o arama sayfasında herkes listelenecek ve klavyemiz otomatik açılacak. Aradığımız isme göre kullanıcılar filtrelenecek ve gözükmeyecek veya gözükecek, kısacası bilgisayar sürümünde yaptığımız arama sistemi burada da olacak.
 
-[ ] 6. confirmClearConversATION'DA saveConversations() DOGRUDAN CAGRIlMIYOR
-     Dosya: src/ui-core.js:635
-     Sorun: confirmClearConversation() icinde saveMessages() cagriliyor
-            (800ms debounce'lu). saveMessages() sonra flushSave() ile
-            saveConversations()'u tetikler. Eger uygulama 800ms
-            icinde kapanirsa (crash, guc kesintisi) conv._clearedAt
-            localStorage'a kaydedilmez. Yeniden acilinca Firestore'daki
-            eski mesajlar clearedAt filtresinden gecer ve geri gelir.
-     Cozum: saveMessages()'dan hemen sonra saveConversations() da
-            dogrudan cagrilmali:
-            saveMessages(); saveConversations();
+5- Arşiv sistemini bu uygulamaya da ekleyelim, arşiv diye bir buton olsun kullanıcıların listelendiği yerde uzunluğu fazla olmayan fakat yatay olarak kullanıcıların listelendiği boyutta aynı olacak şekilde. Arşiv boşsa arşive girdiğimiz zaman ortada arşiv boş gibi bir şeyler yazsın. Bilgisayar sürümünde nasılsa öyle olsun, kullanıcılara basılı tuttuğumuz zaman (ana menüde kullanıcılar listelenmişken kullanıcılara basılı tuttuğumuzda) susturma, sabitleme, arşivleme, sohbeti temizleme butonları olsun. Sohbeti kapatma ve gruba ekleme butonu olmasın.
 
-[ ] 7. updateConvPreview 1 ARGUMANLA CAGRIlIYOR (redundant)
-     Dosya: src/messaging.js:48
-     Sorun: showApp() icinde: updateConvPreview(store.conversations[sci].id)
-            Fonksiyon 3 parametre bekliyor: (convId, d, curUid)
-            Sadece convId gidiyor, d = undefined. Fonksiyonda
-            if(!d)return; guard'i var (firebase-data.js:328) bu yuzden
-            crash olmuyor ama preview hic guncellenmiyor. Gereksiz cagri.
-     Cozum: - Yanasitilan conversation objesini de gonder:
-              updateConvPreview(store.conversations[sci].id, store.conversations[sci], fbUserId())
-            - Veya bu cagriyi tamamen kaldir (zaten fbListenConversations
-              ve fbListenMessages ardindan preview'lari guncelliyor)
+6- Bazı butonlar ekranın çok altında, navigasyon tuşları kullanan insanlar için tuşlar navigasyon tuşlarının içerisinde kalıyor neredeyse, bu da tıklamayı imkânsız hale getiriyor. Bu sorunu da düzeltelim eğer kullanıcılar navigasyon tuşları kullanıyorsa altta olan butonlar navigasyon tuşlarının üstünde olsun, olur da navigasyon tuşları kullanmıyorlarsa butonlar altta olabilir yani ekranın tam altında olabillir fakat navigasyon tuşları kullanıyorlarsa butonlar biraz üstte olsun.
 
-[ ] 8. showError / _showError UYUMSUZLUGU (running vs source)
-     Dosya: src/story.js:3,677-728
-     Sorun: Kaynak kodda _showError fallback'i tanimli (satir 3) ve
-            confirmCreateStory _showError kullaniyor. Ancak kullanicinin
-            calistirdigi surumde showError is not defined hatasi aliniyor.
-            Bu, calisan versiyonun guncel kaynak koddan farkli oldugunu
-            gosteriyor. story.js'nin guncel hali derlenip deploy edilmemis.
-     Cozum: Uygulamayi yeniden derleyip calistir. Eger hala hata alinirsa
-            _showError fallback'indeki typeof kontrolu yetersiz kalabilir;
-            window.showError seklinde cagri yapilabilir.
+7- Ana menüde sağ üstte arama butonuna tıklayıp arama yapacağımız zaman arama yapmak için metin yazacağımız yer klavyemizin hemen üstüne gelsin, normal birisine mesaj atarken de klavyemiz açıldığı zaman mesaj yazma kısmı klavyemizin üstüne gelsin böylece ne yazdığımızı rahatlıkla görebilelim, klavyenin altında kalmasın. Klavye açıldığı zaman uygulama kısalsın kısaca, güncel mesajlar da klavyenin arkasında kalabilir o yüzden güncel mesajlar da klavyenin üstünde olsun ya kısaca klavyeyi açtığımız zaman klavyenin arkasında bir şey olmasın bu her zaman böyle olsun diğer şeylerde de.
 
-===============================================================================
-NOTLAR
-===============================================================================
+8- Alttaki durum butonunu değiştirelim ismi durum değil başka bir şey olsun artık aklına hangi isim gelirse. O butona tıkladığımızda önümüze arkadaşlarımız listelensin ve arkadaşlarımızın listelendiği yerin üstünde de yani onların da üstünde kim ne story'si atmış onlar listelensin yatay şekilde. Yani Instagram ana sayfası gibi düşünebilirsin üstte story'ler olur da altta postlar olur ya, bizde postlar yerine arkadaş olduğumuz kullanıcılar listelenecek alt alta. Story'lerin olduğu hizada sağ tarafta bir buton olacak fakat story'lerle karışmaması için arka planı fade yani gradyanlı şeffaf olacak şekilde kapatabilirsin böylece butonun arkasına story kaçmaz ve görüntü bozulması yaşanmaz, o buton da + butonu olacak altında arkadaş ekle yazabilir ufak bir şey. Ona tıkladığımız zaman arkadaş ekleme sayfası, beklenen sayfası falan gelecek. Arkadaş ekleyebileceğiz veya güncel olarak arkadaşlık isteğimiz kabul edilmiş mi veya arkadaşlık isteği gelmiş mi kontrol edebileceğiz.
 
-- Kodda daha once duzeltilmis olan seyler (kaynak koda gore):
-  * Story create modal ortalanmasi: class="modal-overlay active" kullaniliyor ✅
-  * Story textarea font preview: story-font-preview div'i calisiyor ✅
-  * updateConvPreview guard: if(!d)return; eklenmis ✅
-  * _showError fallback'i tanimli ✅
-  * Story butonlari modal-btn-secondary kullaniyor (btn-secondary degil) ✅
-  * story-color-dot.active border-color:var(--bg) kullaniyor (#fff degil) ✅
+9- Herhangi bir kullanıcıyla olan sohbetimize girdiğimizde kullanıcının üstte sohbet yazan yerde sohbet yazması yerine kullanıcının profil fotoğrafı olsun, yanında ismi ve durumunun ne olduğu yazsın yani çevrimiçi mi boşta mı rahatsız etmede mi yoksa çevrimdışı mı falan o yazsın. Üstüne tıkladığımızda ise karşımıza onun profili çıksın, alttan kayarak çıksın tam ekran olmasın uygulama biraz kararsın eğer parmağımız ile profili tutup yukarı kaydırırsak tam ekran olsun geri aşağı indirdiğimizde veya sol üste ekleyeceğin geri butonuna tıkladığımızda ise profili geri kapansın.
 
-- Kullanici hata aliyorsa buyuk ihtimal ESKI bir surum calisiyor.
-  onceki duzeltmeler derlenip deploy edilmemis.
-  Uygulamayi yeniden baslatmak / derlemek cozum olabilir.
+10- Kullanıcıya basılı tutup açılan pencerede sohbeti temizle dedikten sonra hem tüm sohbeti silsin hem de dm kutusundan kullanıcıyı kaldırsın, arkadaşlar sayfasından tekrar kullanıcıya tıkladığım zaman sohbeti açılsın. Ekstra sohbeti kapat olmasın kullanıcıyı yormayalım.
+
+11- Kullanıcıya basılı tutup arşivle dediğimizde arşive göndersin arşivdeyken basılı tuttuğumuzda arşivden çıkarma butonu olsun ona tıklayınca arşivden çıkarsın 5. maddede belirttiğim gibi.
+
+12- Dm kutusu sıralaması düzgün olsun, sabitlenenlerde, genel olarak son etkileşimlerde ve uygulamayı kapatıp açtığımızda falan sıralama kesinlikle bozulmasın. Buna çok dikkat edelim.
+
+13- Bir güncelleme geldiği zaman uygulamanın ana menüsünde sağ üstte arama ve 3 yıldızın olduğu butonların en solunda yani en başında bir aşağı ok butonu olsun güncelleme geldiği zaman buton otomatik olarak gözüksün ona tıkladığımız zaman artık nasıl yaparsın bilmem de güncelleme geldiği zaman otomatik sonraki sürümün dosyasını indirsin çeksin kursun falan işte bir şeyler yapsın uygulamayı güncellesin o tarafını ben pek bilmiyorum.
+
+14- Sohbete görsel, medya içerik yüklemeyi ekleyelim. Aynı şekilde uygulamaya emojileri de ekleyelim. Uygulamanın mesaj yazmanın sol tarafında olsun bu iki buton. Aslında iki buton koymak yerine yerden tasarruf etmek için tek buton koyup ona tıklayınca üste doğru açılan bir liste olabilir medya gönderme veya emoji paneli falan diye.
