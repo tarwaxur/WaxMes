@@ -57,7 +57,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
             }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = null, tint = t.text) } })
         },
         bottomBar = {
-            Surface(color = InputBg) {
+            Surface(color = t.inputBg) {
                 Column {
                     // Emoji panel
                     AnimatedVisibility(visible = showEmoji) {
