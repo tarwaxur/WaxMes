@@ -336,7 +336,8 @@ function updateConvPreview(convId,d,curUid){
   var msgs=store.messages[convId];
   if(msgs){for(var upi=msgs.length-1;upi>=0;upi--){if(msgs[upi]._decrypted&&msgs[upi]._fbId){localDecrypted=msgs[upi]._decrypted;break}}}
   var preview=d.lastMsg||d.text||'';
-  if(d.image)preview='📷 Fotoğraf';
+  if(d.deleted)preview=d.deletedByMe?'Bu mesajı sildiniz':'Bu mesaj silindi';
+  else if(d.image)preview='📷 Fotoğraf';
   else if(d.video)preview='🎬 Video';
   else if(d.audio)preview='🎤 Ses';
   else if(localDecrypted)preview=localDecrypted;

@@ -528,9 +528,9 @@ function showProfilePanel(){if(!store.activeConvId)return;
     var isCreator=conv.creatorId===store.activeAccountId;
     var isAdmin=conv.adminIds&&conv.adminIds.indexOf(store.activeAccountId)!==-1;
     body.innerHTML+='<div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap">'+
-      (isAdmin?'<button class="btn-primary" data-action="edit-group" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Grubu Düzenle</button>':'')+
-      (isCreator?'<button class="btn-primary" data-action="pick-group-avatar" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> Fotoğraf</button>':'')+
-      (isCreator?'<button class="btn-danger" data-action="delete-group" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Grubu Sil</button>':'')+
+      (isAdmin?'<button class="btn-primary" data-action="edit-group" data-conv-id="'+escJs(convId)+'" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Grubu Düzenle</button>':'')+
+      (isCreator?'<button class="btn-primary" data-action="pick-group-avatar" data-conv-id="'+escJs(convId)+'" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> Fotoğraf</button>':'')+
+      (isCreator?'<button class="btn-danger" data-action="delete-group" data-conv-id="'+escJs(convId)+'" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Grubu Sil</button>':'')+
     '</div>';
     body.innerHTML+='<div class="pp-bio" style="text-align:left;font-size:11px">'+memberCount(conv)+' üye</div>';
     for(var mi=0;mi<conv.members.length;mi++){(function(m){
@@ -1071,7 +1071,7 @@ function confirmDelete(){
   hideDeleteModal();if(!msgId)return;
   var convId=store.activeConvId;if(!convId)return;
   var msgs=store.messages[convId];
-  for(var i=0;i<msgs.length;i++){if(msgs[i].id===msgId){msgs[i].deleted=true;msgs[i].text='';break}}
+  for(var i=0;i<msgs.length;i++){if(msgs[i].id===msgId){msgs[i].deleted=true;msgs[i].text='';msgs[i].audio='';msgs[i].image='';msgs[i].video='';break}}
   // Update sidebar with last non-deleted message
   updateConvPreview(convId);
   renderMessages(convId);renderConversations();saveMessages()
