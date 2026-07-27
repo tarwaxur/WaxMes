@@ -6,8 +6,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
-import java.text.SimpleDateFormat
-import java.util.*
+import com.waxmes.app.ui.screens.appLog
+import com.waxmes.app.ui.screens._appLogs
 
 fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<String, String>): Conversation? {
     val d = doc.data ?: return null
@@ -53,12 +53,14 @@ class Repository {
     }
 
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
-        auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { onResult(it.isSuccessful) }
+        appLog("Login attempt: $email")
+        auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { appLog("Login result: ${if (it.isSuccessful) "OK" else "FAIL"}"); onResult(it.isSuccessful) }
     }
 
     fun register(email: String, password: String, name: String, onResult: (Boolean) -> Unit) {
+        appLog("Register: $name / $email")
         auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-            if (!task.isSuccessful) { onResult(false); return@addOnCompleteListener }
+            if (!task.isSuccessful) { appLog("Register fail: ${task.exception?.message}"); onResult(false); return@addOnCompleteListener }
             val u = auth.currentUser?.uid ?: return@addOnCompleteListener
             db.collection("users").document(u).set(mapOf("displayName" to name, "email" to email, "avatar" to name.first().uppercase(), "online" to true))
                 .addOnCompleteListener { onResult(it.isSuccessful) }
@@ -78,10 +80,11 @@ class Repository {
 
     fun getConversations(onResult: (List<Conversation>) -> Unit) {
         if (uid.isEmpty()) { onResult(emptyList()); return }
+        appLog("Fetching conversations...")
         db.collection("conversations").whereArrayContains("memberIds", uid).get(Source.SERVER)
             .addOnSuccessListener { snap ->
                 val convs = snap.documents.mapNotNull { docToConversation(it, uid, nameCache) }
-                // Fetch missing display names
+                appLog("Got ${convs.size} conversations")
                 var pending = 0
                 convs.forEach { c ->
                     if (c.name.length == 11 && c.name.endsWith("...")) {
@@ -123,6 +126,7 @@ class Repository {
     }
 
     fun sendMessage(convId: String, text: String) {
+        appLog("Sending message to $convId: ${text.take(30)}")
         val msg = mapOf("text" to text, "time" to SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
             "senderId" to uid, "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp())
         db.collection("conversations").document(convId).collection("messages").add(msg)
@@ -132,10 +136,12 @@ class Repository {
     }
 
     fun clearMessages(convId: String) {
+        appLog("Clearing messages for $convId")
         db.collection("conversations").document(convId).collection("messages").get().addOnSuccessListener { snap ->
             val batch = db.batch()
             snap.documents.forEach { batch.delete(it.reference) }
             batch.commit()
+            appLog("Cleared ${snap.documents.size} messages")
         }
         db.collection("conversations").document(convId).set(mapOf("lastMsg" to ""), com.google.firebase.firestore.SetOptions.merge())
     }
