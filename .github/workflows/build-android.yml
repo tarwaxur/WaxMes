@@ -22,9 +22,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Capacitor only
+      - name: Accept Android SDK licenses
         run: |
-          npm install @capacitor/core @capacitor/android @capacitor/filesystem @capacitor/preferences @capacitor/local-notifications --ignore-scripts --no-optional
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+          yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses 2>/dev/null || true
+
+      - name: Install Capacitor
+        run: |
+          npm install @capacitor/core @capacitor/android --ignore-scripts --no-optional
 
       - name: Sync Capacitor
         run: npx cap sync android
@@ -33,7 +38,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2
