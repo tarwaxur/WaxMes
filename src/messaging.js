@@ -537,6 +537,7 @@ function showProfilePanel(){console.log('[pp] called, convId:',store.activeConvI
       var mAv=m.avatar;var mAvHtml;if(mAv&&mAv.length>2){mAvHtml='<img src="'+escJs(sanitizeUrl(mAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+m.color+'" data-err-text="?" data-err-avatar="1">'}else{mAvHtml='<span>'+esc(mAv||'?')+'</span>'}
       body.innerHTML+='<div class="pp-row member-row" style="gap:10px;cursor:pointer" data-action="member-profile" data-context="member-menu" data-member-id="'+m.id+'" data-conv-id="'+conv.id+'"><div style="width:36px;height:36px;border-radius:50%;background:'+m.color+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden">'+mAvHtml+'</div><div style="flex:1;min-width:0;text-align:left"><div style="font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(conv.adminIds&&conv.adminIds.indexOf(m.id)!==-1?'👑 ':'')+esc(m.name)+'</div><div style="font-size:10px;color:var(--text4)">'+(conv.adminIds&&conv.adminIds.indexOf(m.id)!==-1?'Yönetici':(conv.creatorId===m.id?'Kurucu':'Üye'))+'</div></div></div>'
     })(conv.members[mi])}
+    }
   }
   $('profile-panel').classList.add('open')
 }
