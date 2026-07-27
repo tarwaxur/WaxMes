@@ -9,10 +9,16 @@ import com.google.firebase.firestore.Source
 import java.text.SimpleDateFormat
 import java.util.*
 
-fun docToConversation(doc: DocumentSnapshot, uid: String): Conversation? {
+fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<String, String>): Conversation? {
     val d = doc.data ?: return null
     val mids = d["memberIds"] as? List<String> ?: return null
     val otherId = mids.find { it != uid } ?: return null
+    val name = d["name"] as? String
+    val displayName = when {
+        name != null && name.length < 30 -> name
+        nameCache[otherId] != null -> nameCache[otherId]!!
+        else -> otherId.take(8) + "..."
+    }
     val la = d["lastActivity"]
     val lastActivity = when (la) {
         is Timestamp -> la.toDate().time
@@ -20,8 +26,8 @@ fun docToConversation(doc: DocumentSnapshot, uid: String): Conversation? {
         is Number -> la.toLong()
         else -> 0L
     }
-    return Conversation(id = doc.id, name = d["name"] as? String ?: otherId,
-        lastMsg = (d["lastMsg"] as? String) ?: "", lastActivity = lastActivity, unread = 0, color = 0xFF818CF8)
+    return Conversation(id = doc.id, name = displayName, lastMsg = (d["lastMsg"] as? String) ?: "",
+        lastActivity = lastActivity, unread = 0, color = 0xFF818CF8, otherId = otherId)
 }
 
 fun docToMessage(doc: DocumentSnapshot, uid: String): Message {
@@ -35,6 +41,16 @@ class Repository {
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
     val uid get() = auth.currentUser?.uid ?: ""
+    val nameCache = mutableMapOf<String, String>()
+
+    fun fetchUserName(userId: String, onResult: (String) -> Unit) {
+        if (nameCache.containsKey(userId)) { onResult(nameCache[userId]!!); return }
+        db.collection("users").document(userId).get(Source.SERVER).addOnSuccessListener { snap ->
+            val name = snap.getString("displayName") ?: snap.getString("username") ?: userId.take(8)
+            nameCache[userId] = name
+            onResult(name)
+        }
+    }
 
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { onResult(it.isSuccessful) }
@@ -54,13 +70,28 @@ class Repository {
     fun getConversations(onResult: (List<Conversation>) -> Unit) {
         if (uid.isEmpty()) { onResult(emptyList()); return }
         db.collection("conversations").whereArrayContains("memberIds", uid).get(Source.SERVER)
-            .addOnSuccessListener { onResult(it.documents.mapNotNull { docToConversation(it, uid) }.sortedByDescending { it.lastActivity }) }
+            .addOnSuccessListener { snap ->
+                val convs = snap.documents.mapNotNull { docToConversation(it, uid, nameCache) }
+                // Fetch missing display names
+                var pending = 0
+                convs.forEach { c ->
+                    if (c.name.length == 11 && c.name.endsWith("...")) {
+                        pending++
+                        fetchUserName(c.otherId) { name ->
+                            c.name = name
+                            pending--
+                            if (pending == 0) onResult(convs.sortedByDescending { it.lastActivity })
+                        }
+                    }
+                }
+                if (pending == 0) onResult(convs.sortedByDescending { it.lastActivity })
+            }
     }
 
     fun listenConversations(onChange: (List<Conversation>) -> Unit) =
         db.collection("conversations").whereArrayContains("memberIds", uid).addSnapshotListener { snap, _ ->
             if (snap == null) return@addSnapshotListener
-            onChange(snap.documents.mapNotNull { docToConversation(it, uid) }.sortedByDescending { it.lastActivity })
+            onChange(snap.documents.mapNotNull { docToConversation(it, uid, nameCache) }.sortedByDescending { it.lastActivity })
         }
 
     fun listenMessages(convId: String, onChange: (List<Message>) -> Unit) =

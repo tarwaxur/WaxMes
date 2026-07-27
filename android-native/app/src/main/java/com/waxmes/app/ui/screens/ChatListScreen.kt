@@ -27,7 +27,7 @@ import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit) {
+fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsClick: () -> Unit) {
     val t = LocalTheme.current
     var convs by remember { mutableStateOf<List<Conversation>>(emptyList()) }
 
@@ -42,7 +42,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit) {
         bottomBar = { NavigationBar(containerColor = t.bg2) {
             NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Chat, contentDescription = null, tint = t.accent) }, label = { Text("Sohbetler", fontSize = 11.sp, color = t.accent) })
             NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Add, contentDescription = null, tint = t.text3) }, label = { Text("Durum", fontSize = 11.sp, color = t.text3) })
-            NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = t.text3) }, label = { Text("Ayarlar", fontSize = 11.sp, color = t.text3) })
+            NavigationBarItem(selected = false, onClick = onSettingsClick, icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = t.text3) }, label = { Text("Settings", fontSize = 11.sp, color = t.text3) })
         } }
     ) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg), contentPadding = PaddingValues(vertical = 4.dp)) {
