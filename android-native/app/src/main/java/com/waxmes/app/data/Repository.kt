@@ -110,6 +110,18 @@ class Repository {
                 onChange(snap.documents.map { docToMessage(it, uid) })
             }
 
+    fun getConversationName(convId: String, onResult: (String) -> Unit = {}): String? {
+        val conv = nameCache.entries.find { it.key == uid }
+        db.collection("conversations").document(convId).get().addOnSuccessListener { snap ->
+            val name = snap.getString("name")
+            if (!name.isNullOrEmpty()) { onResult(name); return@addOnSuccessListener }
+            val mids = snap.get("memberIds") as? List<String> ?: return@addOnSuccessListener
+            val otherId = mids.find { it != uid } ?: return@addOnSuccessListener
+            fetchUserName(otherId) { onResult(it) }
+        }
+        return null
+    }
+
     fun sendMessage(convId: String, text: String) {
         val msg = mapOf("text" to text, "time" to SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
             "senderId" to uid, "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp())
