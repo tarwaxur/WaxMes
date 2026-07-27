@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.waxmes.app.data.Repository
 import com.waxmes.app.ui.theme.*
-import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(repo: Repository, onLogin: () -> Unit) {
@@ -22,7 +21,7 @@ fun LoginScreen(repo: Repository, onLogin: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var isRegister by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
+    var loading by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().background(Bg).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text("WaxMes", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Text)
@@ -40,11 +39,11 @@ fun LoginScreen(repo: Repository, onLogin: () -> Unit) {
         Spacer(Modifier.height(20.dp))
         if (error.isNotEmpty()) { Text(error, color = Red, fontSize = 12.sp); Spacer(Modifier.height(8.dp)) }
         Button(onClick = {
-            scope.launch {
-                error = ""; val ok = if (isRegister) repo.register(email, password, name) else repo.login(email, password)
-                if (ok) onLogin() else error = if (isRegister) "Registration failed" else "Login failed"
-            }
-        }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = Accent)) {
+            if (loading) return@Button
+            loading = true; error = ""
+            val cb = { ok: Boolean -> loading = false; if (ok) onLogin() else error = if (isRegister) "Registration failed" else "Login failed" }
+            if (isRegister) repo.register(email, password, name, cb) else repo.login(email, password, cb)
+        }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = Accent), enabled = !loading) {
             Text(if (isRegister) "Register" else "Login", fontWeight = FontWeight.SemiBold)
         }
         Spacer(Modifier.height(12.dp))
