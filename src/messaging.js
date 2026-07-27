@@ -133,7 +133,7 @@ function renderConversations(list){
   store._convListAnimatedOnce=true;
 }
 
-function filterConversations(q){store._searchQuery=q;renderConversations()}
+function filterConversations(q){store._searchQuery=q;store._convListAnimatedOnce=true;renderConversations()}
 
 function memberCount(g){return(g&&g.members?g.members.length:0)+(g&&g.creatorId?1:0)}
 function parseTime(t){
