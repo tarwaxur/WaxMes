@@ -31,29 +31,28 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
       if(!exists)store.unshift('conversations', savedGroups[i])
     }
     if(savedGroups.length)saveGroups(savedGroups);
-    // Restore unread counts and last activity
+    // Restore unread counts and last activity (keep most recent)
     var savedUnread=ls(STORAGE_KEYS.UNREAD)||{};
     var savedActivity=ls(STORAGE_KEYS.LAST_ACTIVITY)||{};
     for(var uci=0;uci<store.conversations.length;uci++){
       var cid=store.conversations[uci].id;
       if(savedUnread[cid]!==undefined)store.conversations[uci].unread=savedUnread[cid];
-      if(savedActivity[cid]!==undefined)store.conversations[uci].lastActivity=savedActivity[cid]
+      if(savedActivity[cid]!==undefined&&savedActivity[cid]>(store.conversations[uci].lastActivity||0))store.conversations[uci].lastActivity=savedActivity[cid]
     }
     // Initialize lastActivity for conversations that don't have it
     for(var lai=0;lai<store.conversations.length;lai++){
       if(!store.conversations[lai].lastActivity){store.conversations[lai].lastActivity=Date.now()-store.conversations.length*1000+lai*100}
     }
-    // Recalculate conversation previews from actual messages
-    for(var sci=0;sci<store.conversations.length;sci++){
-      updateConvPreview(store.conversations[sci].id)
-    }
     store.activeConvId=null;
     // Start listening to conversation updates from Firestore
     var currentFbUid=fbUserId();
-    if(window.db&&currentFbUid){fbListenConversations(currentFbUid);startPendingListener(currentFbUid)}
+    if(window.db&&currentFbUid){fbListenConversations(currentFbUid);fbListenStories();startPendingListener(currentFbUid)}
     // Init background mode
     if(ls(STORAGE_KEYS.BACKGROUND_MODE)&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
-    initE2E();
+    await initE2E();
+    // Re-decrypt any 🔒 messages that failed earlier
+    if(store.e2eReady)for(var _ci=0;_ci<store.conversations.length;_ci++){var _convMsgs=store.messages[store.conversations[_ci].id];if(_convMsgs)for(var _mi=0;_mi<_convMsgs.length;_mi++){var _m=_convMsgs[_mi];if(_m.text&&_m.text.indexOf('🔒')===0&&_m._decrypted&&_m._decrypted==='🔒 [Çözülemedi]'){_m._decrypted=null;delete _m._decrypted}}}
+    if(store.activeConvId&&store.messages[store.activeConvId])renderMessages(store.activeConvId);
   }catch(e){console.error('[showApp] Error:',e)}
   // Always render and finalize, even on error
   store._pendingLoginPassword=null;
@@ -74,11 +73,15 @@ function renderConversations(list){
   var el=$('conv-list');if(!el)return;var data=(list||store.conversations).slice();
   var animateList=!store._convListAnimatedOnce&&!list;
   el.classList.toggle('no-anim',!animateList);
-  // Sort: pinned first (alphabetically), then by most recent activity
+  // Sort: pinned by pin order, then by most recent activity
   data.sort(function(a,b){
+    var pList=getPinned();
     if(isPinned(a.id)&&!isPinned(b.id))return -1;
     if(!isPinned(a.id)&&isPinned(b.id))return 1;
     if(isPinned(a.id)&&isPinned(b.id)){
+      var ai=pList.indexOf(a.id),bi=pList.indexOf(b.id);
+      if(ai>-1&&bi>-1)return ai-bi;
+      if(ai>-1)return -1;if(bi>-1)return 1;
       var an=a.name.toLowerCase(),bn=b.name.toLowerCase();
       return an<bn?-1:(an>bn?1:0)
     }
@@ -90,11 +93,11 @@ function renderConversations(list){
   });
   // Apply archive filter (skip if searching)
   if(!store._searchQuery)data=data.filter(function(c){return store._showArchived?isArchived(c.id):!isArchived(c.id)});
-  // Hide closed conversations from sidebar
-  if(!store._searchQuery)data=data.filter(function(c){return !c.hidden});
   // Update archive bar
   var ab=$('archive-label');
-  if(ab)ab.textContent=store._showArchived?'Arşiv (gizle)':'Arşiv';
+  if(ab){
+    ab.textContent=store._showArchived?'Arşiv (gizle)':'Arşiv'
+  }
   // Archive badge: total unread from archived conversations
   var archUnread=0;
   for(var ai=0;ai<store.conversations.length;ai++){if(isArchived(store.conversations[ai].id))archUnread+=store.conversations[ai].unread||0}
@@ -107,15 +110,17 @@ function renderConversations(list){
   if(store._showArchived&&data.length===0){el.innerHTML='<div style="text-align:center;padding:40px 10px;font-size:11px;color:var(--text4)">📦 Arşiv boş.</div>';store._convListAnimatedOnce=true;return}
   for(var i=0;i<data.length;i++){(function(c){
     var muted=isMuted(c.id);var pinned=isPinned(c.id);
-    var div=document.createElement('div');div.className='conv-item'+(c.id===store.activeConvId?' active':'')+(muted?' muted':'');
-    var avHtml='<div class="conv-avatar'+(c.online?' online':'')+'" style="background:'+c.color+'">';
+    var div=document.createElement('div');div.className='conv-item'+(c.id===store.activeConvId?' active':'')+(muted?' muted':'');div.dataset.id=c.id;
+    var _isAvOnline=isConvOnline(c);
+    var avHtml='<div class="conv-avatar' + (_isAvOnline?' online':' offline') + '" data-online="' + (_isAvOnline?'1':'0') + '" style="background:'+c.color+'">';
     if(c.isGroup){
       if(c.avatar&&c.avatar.length>2)avHtml+='<img src="'+escJs(sanitizeUrl(c.avatar))+'" style="width:100%;height:100%;object-fit:cover">';
       else avHtml+='G';
       avHtml+='<div class="group-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg></div>'
     }else{
-      if(c.avatar&&c.avatar.length>2)avHtml+='<img src="'+escJs(sanitizeUrl(c.avatar))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+c.color+'" data-err-text="?" data-err-avatar="1">';
-      else avHtml+=esc(c.avatar||'?')
+      var _init = (c.name || '?').charAt(0).toUpperCase();
+      if(c.avatar&&c.avatar.length>2)avHtml+='<img src="'+escJs(sanitizeUrl(c.avatar))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+c.color+'" data-err-text="'+esc(_init)+'" data-err-avatar="1">';
+      else avHtml+=esc(c.avatar||_init)
     }
     avHtml+='</div>';
     div.innerHTML=avHtml+
@@ -140,9 +145,10 @@ function parseTime(t){
   return -9999
 }
 
-function selectConversation(id){hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();store._hasNewMsg=false;if(store.activeConvId&&store.activeConvId!==id)fbUnlistenMessages(store.activeConvId);fbStopTypingListener();fbStopCallSignals();stopTyping();store.activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();renderConversations();$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.length>2){ca.innerHTML='<img src="'+escJs(sanitizeUrl(conv.avatar))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(conv.color||'var(--grad)')+'" data-err-text="'+(conv.isGroup?'G':'?')+'" data-err-avatar="1">';ca.style.background='transparent'}else{ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);store._forceScrollBottom=true;renderMessages(id);fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
+function goToHome(){hideContextMenu();hideAvatarMenu();hideSettings();closeProfilePanel();if(store.activeConvId)fbUnlistenMessages(store.activeConvId);fbStopTypingListener();fbStopCallSignals();stopTyping();store.activeConvId=null;$('chat-empty').style.display='flex';$('chat-active').style.display='none';$('settings-page').classList.remove('active');var cl=$('conv-list');if(cl){var oldActive=cl.querySelector('.conv-item.active');if(oldActive)oldActive.classList.remove('active')}var hb=$('sidebar-home-btn');if(hb)hb.style.display='none'}
+function selectConversation(id){try{hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();store._hasNewMsg=false;if(store.activeConvId&&store.activeConvId!==id)fbUnlistenMessages(store.activeConvId);fbStopTypingListener();fbStopCallSignals();stopTyping();var oldId=store.activeConvId;store.activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();var cl=$('conv-list');if(cl){var oldActive=cl.querySelector('.conv-item.active');if(oldActive)oldActive.classList.remove('active');var newActive=cl.querySelector('.conv-item[data-id="'+escJs(id)+'"]');if(newActive)newActive.classList.add('active')}$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.length>2){ca.innerHTML='<img src="'+escJs(sanitizeUrl(conv.avatar))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(conv.color||'var(--grad)')+'" data-err-text="'+(conv.isGroup?'G':'?')+'" data-err-avatar="1">';ca.style.background='transparent'}else{ca.style.background=conv.color||'var(--grad)';ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);    store._forceScrollBottom=true;fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
 if(!conv.isGroup&&window.db&&fbUserId()){var otherId=null;for(var ti=0;ti<(conv.memberIds||[]).length;ti++){if(conv.memberIds[ti]!==fbUserId()){otherId=conv.memberIds[ti];break}}if(otherId)fbListenTyping(id,otherId)}
-fbListenCallSignals(id)}
+fbListenCallSignals(id);var hb=$('sidebar-home-btn');if(hb)hb.style.display='flex';renderMessages(id)}catch(e){console.error('[sel] error',e)}}
 
 async function getRecipientPubKey(convId){
   var conv=findConv(convId);if(!conv)return null;
@@ -181,7 +187,7 @@ async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!tx
   var finalText=txt;
   if(conv&&store.e2eReady&&window.db){var pubKeyResult=await getRecipientPubKey(store.activeConvId);if(pubKeyResult&&pubKeyResult.keys&&pubKeyResult.keys.length>0){if(pubKeyResult.missing&&pubKeyResult.missing.length>0){showAlert(pubKeyResult.missing.length+' kullanıcı henüz E2E\'yi etkinleştirmemiş. Mesaj E2E şifrelenmeden gönderiliyor.')}else{try{var enc=await e2eEncrypt(txt,pubKeyResult.keys);if(enc&&enc.indexOf('🔒')===0)finalText=enc}catch(e){}}}}
   var myId=fbUserId();
-  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);store.emit('messages');renderMessages(store.activeConvId);inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;conv.lastActivity=Date.now();conv.time=timeNow()}renderConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
+  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);renderMessages(store.activeConvId);inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;var _na=Date.now();if(store._lastActTs===_na)store._lastActSeq=(store._lastActSeq||0)+1;else{store._lastActTs=_na;store._lastActSeq=0}conv.lastActivity=_na+store._lastActSeq*0.001;conv.time=timeNow()}renderConversations();saveConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
 
 function addToGroup(groupId,userId){
   hideContextMenu();
@@ -461,7 +467,7 @@ async function confirmSendMedia(){
     if(dataUrl&&dataUrl.indexOf('data:')===0&&window.storage){
       try {
         var url=await fbUploadFile(dataUrl,path);
-        var id=uid();
+        var id=file._editId||uid();
         if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
         var txt=file.type==='image'||file.type==='video'?caption:'📎 '+file.name+(caption?' — '+caption:'');
         var encTxt=await e2eMediaText(txt,store.activeConvId);
@@ -469,20 +475,20 @@ async function confirmSendMedia(){
         if(file.type==='image')msg.image=url;
         else if(file.type==='video')msg.video=url;
         if(encTxt!==txt)msg.e2e=true;
-        store.messages[store.activeConvId].push(msg);store.emit('messages');
+        if(file._editId){for(var _ei=0;_ei<store.messages[store.activeConvId].length;_ei++){if(store.messages[store.activeConvId][_ei].id===file._editId){store.messages[store.activeConvId][_ei]=msg;break}}}else{store.messages[store.activeConvId].push(msg)}
         var conv=findConv(store.activeConvId);
         if(conv){conv.lastMsg=encTxt!==txt?'🔒 Mesaj':(file.type==='image'?'📷 '+(caption||file.name):(file.type==='video'?'🎬 '+(caption||file.name):'📎 '+file.name));conv.lastActivity=Date.now();conv.time=timeNow()}
         fbSendMessage(store.activeConvId,msg);
         processMedia(idx+1)
       }catch(e){
-        var id=uid();
+        var id=file._editId||uid();
         if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
         var msg={id:id,type:'sent',senderId:fbUserId(),text:caption,time:timeNow(),edited:false,deleted:false,image:dataUrl};
-        store.messages[store.activeConvId].push(msg);store.emit('messages');
+        if(file._editId){for(var _ei=0;_ei<store.messages[store.activeConvId].length;_ei++){if(store.messages[store.activeConvId][_ei].id===file._editId){store.messages[store.activeConvId][_ei]=msg;break}}}else{store.messages[store.activeConvId].push(msg)}
         processMedia(idx+1)
       }
     }else{
-      var id=uid();
+      var id=file._editId||uid();
       if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
       (async function(){
         var txt=file.type==='document'?'📎 '+file.name+(caption?' — '+caption:''):caption;
@@ -491,7 +497,7 @@ async function confirmSendMedia(){
         if(file.type==='image')msg.image=dataUrl;
         else if(file.type==='video')msg.video=dataUrl;
         if(encTxt!==txt)msg.e2e=true;
-        store.messages[store.activeConvId].push(msg);store.emit('messages');
+        if(file._editId){for(var _ei=0;_ei<store.messages[store.activeConvId].length;_ei++){if(store.messages[store.activeConvId][_ei].id===file._editId){store.messages[store.activeConvId][_ei]=msg;break}}}else{store.messages[store.activeConvId].push(msg)}
         var conv=findConv(store.activeConvId);
         if(conv){conv.lastMsg=encTxt!==txt?'🔒 Mesaj':(file.type==='image'?'📷 '+(caption||file.name):(file.type==='video'?'🎬 '+(caption||file.name):'📎 '+file.name));conv.lastActivity=Date.now();conv.time=timeNow()}
         fbSendMessage(store.activeConvId,msg);
@@ -513,7 +519,11 @@ function showProfilePanel(){if(!store.activeConvId)return;
   if(!conv.isGroup){
     body.innerHTML+='<div class="pp-uname">@'+esc((conv.name||'').toLowerCase().replace(/\s/g,''))+'</div>';
     if(conv.bio)body.innerHTML+='<div class="pp-bio">'+esc(conv.bio)+'</div>';
-    body.innerHTML+='<div class="pp-row"><div><div class="pp-row-label">Durum</div><div class="pp-row-val" style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="sd-dot '+(conv.online?'sd-online':'')+'" style="display:inline-block"></span>'+(conv.online?'Çevrimiçi':'Çevrimdışı')+'</div></div></div>'
+    var convOnline=isConvOnline(conv);
+    body.innerHTML+='<div class="pp-row"><div><div class="pp-row-label">Durum</div><div class="pp-row-val" style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="sd-dot '+(convOnline?'sd-online':'')+'" style="display:inline-block"></span>'+(convOnline?'Çevrimiçi':'Çevrimdışı')+'</div></div></div>'+
+    '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'+
+    '<button class="btn-primary" data-action="start-call" style="padding:8px 18px;font-size:11px;border-radius:8px;display:flex;align-items:center;gap:6px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg> Sesli Ara</button>'+
+    '</div>'
   }else{
     var isCreator=conv.creatorId===store.activeAccountId;
     var isAdmin=conv.adminIds&&conv.adminIds.indexOf(store.activeAccountId)!==-1;
@@ -539,10 +549,11 @@ function showMemberProfile(memberId,convId){
       var member=store.conversations[ci];
       var body=$('profile-panel-body');body.dataset.backConv=convId;
       var mAv=member.avatar;var mAvHtml;if(mAv&&mAv.length>2){mAvHtml='<img src="'+escJs(sanitizeUrl(mAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+member.color+'" data-err-text="?" data-err-avatar="1">'}else{mAvHtml='<span>'+esc(mAv||'?')+'</span>'}
+      var memOnline=isConvOnline(member);
       body.innerHTML='<div class="pp-avatar" style="background:'+member.color+'">'+mAvHtml+'</div><div class="pp-name">'+esc(member.name)+'</div>'+
         '<div class="pp-uname">@'+esc((member.name||'').toLowerCase().replace(/\s/g,''))+'</div>'+
         (member.bio?'<div class="pp-bio">'+esc(member.bio)+'</div>':'')+
-        '<div class="pp-row"><div><div class="pp-row-label">Durum</div><div class="pp-row-val" style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="sd-dot '+(member.online?'sd-online':'')+'" style="display:inline-block;flex-shrink:0"></span>'+(member.online?'Çevrimiçi':'Çevrimdışı')+'</div></div></div>'+
+        '<div class="pp-row"><div><div class="pp-row-label">Durum</div><div class="pp-row-val" style="display:flex;align-items:center;gap:6px;margin-top:4px"><span class="sd-dot '+(memOnline?'sd-online':'')+'" style="display:inline-block;flex-shrink:0"></span>'+(memOnline?'Çevrimiçi':'Çevrimdışı')+'</div></div></div>'+
         '<div style="margin-top:16px"><button class="btn-back" data-action="back-profile" style="padding:8px 20px;font-size:11px;border-radius:8px;display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Geri</button></div>';
       return
     }
@@ -1045,7 +1056,8 @@ function confirmSelfDelete(){
 }
 
 function hideDeleteModal(){
-  store.pendingDeleteMsgId=null;store.pendingRemoveMember=null;store.pendingRemoveGroup=null;store.pendingCollageDelete=null;store.pendingClearConvId=null;store.pendingAlert=false;
+  store.pendingDeleteMsgId=null;store.pendingRemoveMember=null;store.pendingRemoveGroup=null;store.pendingCollageDelete=null;store.pendingClearConvId=null;store.pendingAlert=false;store._pendingConfirm=null;
+  var md=$('modal-delete');if(md)md.style.zIndex='';
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
     '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Mesajı Sil</h4>'+
@@ -1073,9 +1085,10 @@ function updateConvPreview(convId){
     conv.lastMsg=last.deletedByMe?'Bu mesajı sildiniz':'Bu mesaj silindi';
     conv.time=last.time
   }else{
-    var ltxt=last._decrypted||last.text||'';
-    if(ltxt.indexOf('🔒')===0)ltxt='🔒 Mesaj';
-    else if(last.image)ltxt='📷 Fotoğraf';
+    var ltxt=last._decrypted||'';
+    if(ltxt.indexOf('🔒')===0)ltxt='';
+    else if(!ltxt){ltxt=last.text||'';if(ltxt.indexOf('🔒')===0)ltxt=''}
+    if(last.image)ltxt='📷 Fotoğraf';
     else if(last.video)ltxt='🎬 Video';
     else if(last.audio)ltxt='🎤 Ses';
     conv.lastMsg=ltxt;
@@ -1161,7 +1174,7 @@ function removeFromGroup(memberId,convId){
 }
 function addGroupLog(convId,text){
   if(!store.messages[convId])store.messages[convId]=[];
-  store.messages[convId].push({id:uid(),type:'log',text:text,time:timeNow()});store.emit('messages');
+  store.messages[convId].push({id:uid(),type:'log',text:text,time:timeNow()});
   var conv=findConv(convId);
   if(conv){conv.lastMsg=text;conv.lastActivity=Date.now();conv.time=timeNow()}
   saveMessages();
@@ -1208,68 +1221,119 @@ function removeFromGroupConfirm(){
 }
 
 // ===== RENDER MESSAGES =====
-renderMessages=function(convId){
-  var el=$('chat-messages');if(!el)return;var raw=store.messages[convId]||[];el.innerHTML='';
-  var conv=findConv(convId);var isGroupChat=conv&&conv.isGroup;
-  for(var di=0;di<raw.length;di++){if(raw[di].text&&raw[di].text.indexOf('🔒')===0&&!raw[di]._decrypted&&!raw[di]._decrypting){raw[di]._decrypting=true;(async function(m){try{var d=await e2eDecrypt(m.text);if(d){m._decrypted=d;m._decrypting=false}else{m._decrypting=false;m._decrypted='🔒 [Çözülemedi]'}if(store.activeConvId===convId)renderMessages(convId)}catch(e){m._decrypting=false;m._decrypted='🔒 [Çözülemedi]';if(store.activeConvId===convId)renderMessages(convId)}})(raw[di])}}
-  var groups=[];var ci=0;
-  while(ci<raw.length){
-    var msg=raw[ci];
-    if(msg.image&&!msg.text&&!msg.video&&!msg.audio&&!msg.deleted){
-      var images=[];
-      while(ci<raw.length&&raw[ci].image&&!raw[ci].text&&!raw[ci].video&&!raw[ci].audio&&!raw[ci].deleted){
-        images.push(raw[ci]);ci++
-      }
-      var fwdComment=images[0].forwardComment||'';
-      groups.push({type:'collage',id:'collage-'+images[0].id,time:images[0].time,time2:images[images.length-1].time,images:images,forwardComment:fwdComment,isForwarded:images[0].isForwarded})
-    }else{
-      groups.push({type:'single',msg:msg});ci++
+ function addMsgActions(div,m){
+   div.dataset.msgId=m.id;
+   div.dataset.msgType=m.type;
+   if(m.image)div.dataset.msgImg=m.image;
+   if(m.video)div.dataset.msgVid=m.video;
+   div.oncontextmenu=function(e){
+     e.preventDefault();
+     var id=this.dataset.msgId;
+     var type=this.dataset.msgType;
+     var img=this.dataset.msgImg;
+     var items=[];
+     if(img){
+       items.push({label:'Resmi Kaydet',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',action:function(){saveImage(img)}});
+       items.push({label:'Resmi Kopyala',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',action:function(){copyImage(img)}})
+     }
+     if(m.text){items.push({label:'Metin Kopyala',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',action:function(){copyMessageText(id)}})}
+     items.push({label:'Yanıtla',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg>',action:function(){setReply(id)}});
+     items.push({label:isMsgPinned(id)?'Sabitlemeyi Kaldır':'Mesajı Sabitle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg>',action:function(){togglePinMessage(id)}});
+     items.push({label:'İlet',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',action:function(){
+       var fwdTxt=m._decrypted||m.text||'';if(fwdTxt.indexOf('🔒')===0)fwdTxt='🔒 [Şifreli]';
+       var fwdData={text:fwdTxt,image:m.image||null,images:m.image?[m.image]:null,video:m.video||null,audio:m.audio||null,duration:m.duration||0,originalSender:m.sender||($('sidebar-username').textContent)};
+       showForwardModal(null,fwdData)
+     }});
+     if(img||m.text)items.push({sep:true});
+     if(type==='sent'){
+       items.push({label:'Düzenle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',action:function(){editMessage(id)}});
+       items.push({label:'Sil',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){deleteMessage(id)}})
+     }else{
+       items.push({label:'Mesajı Sil',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){selfDeleteMessage(id)}})
+     }
+     store.contextMenuMsgId=id;
+     var cme=$('chat-messages');if(cme)store.contextMenuScrollPos=cme.scrollTop;
+     showContextMenu(e.clientX+2,e.clientY-2,items)
+   }
+ }
+ function appendSingleMessage(convId,m){
+   if(convId!==store.activeConvId)return;
+   var el=$('chat-messages');if(!el)return;
+   var conv=findConv(convId);var isGroupChat=conv&&conv.isGroup;
+   if(el.querySelector('#msg-'+m.id))return;
+    if(m.text&&m.text.indexOf('🔒')===0&&!m._decrypted&&!m._decrypting){
+      m._decrypting=true;
+      (async function(mm){
+        try{var d=await e2eDecrypt(mm.text);if(d){mm._decrypted=d;mm._decrypting=false;updateConvPreview(convId)}else{mm._decrypting=false;mm._decrypted='🔒 [Çözülemedi]'}}catch(e){mm._decrypting=false;mm._decrypted='🔒 [Çözülemedi]'}
+        if(store.activeConvId===convId){
+          var oldDiv=el.querySelector('#msg-'+mm.id);
+          if(oldDiv){var newDiv=buildSingleMsgDiv(mm,conv,isGroupChat);if(newDiv)oldDiv.replaceWith(newDiv)}
+        }
+      })(m)
     }
-  }
-  function addMsgActions(div,m){
-    div.dataset.msgId=m.id;
-    div.dataset.msgType=m.type;
-    if(m.image)div.dataset.msgImg=m.image;
-    if(m.video)div.dataset.msgVid=m.video;
-    div.oncontextmenu=function(e){
-      e.preventDefault();
-      var id=this.dataset.msgId;
-      var type=this.dataset.msgType;
-      var img=this.dataset.msgImg;
-      var items=[];
-      if(img){
-        items.push({label:'Resmi Kaydet',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',action:function(){saveImage(img)}});
-        items.push({label:'Resmi Kopyala',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',action:function(){copyImage(img)}})
-      }
-      if(m.text){items.push({label:'Metin Kopyala',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',action:function(){copyMessageText(id)}})}
-      items.push({label:'Yanıtla',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg>',action:function(){setReply(id)}});
-      items.push({label:isMsgPinned(id)?'Sabitlemeyi Kaldır':'Mesajı Sabitle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg>',action:function(){togglePinMessage(id)}});
-      items.push({label:'İlet',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',action:function(){
-        var fwdTxt=m._decrypted||m.text||'';if(fwdTxt.indexOf('🔒')===0)fwdTxt='🔒 [Şifreli]';
-        var fwdData={text:fwdTxt,image:m.image||null,images:m.image?[m.image]:null,video:m.video||null,audio:m.audio||null,duration:m.duration||0,originalSender:m.sender||($('sidebar-username').textContent)};
-        showForwardModal(null,fwdData)
-      }});
-      if(img||m.text)items.push({sep:true});
-      if(type==='sent'){
-        items.push({label:'Düzenle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',action:function(){editMessage(id)}});
-        items.push({label:'Sil',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){deleteMessage(id)}})
-      }else{
-        items.push({label:'Mesajı Sil',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){selfDeleteMessage(id)}})
-      }
-      store.contextMenuMsgId=id;
-      if(chatMsgs)store.contextMenuScrollPos=chatMsgs.scrollTop;
-      showContextMenu(e.clientX+2,e.clientY-2,items)
-    }
-  }
-  for(var gi=0;gi<groups.length;gi++){
+   var div=buildSingleMsgDiv(m,conv,isGroupChat);
+   if(!div)return;
+   var nearBottom=el.scrollHeight-el.scrollTop-el.clientHeight<150;
+   el.appendChild(div);
+   if(nearBottom)el.scrollTop=el.scrollHeight
+ }
+ function buildSingleMsgDiv(m,conv,isGroupChat){
+   if(!m)return null;
+   if(m.type==='log'||m.type==='call')return null;
+   var div=document.createElement('div');div.className='msg '+m.type;div.id='msg-'+m.id;
+   if(m.deleted){
+     if(m.deletedByMe){div.innerHTML='<div class="msg-deleted">Bu mesajı sildiniz</div>'}
+     else{div.innerHTML='<div class="msg-deleted">'+(m.sender&&isGroupChat?'<span style="opacity:.6">'+esc(m.sender)+'</span> — ':'')+'Bu mesaj silindi</div>'}
+   }else if(m.image&&!m.text&&!m.video&&!m.audio){
+     div.innerHTML='<div class="msg-text"><img class="msg-image" src="'+escJs(sanitizeUrl(m.image))+'" alt="" data-action="show-image" data-url="'+escJs(sanitizeUrl(m.image))+'"></div><div class="msg-time" style="padding-top:2px">'+esc(m.time)+'</div>'
+   }else{
+     var txt='<div class="msg-text">';
+      if(isGroupChat&&m.sender&&m.type==='received'){if(conv&&conv.members){for(var mi=0;mi<conv.members.length;mi++){if(conv.members[mi].name===m.sender){txt+='<span class="msg-sender" data-action="member-profile" data-member-id="'+conv.members[mi].id+'" data-conv-id="'+conv.id+'" style="cursor:pointer"><span class="msg-sender-avatar" style="background:'+conv.members[mi].color+'">'+esc(conv.members[mi].avatar)+'</span>'+esc(m.sender)+'</span>';break}}}}
+     if(m.image)txt+='<img class="msg-image" src="'+escJs(sanitizeUrl(m.image))+'" alt="" data-action="show-image" data-url="'+escJs(sanitizeUrl(m.image))+'">';
+     if(m.video)txt+='<video class="msg-image" src="'+escJs(sanitizeUrl(m.video))+'" controls style="max-width:280px;border-radius:12px;display:block;cursor:pointer" data-action="show-video" data-url="'+escJs(sanitizeUrl(m.video))+'"></video>';
+     if(m.audio){var mins=Math.floor((m.duration||0)/60),secs=(m.duration||0)%60;txt+='<div class="msg-audio"><button class="ma-play" data-action="play-audio" data-msg-id="'+m.id+'"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button><div class="ma-body"><div class="ma-seek" data-action="seek-audio" data-msg-id="'+m.id+'"><div class="ma-progress"></div></div></div><span class="ma-dur">'+mins+':'+(secs<10?'0':'')+secs+'</span></div>'}
+     if(m.isForwarded)txt+='<div style="font-size:9px;opacity:.4;margin-bottom:2px;font-style:italic">📤 İletildi</div>';
+     if(m.forwardComment)txt+='<div style="font-size:11px;opacity:.7;margin-bottom:2px">💬 '+esc(m.forwardComment)+'</div>';
+     if(m.replyTo&&m.replyText){
+       txt+='<div style="font-size:10px;padding:4px 8px;margin-bottom:4px;border-left:2px solid var(--accent);background:rgba(129,140,248,.04);border-radius:4px;color:var(--text4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">⤴ '+esc(m.replyText)+'</div>'
+     }
+     if(m._decrypting)txt+='<span style="opacity:.4">🔒 [Çözülüyor...]</span>';else txt+=esc(m._decrypted||m.text||'')
+     if(m.edited)txt+='<span class="msg-edited">(düzenlendi)</span>';
+     txt+='</div><div class="msg-time">'+esc(m.time)+(m.editedTime?' · '+esc(m.editedTime):'')+(m.type==='sent'&&!m.deleted?' <span style="font-size:8px;color:var(--text4)">✓✓</span>':'')+'</div>';
+     div.innerHTML=txt
+   }
+   addMsgActions(div,m);
+   return div
+ }
+ renderMessages=function(convId){
+    var el=$('chat-messages');if(!el)return;var raw=store.messages[convId]||[];
+    var _oldHeight=el.scrollHeight,_oldTop=el.scrollTop,_preserve=store._preserveScrollBottom;store._preserveScrollBottom=false;
+    el.innerHTML='';
+   var conv=findConv(convId);var isGroupChat=conv&&conv.isGroup;
+   for(var di=0;di<raw.length;di++){if(raw[di].text&&raw[di].text.indexOf('🔒')===0&&!raw[di]._decrypted&&!raw[di]._decrypting){raw[di]._decrypting=true;(async function(m){try{var d=await e2eDecrypt(m.text);if(d){m._decrypted=d;m._decrypting=false;updateConvPreview(convId)}else{m._decrypting=false;m._decrypted='🔒 [Çözülemedi]'}if(store.activeConvId===convId)renderMessages(convId)}catch(e){m._decrypting=false;m._decrypted='🔒 [Çözülemedi]';if(store.activeConvId===convId)renderMessages(convId)}})(raw[di])}}
+   var groups=[];var ci=0;
+   while(ci<raw.length){
+     var msg=raw[ci];
+     if(msg.image&&!msg.text&&!msg.video&&!msg.audio&&!msg.deleted){
+       var images=[];
+       while(ci<raw.length&&raw[ci].image&&!raw[ci].text&&!raw[ci].video&&!raw[ci].audio&&!raw[ci].deleted){
+         images.push(raw[ci]);ci++
+       }
+       var fwdComment=images[0].forwardComment||'';
+       groups.push({type:'collage',id:'collage-'+images[0].id,time:images[0].time,time2:images[images.length-1].time,images:images,forwardComment:fwdComment,isForwarded:images[0].isForwarded})
+     }else{
+       groups.push({type:'single',msg:msg});ci++
+     }
+   }
+    for(var gi=0;gi<groups.length;gi++){
     var g=groups[gi];
     if(g.type==='single'){
       var m=g.msg;
       if(m.type==='call'){continue}
       if(m.type==='log'){
         var logDiv=document.createElement('div');
-        logDiv.style.cssText='text-align:center;font-size:10.5px;color:var(--text4);padding:6px 0;flex-shrink:0';
-        logDiv.textContent=m.text;
+        logDiv.style.cssText='text-align:center;padding:4px 0;flex-shrink:0';
+        logDiv.innerHTML='<span style="display:inline-block;padding:6px 14px;border-radius:8px;background:var(--bg3);color:var(--text4);font-size:10.5px;line-height:1.4">'+esc(m.text)+'</span>';
         el.appendChild(logDiv);
         continue
       }
@@ -1279,7 +1343,7 @@ renderMessages=function(convId){
         else{div.innerHTML='<div class="msg-deleted">'+(m.sender&&isGroupChat?'<span style="opacity:.6">'+esc(m.sender)+'</span> — ':'')+'Bu mesaj silindi</div>'}
       }
       else{var txt='<div class="msg-text">';
-        if(isGroupChat&&m.sender&&m.type==='received'){if(conv&&conv.members){for(var mi=0;mi<conv.members.length;mi++){if(conv.members[mi].name===m.sender){txt+='<span class="msg-sender"><span class="msg-sender-avatar" style="background:'+conv.members[mi].color+'">'+conv.members[mi].avatar+'</span>'+esc(m.sender)+'</span>';break}}}}
+ if(isGroupChat&&m.sender&&m.type==='received'){if(conv&&conv.members){for(var mi=0;mi<conv.members.length;mi++){if(conv.members[mi].name===m.sender){txt+='<span class="msg-sender" data-action="member-profile" data-member-id="'+conv.members[mi].id+'" data-conv-id="'+conv.id+'" style="cursor:pointer"><span class="msg-sender-avatar" style="background:'+conv.members[mi].color+'">'+esc(conv.members[mi].avatar)+'</span>'+esc(m.sender)+'</span>';break}}}}
         if(m.image)txt+='<img class="msg-image" src="'+escJs(sanitizeUrl(m.image))+'" alt="" data-action="show-image" data-url="'+escJs(sanitizeUrl(m.image))+'">';
         if(m.video)txt+='<video class="msg-image" src="'+escJs(sanitizeUrl(m.video))+'" controls style="max-width:280px;border-radius:12px;display:block;cursor:pointer" data-action="show-video" data-url="'+escJs(sanitizeUrl(m.video))+'"></video>';
         if(m.audio){var mins=Math.floor((m.duration||0)/60),secs=(m.duration||0)%60;txt+='<div class="msg-audio"><button class="ma-play" data-action="play-audio" data-msg-id="'+m.id+'"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button><div class="ma-body"><div class="ma-seek" data-action="seek-audio" data-msg-id="'+m.id+'"><div class="ma-progress"></div></div></div><span class="ma-dur">'+mins+':'+(secs<10?'0':'')+secs+'</span></div>'}
@@ -1315,9 +1379,9 @@ renderMessages=function(convId){
         (g.forwardComment?'<div style="font-size:11px;opacity:.7;margin:2px 0">💬 '+esc(g.forwardComment)+'</div>':'')+
         '</div><div class="msg-time" style="padding-top:2px;text-align:right">'+esc(g.time)+(g.time!==g.time2?' · '+esc(g.time2):'')+'</div>';
         div.oncontextmenu=function(e){
-          e.preventDefault();
-          store.contextMenuMsgId='collage';
-          if(chatMsgs)store.contextMenuScrollPos=chatMsgs.scrollTop;
+           e.preventDefault();
+           store.contextMenuMsgId='collage';
+           var _cme=$('chat-messages');if(_cme)store.contextMenuScrollPos=_cme.scrollTop;
           var items=[];
           items.push({label:'Medyaları Düzenle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',action:function(){
             store.pendingMediaFiles=[];
@@ -1354,6 +1418,7 @@ renderMessages=function(convId){
   }
   setTimeout(function(){
     if(!el)return;
+    if(_preserve){el.scrollTop+=el.scrollHeight-_oldHeight;updateNewMsgIndicator(el);return}
     var nearBottom=el.scrollHeight-el.scrollTop-el.clientHeight<150;
     if(nearBottom||store._forceScrollBottom){store._forceScrollBottom=false;el.scrollTop=el.scrollHeight}
     updateNewMsgIndicator(el)
@@ -1365,16 +1430,8 @@ function updateNewMsgIndicator(el){
   var ni=$('new-msg-indicator');var sb=$('scroll-bottom-btn');
   var nearBottom=el.scrollHeight-el.scrollTop-el.clientHeight<150;
   if(nearBottom){store._hasNewMsg=false;var cv=findConv(store.activeConvId);if(cv&&cv.unread>0){cv.unread=0;saveUnreadCounts();renderConversations()}}
-  if(store._hasNewMsg&&!nearBottom){
-    if(ni)ni.style.display='flex';
-    if(sb)sb.style.display='none'
-  }else if(!nearBottom&&!store._hasNewMsg){
-    if(ni)ni.style.display='none';
-    if(sb)sb.style.display='flex'
-  }else{
-    if(ni)ni.style.display='none';
-    if(sb)sb.style.display='none'
-  }
+  if(sb)sb.style.display=!nearBottom?'flex':'none';
+  if(ni)ni.style.display=(store._hasNewMsg&&!nearBottom)?'flex':'none';
 }
 
 var _chatMsgsEl=$('chat-messages');
@@ -1398,7 +1455,8 @@ if(_ppb){
   _ppb.addEventListener('click',function(e){
     var t=e.target.closest('[data-action]');if(!t)return;
     var a=t.dataset.action,convId=t.dataset.convId,mid=t.dataset.memberId;
-    if(a==='edit-group'&&convId){editGroup(convId)}
+    if(a==='start-call'){closeProfilePanel();startCall()}
+    else if(a==='edit-group'&&convId){editGroup(convId)}
     else if(a==='pick-group-avatar'){pickGroupAvatar()}
     else if(a==='delete-group'&&convId){showDeleteGroupConfirm(convId)}
     else if(a==='member-profile'&&mid&&convId){showMemberProfile(mid,convId)}

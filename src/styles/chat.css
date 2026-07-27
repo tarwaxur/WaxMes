@@ -50,7 +50,9 @@
 .conv-avatar img{width:100%;height:100%;object-fit:cover}
 .conv-avatar .group-icon{position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center}
 .conv-avatar .group-icon svg{width:8px;height:8px;stroke:#fff;fill:none;stroke-width:2.5}
-.conv-avatar.online::after{content:'';position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid var(--bg)}
+.conv-avatar.online::after,.conv-avatar.offline::after{content:'';position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;border:2px solid var(--bg)}
+.conv-avatar.online::after{background:#22c55e}
+.conv-avatar.offline::after{background:#6b7280}
 .conv-info{flex:1;min-width:0}
 .conv-name{font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;justify-content:space-between}
 .conv-name .conv-time{font-size:10px;color:var(--text4);font-weight:400}
@@ -78,6 +80,8 @@
 .msg .msg-image:hover{opacity:.9}
 .msg .msg-time{font-size:9px;color:var(--text4);font-weight:400;letter-spacing:.2px;margin-top:4px;text-align:right}
 .msg .msg-sender{font-size:10px;font-weight:600;opacity:.6;display:block;margin-bottom:2px}
+.msg .msg-sender[data-action]{opacity:.8;transition:opacity .15s}
+.msg .msg-sender[data-action]:hover{opacity:1;background:rgba(129,140,248,.06);border-radius:4px;padding:1px 3px}
 .msg .msg-sender-avatar{width:18px;height:18px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:4px;font-size:7px;font-weight:700;color:#fff;text-align:center;line-height:18px}
 .msg .msg-actions{display:none;position:absolute;top:-22px;gap:2px;padding:2px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2)}
 .msg.sent:hover .msg-actions,.msg.received:hover .msg-actions{display:flex}

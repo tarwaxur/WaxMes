@@ -40,6 +40,27 @@ service cloud.firestore {
       }
     }
 
+    // ===== Durumlar (Story / 24h) =====
+    // Okuma: kendi durumun + arkadaşlarının durumu
+    // Yazma: sadece kendi durumunu oluşturabilir
+    // Güncelleme: sadece viewers alanı (görüntüleme kaydı)
+    // Silme: sadece kendi durumunu
+    match /stories/{storyId} {
+      allow read: if request.auth != null && (
+        resource.data.authorId == request.auth.uid
+        || exists(/databases/$(database)/documents/friends/$(request.auth.uid)/list/$(resource.data.authorId))
+      );
+      allow create: if request.auth != null
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.keys().hasAll(['authorId', 'authorName', 'type', 'createdAt', 'expiresAt']);
+      allow update: if request.auth != null
+        && resource.data.authorId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['viewers']);
+      allow delete: if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+    }
+
     // ===== Sohbetler =====
     // Sadece memberIds'deki kullanıcılar okuyabilir/yazabilir
     match /conversations/{convId} {

@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function(){
 var regBtns=document.querySelectorAll('#screen-register .login-back');
 if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
   var ap=$('avatar-picker');
-  if(ap)ap.onclick=function(){pickAvatar()};
+  if(ap&&typeof pickAvatar==='function')ap.onclick=function(){pickAvatar()};
   var ru=$('reg-username'),rd=$('reg-display'),re=$('reg-email'),rp=$('reg-pass'),rp2=$('reg-pass2'),rt=$('reg-terms');
   if(ru)ru.oninput=function(){validateRegister()};
   if(rd)rd.oninput=function(){validateRegister()};
@@ -64,17 +64,19 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
     else if(txt.indexOf('Çıkış')===0)el.onclick=function(){doLogout()}
   });
   var af=document.querySelector('.sidebar-actions');if(af){
-    var afBtn=af.querySelector('.sidebar-action-btn');
+    var hb=$('sidebar-home-btn');if(hb)hb.onclick=function(){if(typeof goToHome==='function')goToHome()};
+    var afBtn=af.querySelector('.sidebar-action-btn:last-child');
     if(afBtn)afBtn.onclick=function(){showFriendsPanel()}
   }
   var searchInp=document.querySelector('.sidebar-search input');
   if(searchInp)searchInp.oninput=function(){filterConversations(this.value)};
   var ab=$('archive-bar');
   if(ab)ab.onclick=function(){toggleArchiveView()};
+  var cb=$('closed-bar');if(cb)cb.style.display='none';
 
   // --- Chat header ---
-  var chbAvatar=$('chat-header-avatar');
-  if(chbAvatar)chbAvatar.onclick=function(){showProfilePanel()};
+  var chb=$('chat-header-btn');
+  if(chb)chb.onclick=function(e){if(!e.target.closest('button'))showProfilePanel()};
   var chActions=document.querySelectorAll('#chat-header-btn .flex-items-center button');
   if(chActions.length>=4){
     chActions[0].onclick=function(e){e.stopPropagation();startCall()};
@@ -84,14 +86,37 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
   }
 
   // --- Call bar ---
-  var lv=$('call-local-video');
-  if(lv)lv.onclick=function(){enlargeCallVideo()};
   var cm=$('call-mic-btn'),cc=$('call-cam-btn'),cs=$('call-screen-btn'),csp=$('call-speaker-btn'),ce=$('call-end-btn');
   if(cm)cm.onclick=function(){toggleCallMic()};
   if(cc)cc.onclick=function(){toggleCallCamera()};
   if(cs)cs.onclick=function(){toggleCallScreen()};
   if(csp)csp.onclick=function(){toggleCallSpeaker()};
   if(ce)ce.onclick=function(){endCall()};
+  var lv=$('call-local-video');
+  if(lv)lv.onclick=function(){enlargeCallVideo()};
+  // Restore saved call bar height
+  var savedH=ls('callBarHeight');
+  var cb2=$('call-bar');
+  if(cb2&&savedH>120)cb2.style.height=savedH+'px';
+  // Resize handle
+  var rh=$('call-resize-handle');
+  if(rh){
+    rh.addEventListener('mousedown',function(e){
+      e.preventDefault();
+      var startY=e.clientY,startH=cb2.offsetHeight;
+      function onMove(me){
+        var nh=Math.max(120,startH+me.clientY-startY);
+        cb2.style.height=nh+'px'
+      }
+      function onUp(){
+        ls('callBarHeight',cb2.offsetHeight);
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp)
+      }
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp)
+    })
+  }
 
   // --- Incoming call ---
   var ic=document.querySelectorAll('#incoming-call button');
@@ -166,7 +191,8 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
         case 'test-screen':testScreenShare();break;
         case 'record-shortcut':recordShortcut(t.dataset.scId);break;
         case 'reset-shortcut':resetShortcut(t.dataset.scId);break;
-        case 'check-update':checkUpdate();break
+        case 'check-update':checkUpdate();break;
+        case 'clear-local-data':clearLocalData();break;
       }
     });
     sh.addEventListener('change',function(e){
@@ -323,5 +349,102 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
     if(clearKey)store[clearKey]=null;
     if(isAvatar)img.parentElement.style.fontWeight='700'
   },true);
+
+  // --- Stories / 24h Durum ---
+  // Delegated click handler for story actions
+  document.addEventListener('click', function(e) {
+    var target = e.target.closest('[data-action]');
+    if (!target) return;
+    var action = target.dataset.action;
+    if (!action) return;
+
+    if (action === 'open-create-story') {
+      e.stopPropagation();
+      if (typeof showCreateStoryModal === 'function') showCreateStoryModal();
+    } else if (action === 'close-create-story') {
+      e.stopPropagation();
+      if (typeof hideCreateStoryModal === 'function') hideCreateStoryModal();
+    } else if (action === 'set-story-type') {
+      e.stopPropagation();
+      var newType = target.dataset.type;
+      if (newType && store.storyDraft) {
+        store.storyDraft.type = newType;
+        store.storyDraft.media = null;
+        store.storyDraft.caption = '';
+        if (typeof renderCreateStoryModal === 'function') renderCreateStoryModal();
+      }
+    } else if (action === 'set-story-bg') {
+      e.stopPropagation();
+      if(store.storyPublishing)return;
+      var c = target.dataset.color;
+      if (c && store.storyDraft) {
+        store.storyDraft.bgColor = c;
+        var dots=target.parentElement;if(dots){var ads=dots.querySelectorAll('.story-color-dot.active');for(var adi=0;adi<ads.length;adi++)ads[adi].classList.remove('active')}target.classList.add('active');
+      }
+    } else if (action === 'set-story-font') {
+      e.stopPropagation();
+      if(store.storyPublishing)return;
+      var f = target.dataset.font;
+      if (f && store.storyDraft) {
+        store.storyDraft.font = f;
+        var btns=target.parentElement;if(btns){var afs=btns.querySelectorAll('.story-font-btn.active');for(var afi=0;afi<afs.length;afi++)afs[afi].classList.remove('active')}target.classList.add('active');
+        var _sfP=$('story-font-preview');if(_sfP){for(var _sfPi=0;_sfPi<STORY_FONTS.length;_sfPi++){if(STORY_FONTS[_sfPi].id===f){_sfP.style.fontFamily=STORY_FONTS[_sfPi].stack;break}}}
+      }
+    } else if (action === 'pick-story-media') {
+      e.stopPropagation();
+      if (typeof pickStoryMedia === 'function') pickStoryMedia();
+    } else if (action === 'confirm-create-story') {
+      e.stopPropagation();
+      if (typeof confirmCreateStory === 'function') confirmCreateStory();
+    } else if (action === 'open-story') {
+      e.stopPropagation();
+      var authorId = target.dataset.authorId;
+      if (authorId && typeof openStoryViewer === 'function') openStoryViewer(authorId);
+    } else if (action === 'open-my-story') {
+      e.stopPropagation();
+      if (typeof openMyStoryViewer === 'function') openMyStoryViewer();
+    } else if (action === 'close-story') {
+      e.stopPropagation();
+      if (typeof closeStoryViewer === 'function') closeStoryViewer();
+    } else if (action === 'next-story') {
+      e.stopPropagation();
+      if (typeof nextStorySegment === 'function') nextStorySegment();
+    } else if (action === 'prev-story') {
+      e.stopPropagation();
+      if (typeof prevStorySegment === 'function') prevStorySegment();
+    } else if (action === 'delete-my-story') {
+      e.stopPropagation();
+      var storyId = target.dataset.id;
+      if (storyId && typeof showConfirmModal === 'function') {
+        showConfirmModal('Durumu Kald\u0131r', 'Bu durum kal\u0131c\u0131 olarak silinsin mi?', 'Kald\u0131r', '#ef4444', function() {
+          if (typeof fbDeleteStory === 'function') {
+            fbDeleteStory(storyId).then(function(ok) {
+              if (ok && typeof closeStoryViewer === 'function') closeStoryViewer();
+            });
+          }
+        });
+      }
+    }
+  });
+  
+  // Chat messages member-profile delegation
+  var _cmp = $('chat-messages');
+  if (_cmp) {
+    _cmp.addEventListener('click', function(e) {
+      var t = e.target.closest('[data-action="member-profile"]');
+      if (!t) return;
+      var mid = t.dataset.memberId;
+      var convId = t.dataset.convId;
+      if (mid && convId && typeof showMemberProfile === 'function') showMemberProfile(mid, convId);
+    });
+  }
+
+  // Modal overlay backdrop close
+  document.addEventListener('click', function(e) {
+    if (e.target.classList && e.target.classList.contains('modal-overlay') &&
+        e.target.parentElement && e.target.parentElement.id === 'story-create-modal') {
+      if (typeof hideCreateStoryModal === 'function') hideCreateStoryModal();
+    }
+  });
 
 });

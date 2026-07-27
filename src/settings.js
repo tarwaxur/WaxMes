@@ -152,7 +152,8 @@ async function showSettingsCat(cat){
     content.innerHTML=html
   }else if(cat==='danger'){
     content.innerHTML='<div class="stitle">Veri Yönetimi</div>'+
-      '<div style="padding:18px;border-radius:12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><svg width="20" height="20" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg><h4 style="font-size:13px;font-weight:600;color:#ef4444;margin:0">Hesabı Sil</h4></div><p style="font-size:11px;color:var(--text4);line-height:1.5;margin-bottom:12px">Bu hesabı ve tüm mesajlarını kalıcı olarak siler. Diğer hesapların etkilenmez.</p><button data-action="delete-account" style="padding:9px 20px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:#ef4444;color:#fff;transition:all .2s;box-shadow:0 3px 12px rgba(239,68,68,.25)" class="btn-danger-del">Hesabı Sil</button></div>'
+      '<div style="padding:18px;border-radius:12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><svg width="20" height="20" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg><h4 style="font-size:13px;font-weight:600;color:#ef4444;margin:0">Hesabı Sil</h4></div><p style="font-size:11px;color:var(--text4);line-height:1.5;margin-bottom:12px">Bu hesabı ve tüm mesajlarını kalıcı olarak siler. Diğer hesapların etkilenmez.</p><button data-action="delete-account" style="padding:9px 20px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:#ef4444;color:#fff;transition:all .2s;box-shadow:0 3px 12px rgba(239,68,68,.25)" class="btn-danger-del">Hesabı Sil</button></div>'+
+      '<div style="padding:18px;border-radius:12px;background:var(--surface);border:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><svg width="20" height="20" viewBox="0 0 24 24" stroke="var(--text4)" fill="none" stroke-width="1.5"><path d="M21 4H8l-1 2H3v2h18V4z"/><line x1="10" y1="12" x2="10" y2="18"/><line x1="14" y1="12" x2="14" y2="18"/><path d="M5 6v13a2 2 0 002 2h10a2 2 0 002-2V6"/></svg><h4 style="font-size:13px;font-weight:600;color:var(--text2);margin:0">Yerel Veriyi Temizle</h4></div><p style="font-size:11px;color:var(--text4);line-height:1.5;margin-bottom:12px">Tüm localStorage verilerini (mesajlar, konuşmalar, ayarlar) temizler. Oturumdan atılmazsın, veriler Firebase\'den tekrar yüklenir.</p><button data-action="clear-local-data" style="padding:9px 20px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;transition:all .2s">Yerel Veriyi Temizle</button></div>'
   }else if(cat==='about'){
     var updateBtn = '<button id="update-btn" data-action="check-update" style="padding:9px 20px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;transition:all .2s">Güncellemeleri Kontrol Et</button>';
     var updateBar = '<div id="update-bar" style="display:none;margin-top:16px"></div>';
@@ -289,4 +290,40 @@ if(window.electronAPI){
     if(btn) { btn.textContent = 'Güncellemeleri Kontrol Et'; btn.dataset.found = '0'; btn.disabled = false; }
     showUpdateBar('Güncelleme hatası: '+msg, 'error');
   });
+}
+
+function clearLocalData(){
+  var body=$('modal-delete').querySelector('.modal-body');
+  body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="var(--text4)" fill="none" stroke-width="1.5" style="margin-bottom:12px"><path d="M21 4H8l-1 2H3v2h18V4z"/><line x1="10" y1="12" x2="10" y2="18"/><line x1="14" y1="12" x2="14" y2="18"/><path d="M5 6v13a2 2 0 002 2h10a2 2 0 002-2V6"/></svg>'+
+    '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Yerel Verileri Temizle</h4>'+
+    '<p style="color:var(--text4);font-size:12px;line-height:1.6">Mesajlar\u0131n, ki\u015fi listen ve ayarlar\u0131n cihaz\u0131ndan silinecek.</p>'+
+    '<input type="checkbox" id="clear-cloud-msgs" style="display:none" checked>'+
+    '<label for="clear-cloud-msgs" style="display:flex;align-items:center;gap:8px;color:var(--text3);font-size:12px;margin-top:8px;cursor:pointer;user-select:none">'+
+      '<span style="width:18px;height:18px;border-radius:5px;border:2px solid var(--text4);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;background:var(--input-bg)">'+
+        '<svg width="11" height="11" viewBox="0 0 24 24" stroke="var(--accent)" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" id="clear-cloud-check"><polyline points="20 6 9 17 4 12"/></svg>'+
+      '</span> <span>Buluttaki t\u00fcm mesajlar\u0131 da sil (geri d\u00f6nd\u00fcr\u00fclemez)</span>'+
+    '</label>';
+  $('delete-confirm-btn').textContent='Temizle';
+  $('delete-confirm-btn').style.background='var(--accent)';
+  $('delete-confirm-btn').onclick=async function(){
+    var deleteCloud=$('clear-cloud-msgs')&&$('clear-cloud-msgs').checked;
+    hideDeleteModal();
+    if(window.db&&fbUserId()){
+      var _proms=[];
+      for(var _cli=0;_cli<store.conversations.length;_cli++){(function(_c){
+        if(!_c.id)return;
+        if(deleteCloud){
+          var _ref=db.collection(COLLECTIONS.CONVERSATIONS).doc(_c.id);
+          _proms.push(_ref.collection(COLLECTIONS.MESSAGES).get().then(function(snap){
+            if(snap.size>0){var b=db.batch();snap.forEach(function(d){b.delete(d.ref)});return b.commit()}
+          }).then(function(){return _ref.update({lastMsg:'',lastTime:''})}).catch(function(){}))
+        }
+      })(store.conversations[_cli])}
+      await Promise.all(_proms)
+    }
+    localStorage.clear();
+    showError('Veriler temizlendi. Sayfa yenileniyor...');
+    setTimeout(function(){location.reload()}, 1000)
+  };
+  $('modal-delete').classList.add('active')
 }

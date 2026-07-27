@@ -1,3 +1,5 @@
+// ===== ERROR HANDLING =====
+function showError(msg,detail){console.error(detail||msg);var t=$('toast');if(t){t.textContent=msg;t.style.display='flex';clearTimeout(t._hide);t._hide=setTimeout(function(){t.style.display='none'},5000)}}
 // ===== TOS =====
 function showTos(){$('modal-tos').classList.add('active')}
 function hideTos(){$('modal-tos').classList.remove('active')}
@@ -30,9 +32,15 @@ function resetIdleTimer(){
 // Start timer on load
 setTimeout(resetIdleTimer,1000);
 
+function isConvOnline(conv){
+  if(!conv||conv.isGroup)return true;
+  if(!conv.online)return false;
+  if(conv._lastSeen&&Date.now()-conv._lastSeen>300000)return false;
+  return true
+}
 function statusText(conv){
   if(!conv||conv.isGroup)return'';
-  if(!conv.online)return'Çevrimdışı';
+  if(!isConvOnline(conv))return'Çevrimdışı';
   if(conv._status===STATUS.IDLE)return'Boşta';
   if(conv._status===STATUS.DND)return'Rahatsız Etme';
   return'Çevrimiçi'
@@ -65,7 +73,7 @@ function showForwardModal(items,e){
   var list=$('forward-contact-list');list.innerHTML='';
   for(var fci=0;fci<store.conversations.length;fci++){(function(c){
     var d=document.createElement('div');d.className='modal-member-item';
-    d.innerHTML='<div class="mm-avatar" style="background:'+c.color+'">'+(c.isGroup?'G':c.avatar)+'</div><div class="mm-name">'+esc(c.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
+    d.innerHTML='<div class="mm-avatar" style="background:'+c.color+'">'+(c.isGroup?'G':esc(c.avatar))+'</div><div class="mm-name">'+esc(c.name)+'</div><div class="mm-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>';
     d._cid=c.id;
     d.onclick=function(){d.classList.toggle('selected')};
     list.appendChild(d)
@@ -469,7 +477,7 @@ async function forwardToSelected(){
       forwardComment:caption||null,sender:($('sidebar-username')&&$('sidebar-username').textContent||'')
     };
     if(fwdTxt!==(store.forwardMsgData.text||'')){fwd.e2e=true;conv.lastMsg='🔒 Mesaj'}else{conv.lastMsg=fwd.text||(fwd.image?'📷 Fotoğraf':(fwd.video?'🎬 Video':(fwd.audio?'🎤 Ses':'')))}if(!store.messages[cid])store.messages[cid]=[];
-    store.messages[cid].push(fwd);store.emit('messages');
+    store.messages[cid].push(fwd);;
     conv.lastActivity=Date.now();conv.time=timeNow();
     fbSendMessage(cid,fwd)
   }
@@ -591,6 +599,18 @@ function isMuted(id){var m=getMuted();for(var i=0;i<m.length;i++){if(m[i]===id)r
 function toggleMute(id){var m=getMuted();var found=false;for(var i=0;i<m.length;i++){if(m[i]===id){m.splice(i,1);found=true;break}}if(!found)m.push(id);ls(STORAGE_KEYS.MUTED,m);renderConversations()}
 
 function clearConversation(id){
+  var conv=findConv(id);
+  if(conv&&(!conv.lastMsg||conv.lastMsg==='Sohbet temizlendi')){
+    var body=$('modal-delete').querySelector('.modal-body');
+    body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="var(--text4)" fill="none" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'+
+      '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Sohbet Zaten Temiz</h4>'+
+      '<p style="color:var(--text4);font-size:12px">Bu sohbette silinecek mesaj bulunmuyor.</p>';
+    $('delete-confirm-btn').textContent='Tamam';
+    $('delete-confirm-btn').style.background='var(--accent)';
+    $('delete-confirm-btn').onclick=function(){hideDeleteModal()};
+    $('modal-delete').classList.add('active');
+    return
+  }
   store.pendingClearConvId=id;
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
@@ -605,14 +625,15 @@ function confirmClearConversation(){
   if(!id)return;
   if(store.messages[id]){delete store.messages[id]}
   var conv=findConv(id);
-  if(conv){conv.lastMsg='Sohbet temizlendi';conv.lastActivity=Date.now();conv.time=timeNow();conv.unread=0;conv._clearedAt=Date.now()}
+  if(conv){conv.lastMsg='Sohbet temizlendi';conv.time='';conv.unread=0;conv._clearedAt=Date.now()}
   if(store.activeConvId===id){
-    if(chatMsgs)chatMsgs.innerHTML='';
+    var _cm=$('chat-messages');if(_cm)_cm.innerHTML='';
     renderMessages(id)
   }
   saveUnreadCounts();
   renderConversations();
   saveMessages();
+  saveConversations();
   hideDeleteModal();
   // Delete Firestore messages permanently
   fbClearConversationMessages(id)
@@ -628,24 +649,30 @@ async function fbClearConversationMessages(convId){
     var count=0;
     snap.forEach(function(doc){
       var cd=doc.data();
-      if(cd.createdAt&&cd.createdAt.toMillis&&cd.createdAt.toMillis()<ts){return}
+      if(cd.createdAt&&cd.createdAt.toMillis&&cd.createdAt.toMillis()>ts){return}
       batch.delete(doc.ref);count++
     });
     if(count>0)batch.commit().catch(console.error);
-    db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({clearedAt:firebase.firestore.FieldValue.serverTimestamp(),lastMsg:'Sohbet temizlendi',lastActivity:Date.now()}).catch(console.error)
+    db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({clearedAt:firebase.firestore.FieldValue.serverTimestamp(),lastMsg:'Sohbet temizlendi'}).catch(console.error)
   }catch(e){console.error(e)}
 }
 
 function closeConversation(id){
-  var conv=findConv(id);
-  if(conv){conv.hidden=true}
   fbUnlistenMessages(id);
   fbStopTypingListener();
   stopTyping();
+  for(var _cci=0;_cci<store.conversations.length;_cci++){if(store.conversations[_cci].id===id){store.conversations.splice(_cci,1);break}}
   if(store.activeConvId===id){$('chat-empty').style.display='flex';$('chat-active').style.display='none';store.activeConvId=null}
   saveConversations();
   renderConversations()
 }
+function openConversation(id){
+  var conv=findConv(id);
+  if(conv){conv.hidden=false}
+  store._showClosed=false;
+  renderConversations()
+}
+function toggleClosedView(){store._showClosed=!store._showClosed;renderConversations()}
 
 // ===== CONTEXT MENU =====
 function showContextMenu(x,y,items){
@@ -666,8 +693,9 @@ function showContextMenu(x,y,items){
     d.onclick=function(){it.action();hideContextMenu()};
     m.appendChild(d)
     }})(items[i])}
-  var mw=m.offsetWidth||Math.min(220,window.innerWidth*0.4);
-  var mh=m.offsetHeight||Math.min(items.length*36,400);
+  m.style.visibility='hidden';m.style.display='block';
+  var mw=m.offsetWidth;var mh=m.offsetHeight;
+  m.style.visibility='';m.style.display='';
   if(x+mw+8>window.innerWidth)x=Math.max(4,window.innerWidth-mw-8);
   if(y+mh+8>window.innerHeight)y=Math.max(4,window.innerHeight-mh-8);
   m.style.left=Math.max(4,x)+'px';m.style.top=Math.max(4,y)+'px';
@@ -685,12 +713,15 @@ function resetSessionState(){
   store._authTransitioning=true;
   // Abort DOM event listeners
   if(store._ac){store._ac.abort();store._ac=new AbortController()}
+  _sessListenersActive=false;
   // Firebase listeners
   for(var kl in store._fbListeners){store._fbListeners[kl]();delete store._fbListeners[kl]}
   store._fbListeners={};
+  store._fbLoaded={};
   store._fbMsgCache={};
   if(store._fbConversationUnsub){store._fbConversationUnsub();store._fbConversationUnsub=null}
   store._convListenerActive=false;
+  if(typeof fbStopStories==='function')fbStopStories();
   fbStopTypingListener();
 
   // Friend request listeners
@@ -757,7 +788,6 @@ function resetSessionState(){
   // Call streams
   if(store.callCamStream){store.callCamStream.getTracks().forEach(function(t){t.stop()});store.callCamStream=null}
   if(store.callScreenStream){store.callScreenStream.getTracks().forEach(function(t){t.stop()});store.callScreenStream=null}
-
   // Call signals
   if(store._callSignalUnsub){store._callSignalUnsub();store._callSignalUnsub=null}
   store._callSigOfferId=null;
@@ -820,6 +850,7 @@ function showConvContext(x,y,convId){var conv=findConv(convId);if(!conv)return;v
   items.push({label:archived?'Arşivden Çıkar':'Arşivle',icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>',action:function(){toggleArchive(convId)}});
   items.push({sep:true});
   items.push({label:'Sohbeti Temizle',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){clearConversation(convId)}});
+  items.push({label:'Sohbeti Kapat',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',action:function(){closeConversation(convId)}});
   if(conv.isGroup){
     var isGroupAdmin=conv.adminIds&&conv.adminIds.indexOf(store.activeAccountId)!==-1;
     var isGroupCreator=conv.creatorId===store.activeAccountId;
@@ -827,11 +858,15 @@ function showConvContext(x,y,convId){var conv=findConv(convId);if(!conv)return;v
     if(isGroupCreator)items.push({label:'Grubu Sil',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',action:function(){showDeleteGroupConfirm(convId)}})
     else items.push({label:'Gruptan Ayrıl',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',action:function(){leaveGroup(convId)}})
   }else{
-    items.push({label:'Sohbeti Kapat',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',action:function(){closeConversation(convId)}})
+    if(hidden){
+      items.push({label:'Sohbeti Aç',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',action:function(){openConversation(convId)}})
+    }else{
+      items.push({label:'Sohbeti Kapat',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',action:function(){closeConversation(convId)}})
+    }
   }
   if(!conv.isGroup&&!archived){items.push({sep:true});var gs=[];for(var gi=0;gi<store.conversations.length;gi++){(function(gc){if(gc.isGroup)gs.push({label:gc.name,icon:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',action:function(){addToGroup(gc.id,convId)}})})(store.conversations[gi])}gs.push({sep:true});gs.push({label:'+ Yeni Grup',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',action:function(){newGroup()}});items.push({label:'Gruba Ekle',icon:'<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',action:function(){},sub:gs})}
   showContextMenu(x,y,items)}
-function toggleArchiveView(){store._showArchived=!store._showArchived;renderConversations()}
+function toggleArchiveView(){if(store._showClosed){store._showClosed=false;renderConversations();return}store._showArchived=!store._showArchived;renderConversations()}
 var showScreen=function(id){document.querySelectorAll('.screen,.app-layout').forEach(function(s){s.classList.remove('active')});if(id){$(id).classList.add('active');store.currentScreen=id}};
 var goToWelcome=function(){renderSavedAccounts();showScreen('screen-welcome')};
 var goToLogin=function(){showScreen('screen-login');$('login-email').value='';$('login-pass').value='';store.avatarDataUrl=null;validateLogin()};

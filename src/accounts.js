@@ -198,11 +198,15 @@ function renderSavedAccounts(){
 }
 
 async function autoLogin(acc){
-  if(!window.auth){showAlert('Veritabanı bağlantısı bulunamadı. İnternet bağlantını kontrol edip tekrar dene.');return}
+  if(!window.auth){
+    showAlert('Veritabanı bağlantısı bulunamadı. İnternet bağlantını kontrol edip tekrar dene.');
+    showError('Firebase Auth yüklenemedi', 'accounts.js:201 — window.auth mevcut değil');
+    return
+  }
   var password=await loadAccountPassword(acc);
   if(!password){
     goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
-    showAlert('Bu hesap için kayıtlı güvenli oturum bulunamadı. Lütfen şifreni gir.');
+    showError('Kayıtlı oturum bulunamadı', 'accounts.js:205 — şifre localStorage\'dan yüklenemedi. Lütfen manuel gir.');
     return
   }
   store._authTransitioning=true;
@@ -218,7 +222,7 @@ async function autoLogin(acc){
     store._authTransitioning=false;
     hideLoading(function(){
       goToLogin();$('login-email').value=acc.email;validateLogin();$('login-pass').focus();
-      showAlert('Otomatik giriş başarısız. Lütfen şifreni gir.')
+      showError('Otomatik giriş başarısız', 'accounts.js:218 — '+ (e.code||e.message||'bilinmeyen hata') +'. Lütfen şifreni manuel gir.');
     })
   }
 }
@@ -237,11 +241,10 @@ function doLoginWithUsername(user){
 }
 
 // ===== LOGIN =====
-function validateLogin(){var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value,ok=e.length>0&&p.length>0;$('fg-login-email').classList.toggle('invalid',e.length>0&&!e.endsWith('@gmail.com'));$('fg-login-pass').classList.toggle('invalid',p.length>0&&p.length<6);$('login-btn').disabled=!ok;return ok}
+function validateLogin(){var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value,ok=e.length>0&&p.length>0;$('fg-login-email').classList.toggle('invalid',e.length>0&&!e.includes('@'));$('fg-login-pass').classList.toggle('invalid',p.length>0&&p.length<6);$('login-btn').disabled=!ok;return ok}
 async function doLogin(){
   var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value;
   if(!e||!p||!window.auth)return;
-  $('login-error').textContent='';
   try {
     var cred=await auth.signInWithEmailAndPassword(e,p);
     var user=cred.user;store._explicitLogin=true;store._pendingLoginPassword=p;
@@ -250,7 +253,20 @@ async function doLogin(){
     doLoginWithUsername(user);
     if(acc)rememberAccountPassword(acc,p)
   }catch(err){
-    $('login-error').textContent=(err.code==='auth/user-not-found'||err.code==='auth/wrong-password'||err.code==='auth/invalid-credential')?'E-posta veya şifre hatalı.':err.message
+    var tb='accounts.js:246';
+    if(err.code==='auth/user-not-found'||err.code==='auth/wrong-password'||err.code==='auth/invalid-credential'){
+      showError('E-posta veya şifre hatalı.', tb+' — Firebase kimlik doğrulama başarısız')
+    }else if(err.code==='auth/too-many-requests'){
+      showError('Çok fazla hatalı giriş. Hesabın geçici olarak kilitlendi.', tb+' — too-many-requests')
+    }else if(err.code==='auth/invalid-email'){
+      showError('Geçersiz e-posta formatı.', tb+' — invalid-email')
+    }else if(err.code==='auth/user-disabled'){
+      showError('Bu hesap devre dışı bırakılmış.', tb+' — user-disabled')
+    }else if(err.code==='auth/network-request-failed'){
+      showError('Ağ bağlantısı yok. İnternetini kontrol et.', tb+' — network-request-failed')
+    }else{
+      showError('Giriş yapılamadı: '+(err.message||'Bilinmeyen hata'), tb)
+    }
   }
 }
 
@@ -260,20 +276,20 @@ async function regNext(){
   if(!validateRegister())return;
   var btn=$('reg-next');
   function advance(){store.regStep++;updateRegStep();if(btn)btn.disabled=false}
-  function dbError(label){if(btn)btn.disabled=false;showAlert(label+' kontrolü yapılamadı: servis şu anda kullanılamıyor. Lütfen daha sonra tekrar dene.')}
-  function dbTimeout(label){if(btn)btn.disabled=false;showAlert(label+' kontrolü zaman aşımına uğradı. İnternet bağlantını kontrol et.')}
+  function dbError(label){if(btn)btn.disabled=false;showError(label+' kontrolü yapılamadı: servis şu anda kullanılamıyor.', 'accounts.js:279')}
+  function dbTimeout(label){if(btn)btn.disabled=false;showError(label+' kontrolü zaman aşımına uğradı. İnternet bağlantını kontrol et.', 'accounts.js:280')}
   if(store.regStep===0){
     var u=$('reg-username').value.trim();
-    if(!/^[a-zA-Z0-9_]+$/.test(u)){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı yalnızca harf, rakam ve alt çizgi içerebilir';showAlert('Kullanıcı adı yalnızca harf, rakam ve alt çizgi (_) içerebilir.');return}
+    if(!/^[a-zA-Z0-9_]+$/.test(u)){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı yalnızca harf, rakam ve alt çizgi içerebilir';showError('Kullanıcı adı yalnızca harf, rakam ve alt çizgi (_) içerebilir.', 'accounts.js:283');return}
     if(u.length<3){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Kullanıcı adı en az 3 karakter olmalı';return}
     if(!window.auth||!auth.currentUser){advance();return}
-    if(!window.db){showAlert('Veritabanı bağlantısı yok.');return}
+    if(!window.db){showError('Veritabanı bağlantısı yok.', 'accounts.js:286');return}
     if(btn)btn.disabled=true;
     var timedOut=false,timer=setTimeout(function(){timedOut=true;dbTimeout('Kullanıcı adı')},15000);
     try {
       var snap=await db.collection(COLLECTIONS.USERS).where('username','==',u).get();
       clearTimeout(timer);if(timedOut)return;
-      if(!snap.empty){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Bu kullanıcı adı zaten alınmış';showAlert('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.');if(btn)btn.disabled=false;return}
+      if(!snap.empty){$('fg-username').classList.add('invalid');$('fg-username').querySelector('.field-error').textContent='Bu kullanıcı adı zaten alınmış';showError('Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı dene.', 'accounts.js:292');if(btn)btn.disabled=false;return}
       advance()
     }catch(err){clearTimeout(timer);if(!timedOut){dbError('Kullanıcı adı')}}
   }else if(store.regStep===1){
@@ -299,7 +315,7 @@ async function completeRegistration(){
   var btn=$('reg-next');if(btn){btn.disabled=true;btn.textContent='Kaydediliyor...'}
   function finishReg(errMsg){
     if(btn){btn.disabled=false;btn.textContent='Kayıt Ol'}
-    if(errMsg)showAlert(errMsg)
+    if(errMsg)showError(errMsg, 'accounts.js:318')
   }
   if(!window.db){finishReg('Veritabanı bağlantısı yok.');return}
   var timedOut=false, timer=setTimeout(function(){timedOut=true;finishReg('Sunucu yanıt vermiyor. Lütfen tekrar dene.')},15000);
@@ -312,6 +328,7 @@ async function completeRegistration(){
     async function cancelCreatedAccount(msg){
       store._explicitLogin=false;store._pendingLoginPassword=null;
       if(auth.currentUser) try{await auth.currentUser.delete()}catch(e){}
+      showError(msg, 'accounts.js:331 — cancelCreatedAccount');
       finishReg(msg)
     }
     try {

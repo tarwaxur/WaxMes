@@ -7,9 +7,14 @@ var store = (function(){
     activeAccountId: null,
     messages: {},
     _forceScrollBottom: false,
+    _savedScrollTop: null,
+    _preserveScrollBottom: false,
+    _nearBottom: true,
+    _convScrollPositions: {},
     _hasNewMsg: false,
     _searchQuery: '',
     _showArchived: false,
+    _showClosed: false,
     _convListAnimatedOnce: false,
 
     // Auth state
@@ -20,10 +25,16 @@ var store = (function(){
 
     // Firestore listeners
     _fbListeners: {},
+    _fbLoaded: {},
     _fbMsgCache: {},
+    _msgPage: {},         // {convId: {oldestDoc, hasMore, loading, initDone}}
     _fbConversationUnsub: null,
     _convListenerActive: false,
     _onlineStatusListeners: {},
+    _msgScrollHandler: null,
+
+    // Profile
+    _usernameCache: {},
 
     // E2E
     e2eKeys: null,
@@ -89,6 +100,8 @@ var store = (function(){
 
     // Call state
     callState: null,
+    callCamStream: null,
+    callScreenStream: null,
     callPeerConn: null,
     callLocalStream: null,
     callTimerInterval: null,
@@ -106,8 +119,7 @@ var store = (function(){
     _callSigOfferId: null,
     _callSigInit: false,
     pendingCallData: null,
-    callCamStream: null,
-    callScreenStream: null,
+
     callPollTimer: null,
 
     // User status
@@ -144,6 +156,19 @@ var store = (function(){
     contextMenuScrollPos: 0,
     contextMenuRelY: 0,
     contextMenuRelX: 0,
+
+    // Stories / 24h Durum
+    storyFeed: [],             // Aktif durumlar (gruplanmış: [{author, items: [story...]}])
+    storyViewerOpen: false,
+    storyViewerAuthor: null,   // {id, name, avatar, color}
+    storyViewerItems: [],      // Şu an izlenen yazarın durumları
+    storyViewerIdx: 0,
+    storyViewerProgress: 0,    // 0..1 ilerleme
+    storyViewerPaused: false,
+    storyStoryTimer: null,
+    storyCreateOpen: false,
+    storyDraft: { type: 'text', text: '', bgColor: '#818cf8', font: 'sans', media: null },
+    storyViewed: {},           // {storyId: timestamp} local cache
 
   };
   var _listeners = {};
@@ -184,6 +209,7 @@ var store = (function(){
     if(!a || !a.push) return 0;
     var r = Array.prototype.push.apply(a, Array.prototype.slice.call(arguments, 1));
     api.emit(key.split('.')[0]);
+    if(key==='conversations'||key.indexOf('conversations.')===0)store._convCache=null;
     return r;
   };
   api.unshift = function(key){
@@ -191,6 +217,7 @@ var store = (function(){
     if(!a || !a.unshift) return 0;
     var r = Array.prototype.unshift.apply(a, Array.prototype.slice.call(arguments, 1));
     api.emit(key.split('.')[0]);
+    if(key==='conversations'||key.indexOf('conversations.')===0)store._convCache=null;
     return r;
   };
   api.splice = function(key, start, delCount){
@@ -198,7 +225,8 @@ var store = (function(){
     if(!a || !a.splice) return [];
     var args = [start, delCount].concat(Array.prototype.slice.call(arguments, 3));
     var r = Array.prototype.splice.apply(a, args);
-    api.emit(key);
+    api.emit(key.split('.')[0]);
+    if(key==='conversations'||key.indexOf('conversations.')===0)store._convCache=null;
     return r;
   };
 
@@ -207,7 +235,7 @@ var store = (function(){
     (function(key){
       Object.defineProperty(api, key, {
         get: function(){ return _data[key]; },
-        set: function(v){ _data[key] = v; api.emit(key); }
+        set: function(v){ _data[key] = v; api.emit(key); if(key==='conversations')store._convCache=null; }
       });
     })(k);
   });

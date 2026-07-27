@@ -26,6 +26,7 @@ function stopRingtone(){
 
 async function startCall(){
   if(!store.activeConvId){return}
+  ensureCallPoll();
   var conv=findConv(store.activeConvId);if(!conv)return;
   if(store.callState){return}
   // Show inline call bar
@@ -84,7 +85,7 @@ async function startCall(){
     avatarContainer.appendChild(a)
   }
   // Add call log
-  if(store.messages[store.activeConvId]){var logTxt='📞 '+(conv.isGroup?'Grup araması':'Sesli arama')+' başlatıldı';var logMsg={id:uid(),type:'log',text:logTxt,time:timeNow(),senderId:fbUserId()};store.messages[store.activeConvId].push(logMsg);store.emit('messages');conv.lastMsg=logTxt;conv.lastActivity=Date.now();conv.time=timeNow();fbSendMessage(store.activeConvId,logMsg);saveMessages();renderMessages(store.activeConvId);renderConversations()}
+  store.callStartTime=Date.now();
   store.callState='calling';
   playRingtone();
   
@@ -92,7 +93,7 @@ async function startCall(){
   var callId=uid();
   store.pendingCallMsgId=callId;
   if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
-  store.messages[store.activeConvId].push({id:callId,type:'call',action:'offer',time:timeNow(),sender:$('sidebar-username').textContent,status:'calling'});store.emit('messages');
+  store.messages[store.activeConvId].push({id:callId,type:'call',action:'offer',time:timeNow(),sender:$('sidebar-username').textContent,status:'calling'});;
   saveMessages();
   
   // Start local stream and create offer
@@ -103,7 +104,7 @@ async function startCall(){
 
 async function startLocalStream(){
   try {
-    var stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    var stream=await navigator.mediaDevices.getUserMedia({audio:true});
     store.callLocalStream=stream;
     if(store.vadTimer){clearInterval(store.vadTimer)}
     try{
@@ -211,10 +212,8 @@ function fbListenCallSignals(convId){
   if(store._callSignalUnsub){store._callSignalUnsub();store._callSignalUnsub=null}
   if(!window.db||!convId||!fbUserId())return;
   var uid=fbUserId();
-  store._callSigInit=false;
+  store._callSigInit=true;
   store._callSignalUnsub=db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).collection(COLLECTIONS.CALL_SIGNALS).orderBy('timestamp','asc').onSnapshot(function(snap){
-    // Skip initial snapshot — only process real-time changes to avoid stale signals
-    if(!store._callSigInit){store._callSigInit=true;return}
     snap.docChanges().forEach(function(change){
       if(change.type!=='added')return;
       var d=change.doc.data(),sid=change.doc.id;
@@ -224,7 +223,7 @@ function fbListenCallSignals(convId){
         var st=d.timestamp.toMillis?d.timestamp.toMillis():Date.now();
         if(Date.now()-st>10000)return
       }
-      if(!store.callState||store.callState===STATUS.IDLE){
+      if(!store.callState){
         // Incoming offer
         if(d.action==='offer'&&d.sdp){
           // Verify caller is a member of this conversation
@@ -301,15 +300,6 @@ async function acceptCall(){
   $('call-bar-timer').style.display='none';
   store.callState='calling';
   
-  if(store.activeConvId&&store.messages[store.activeConvId]){
-    var acceptLogTxt='📞 Arama kabul edildi';
-    store.messages[store.activeConvId].push({id:uid(),type:'log',text:acceptLogTxt,time:timeNow()});store.emit('messages');
-    fbSendMessage(store.activeConvId,{id:uid(),type:'log',text:acceptLogTxt,time:timeNow(),senderId:fbUserId()});
-    saveMessages();
-    renderMessages(store.activeConvId);
-    renderConversations()
-  }
-  
   try {
     if(!window.db||!store.activeConvId||!store._callSigOfferId){endCall();return}
     var odoc=await db.collection(COLLECTIONS.CONVERSATIONS).doc(store.activeConvId).collection(COLLECTIONS.CALL_SIGNALS).doc(store._callSigOfferId).get();
@@ -383,11 +373,17 @@ function endCall(){
   var cv=$('call-local-video');if(cv){cv.style.display='none';var cve=$('call-local-video-el');if(cve)cve.srcObject=null}
   // Add call end log with duration
   if(store.activeConvId&&store.messages[store.activeConvId]&&store.callStartTime>0){
-    var dur=Math.floor((Date.now()-store.callStartTime)/1000);
+    var now=Date.now();
+    var dur=Math.floor((now-store.callStartTime)/1000);
     var dm=Math.floor(dur/60),ds=dur%60;
-    var endLogTxt='📞 Arama sonlandı · '+(dm<10?'0':'')+dm+':'+(ds<10?'0':'')+ds;
+    var startH=new Date(store.callStartTime).getHours(),startM=new Date(store.callStartTime).getMinutes();
+    var endH=new Date(now).getHours(),endM=new Date(now).getMinutes();
+    var startStr=('0'+startH).slice(-2)+':'+('0'+startM).slice(-2);
+    var endStr=('0'+endH).slice(-2)+':'+('0'+endM).slice(-2);
+    var durStr=(dm>0?dm+'dk ':'')+ds+'sn';
+    var endLogTxt='📞 Sesli arama \u00B7 '+startStr+' \u2192 '+endStr+' ('+durStr+')';
     var endLogMsg={id:uid(),type:'log',text:endLogTxt,time:timeNow(),senderId:fbUserId()};
-    store.messages[store.activeConvId].push(endLogMsg);store.emit('messages');
+    store.messages[store.activeConvId].push(endLogMsg);;
     fbSendMessage(store.activeConvId,endLogMsg);
     var conv2=findConv(store.activeConvId);if(conv2){conv2.lastMsg=endLogTxt;conv2.lastActivity=Date.now();conv2.time=timeNow()}
     saveMessages();
@@ -417,7 +413,6 @@ function toggleCallMic(){
   $('call-mic-btn').style.color=store.callMicMuted?'#ef4444':'var(--text3)'
 }
 
-
 function enlargeCallVideo(){
   var el=$('call-local-video-el');
   if(!el||!el.srcObject)return;
@@ -426,17 +421,14 @@ function enlargeCallVideo(){
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column';
   overlay.onclick=function(e){if(e.target===overlay)closeCallVideo()};
   var video=document.createElement('video');
-  video.srcObject=el.srcObject;
-  video.autoplay=true;video.muted=true;
+  video.srcObject=el.srcObject;video.autoplay=true;video.muted=true;
   video.style.cssText='max-width:90vw;max-height:85vh;border-radius:12px;object-fit:contain';
-  overlay.appendChild(video);
-  video.play().catch(console.error);
+  overlay.appendChild(video);video.play().catch(console.error);
   var closeBtn=document.createElement('button');
   closeBtn.innerHTML='✕';
   closeBtn.style.cssText='position:absolute;top:16px;right:16px;width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,.1);cursor:pointer;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center';
   closeBtn.onclick=function(){closeCallVideo()};
-  overlay.appendChild(closeBtn);
-  document.body.appendChild(overlay)
+  overlay.appendChild(closeBtn);document.body.appendChild(overlay)
 }
 function closeCallVideo(){
   var el=document.getElementById('call-video-overlay');
@@ -448,53 +440,36 @@ async function toggleCallCamera(){
   var videoEl=$('call-local-video-el');
   var container=$('call-local-video');
   if(store.callCamStream){
-    store.callCamStream.getTracks().forEach(function(t){t.stop()});
-    store.callCamStream=null;
-    videoEl.srcObject=null;
-    container.style.display='none';
-    $('call-cam-btn').style.background='rgba(255,255,255,.04)';
-    $('call-cam-btn').style.color='var(--text3)';
+    store.callCamStream.getTracks().forEach(function(t){t.stop()});store.callCamStream=null;
+    videoEl.srcObject=null;container.style.display='none';
+    $('call-cam-btn').style.background='rgba(255,255,255,.04)';$('call-cam-btn').style.color='var(--text3)';
     return
   }
-  try {
+  try{
     var stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
-    store.callCamStream=stream;
-    videoEl.srcObject=stream;
-    container.style.display='block';
+    store.callCamStream=stream;videoEl.srcObject=stream;container.style.display='';
     videoEl.play().catch(console.error);
-    $('call-cam-btn').style.background='rgba(34,197,94,.15)';
-    $('call-cam-btn').style.color='#22c55e'
+    $('call-cam-btn').style.background='rgba(34,197,94,.15)';$('call-cam-btn').style.color='#22c55e'
   }catch(e){console.error('Camera error:',e)}
 }
-
 async function toggleCallScreen(){
   if(!store.callState)return;
   var videoEl=$('call-local-video-el');
   var container=$('call-local-video');
   if(store.callScreenStream){
-    store.callScreenStream.getTracks().forEach(function(t){t.stop()});
-    store.callScreenStream=null;
-    videoEl.srcObject=null;
-    container.style.display='none';
-    $('call-screen-btn').style.background='rgba(255,255,255,.04)';
-    $('call-screen-btn').style.color='var(--text3)';
+    store.callScreenStream.getTracks().forEach(function(t){t.stop()});store.callScreenStream=null;
+    videoEl.srcObject=null;container.style.display='none';
+    $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)';
     return
   }
-  // Native picker shows window/screen/tab options automatically
-  try {
+  try{
     var stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
-    store.callScreenStream=stream;
-    videoEl.srcObject=stream;
-    container.style.display='';
+    store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
     videoEl.play().catch(console.error);
-    $('call-screen-btn').style.background='rgba(34,197,94,.15)';
-    $('call-screen-btn').style.color='#22c55e';
+    $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
     stream.getVideoTracks()[0].onended=function(){
-      store.callScreenStream=null;
-      videoEl.srcObject=null;
-      container.style.display='none';
-      $('call-screen-btn').style.background='rgba(255,255,255,.04)';
-      $('call-screen-btn').style.color='var(--text3)'
+      store.callScreenStream=null;videoEl.srcObject=null;container.style.display='none';
+      $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)'
     }
   }catch(e){console.error('Screen share error:',e)}
 }
@@ -502,20 +477,29 @@ async function toggleCallScreen(){
 function toggleCallSpeaker(){
   store.callSpeakerMuted=!store.callSpeakerMuted;
   $('call-speaker-btn').style.background=store.callSpeakerMuted?'rgba(239,68,68,.2)':'rgba(255,255,255,.06)';
-  $('call-speaker-btn').style.color=store.callSpeakerMuted?'#ef4444':'var(--text3)'
+  $('call-speaker-btn').style.color=store.callSpeakerMuted?'#ef4444':'var(--text3)';
+  var els=document.querySelectorAll('audio[srcObject]');
+  els.forEach(function(el){
+    if(el.setSinkId){
+      el.setSinkId(store.callSpeakerMuted?'default':'speaker').catch(function(){})
+    }
+    if(store.callSpeakerMuted){el.volume=0.3}else{el.volume=1}
+  })
 }
 
 // Poll for incoming calls (fallback — primary signaling is via Firestore listener)
-store.callPollTimer=setInterval(function(){
-  if(!store.activeConvId)return;
-  if(store.callState==='calling'&&store.callPeerConn){
-    // Fallback: process any remaining local-message based signals (legacy)
-    if(!store.messages[store.activeConvId])return;
-    var msgs=store.messages[store.activeConvId];
-    for(var ci=0;ci<msgs.length;ci++){
-      if(msgs[ci].type==='call'&&msgs[ci].action==='ice'&&msgs[ci].candidate&&!msgs[ci]._processed){
-        try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(msgs[ci].candidate));msgs[ci]._processed=true}catch(e){}
+function ensureCallPoll(){
+  if(store.callPollTimer)return;
+  store.callPollTimer=setInterval(function(){
+    if(!store.activeConvId)return;
+    if(store.callState==='calling'&&store.callPeerConn){
+      if(!store.messages[store.activeConvId])return;
+      var msgs=store.messages[store.activeConvId];
+      for(var ci=0;ci<msgs.length;ci++){
+        if(msgs[ci].type==='call'&&msgs[ci].action==='ice'&&msgs[ci].candidate&&!msgs[ci]._processed){
+          try{store.callPeerConn.addIceCandidate(new RTCIceCandidate(msgs[ci].candidate));msgs[ci]._processed=true}catch(e){}
+        }
       }
     }
-  }
-},2000);
+  },2000);
+}

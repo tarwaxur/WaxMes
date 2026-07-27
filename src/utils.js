@@ -34,11 +34,13 @@ function timeNow(){
   return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')
 }
 
+function rebuildConvCache(){
+  store._convCache={};for(var i=0;i<store.conversations.length;i++){store._convCache[store.conversations[i].id]=store.conversations[i]}
+}
 function findConv(id){
-  for(var i=0;i<store.conversations.length;i++){
-    if(store.conversations[i].id===id)return store.conversations[i]
-  }
-  return null
+  if(!store._convCache)rebuildConvCache();
+  if(store._convCache[id]!==undefined)return store._convCache[id];
+  rebuildConvCache();return store._convCache[id]||null
 }
 
 function fbUserId(){

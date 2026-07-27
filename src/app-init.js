@@ -1,5 +1,7 @@
 // ===== SESSION-SCOPED EVENT LISTENERS =====
+var _sessListenersActive=false;
 function initSessionListeners(){
+  if(_sessListenersActive)return;_sessListenersActive=true;
   document.addEventListener('keydown',function(e){
     if(store.recordingShortcut)return;
     if($('settings-page').classList.contains('active')&&e.key!=='Escape'&&e.key!=='Enter')return;
@@ -98,7 +100,7 @@ function initSessionListeners(){
     if(mediaList){
       e.preventDefault();
       mediaList.scrollLeft+=e.deltaY
-    }else if(!t.closest('.chat-messages')&&!t.closest('.conversations')&&!t.closest('.modal-body')&&!t.closest('.auth-inner')&&!t.closest('.settings-content')&&!t.closest('.profile-panel-body')&&!t.closest('#emoji-body')&&!t.closest('#emoji-cats')){
+    }else if(!t.closest('.chat-messages')&&!t.closest('.conversations')&&!t.closest('.modal-body')&&!t.closest('.auth-inner')&&!t.closest('.settings-content')&&!t.closest('.profile-panel-body')&&!t.closest('#emoji-body')&&!t.closest('#emoji-cats')&&!t.closest('.devtools-overlay')){
       e.preventDefault()
     }
   },{signal:store._ac.signal,passive:false});
@@ -112,7 +114,13 @@ function initSessionListeners(){
 
   var cm=$('chat-messages');
   if(cm)cm.addEventListener('scroll',function(){
-    if(store.contextMenuMsgId)hideContextMenu()
+    if(store.contextMenuMsgId)hideContextMenu();
+    store._nearBottom=cm.scrollHeight-cm.scrollTop-cm.clientHeight<150;
+    if(store._nearBottom&&store._hasNewMsg){store._hasNewMsg=false;var cv=findConv(store.activeConvId);if(cv&&cv.unread>0){cv.unread=0;saveUnreadCounts();renderConversations()};updateNewMsgIndicator()}
+    // Load more messages when scrolled to top
+    if(cm.scrollTop<=10&&store.activeConvId&&typeof loadMoreMessages==='function'){
+      loadMoreMessages(store.activeConvId)
+    }
   },{signal:store._ac.signal,passive:true});
 }
 initSessionListeners();
@@ -140,7 +148,7 @@ async function initWelcome(){
     await migratePlainAccountPasswords();
       var accs=getAccounts();
       if(accs.length===1){showScreen('screen-login');$('login-email').value=accs[0].email;validateLogin();$('login-pass').focus()}
-      else{renderSavedAccounts();showScreen('screen-welcome');setTimeout(renderSavedAccounts,100)}
+      else{renderSavedAccounts();showScreen('screen-welcome')}
     })
 }
 
@@ -187,4 +195,3 @@ loadFirebase(function(){
 
 // Wire up store events for reactive UI
 store.on('conversations', renderConversations);
-store.on('messages', function(){ if(store.activeConvId) renderMessages(store.activeConvId); });

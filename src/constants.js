@@ -14,7 +14,8 @@ var COLLECTIONS = {
   FRIENDS: 'friends',
   FRIEND_REQUESTS: 'friendRequests',
   CALL_SIGNALS: 'call_signals',
-  LIST: 'list'
+  LIST: 'list',
+  STORIES: 'stories'
 };
 
 var STORAGE_KEYS = {
@@ -41,7 +42,9 @@ var STORAGE_KEYS = {
   NOISE_LEVEL: 'noiseLevel',
   VOLUME: 'volume',
   LAST_ACTIVITY: 'lastActivity',
-  NOTIFICATIONS: 'notifications'
+  NOTIFICATIONS: 'notifications',
+  STORY_VIEWED: 'storyViewed',
+  STORY_DRAFT: 'storyDraft'
 };
 
 var STATUS = {

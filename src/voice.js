@@ -70,7 +70,7 @@ function sendVoice(){
     var id=uid();
     if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];
     var msg={id:id,type:'sent',senderId:fbUserId(),text:'',time:timeNow(),edited:false,deleted:false,audio:dataUrl,duration:dur};
-    store.messages[store.activeConvId].push(msg);store.emit('messages');
+    store.messages[store.activeConvId].push(msg);;
     renderMessages(store.activeConvId);
     var conv=findConv(store.activeConvId);
     if(conv){conv.lastMsg='🎤 Sesli mesaj';conv.lastActivity=Date.now();conv.time=timeNow();renderConversations()}
@@ -199,5 +199,5 @@ function updateAudioUI(msgId,state){
 }
 
 // scrollToBottom referenced from renderMessages (now in messaging.js)
-function scrollToBottom(){var el=$('chat-messages');if(el){el.scrollTo({top:el.scrollHeight,behavior:'smooth'});store._hasNewMsg=false;var ni=$('new-msg-indicator');if(ni)ni.style.display='none';var sb=$('scroll-bottom-btn');if(sb)sb.style.display='none';var cv=findConv(store.activeConvId);if(cv&&cv.unread>0){cv.unread=0;saveUnreadCounts();renderConversations()}}
+function scrollToBottom(convId){var el=$('chat-messages');if(el){el.scrollTo({top:el.scrollHeight,behavior:'smooth'});store._hasNewMsg=false;var ni=$('new-msg-indicator');if(ni)ni.style.display='none';var sb=$('scroll-bottom-btn');if(sb)sb.style.display='none';var cv=findConv(convId||store.activeConvId);if(cv&&cv.unread>0){cv.unread=0;saveUnreadCounts();renderConversations()}}
 }

@@ -21,7 +21,10 @@ async function initE2E(){
   if(saved&&saved.length>0){
     try{
       var privKey=await crypto.subtle.importKey('pkcs8',new Uint8Array(saved),{name:'RSA-OAEP',hash:'SHA-256'},true,['decrypt']);
-      store.e2eKeys={privateKey:privKey};store.e2eReady=true
+      var pubExp=await crypto.subtle.exportKey('spki',privKey);
+      store.e2eKeys={privateKey:privKey,publicKeyB64:btoa(String.fromCharCode.apply(null,new Uint8Array(pubExp)))};store.e2eReady=true;
+      // Eski anahtari da yukle (varsa)
+      try{var oldSaved2=await safeLoad('e2e_private_old_'+store.activeAccountId);if(oldSaved2&&oldSaved2.length>0){var oldKey=await crypto.subtle.importKey('pkcs8',new Uint8Array(oldSaved2),{name:'RSA-OAEP',hash:'SHA-256'},true,['decrypt']);if(oldKey)store.e2eKeys._oldPrivateKey=oldKey}}catch(e){}
     }catch(e){}
     return
   }
@@ -29,10 +32,15 @@ async function initE2E(){
     var keyPair=await crypto.subtle.generateKey({name:'RSA-OAEP',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['encrypt','decrypt']);
     var pubKey=await crypto.subtle.exportKey('spki',keyPair.publicKey);
     var privKey=await crypto.subtle.exportKey('pkcs8',keyPair.privateKey);
+    // Eski anahtari yedekle (eski mesajlari okuyabilmek icin)
+    var oldSaved=await safeLoad('e2e_private_'+store.activeAccountId);
+    var oldPrivKey=null;
+    if(oldSaved&&oldSaved.length>0){try{oldPrivKey=await crypto.subtle.importKey('pkcs8',new Uint8Array(oldSaved),{name:'RSA-OAEP',hash:'SHA-256'},true,['decrypt']);await safeStore('e2e_private_old_'+store.activeAccountId,oldSaved)}catch(e){}}
     await safeStore('e2e_private_'+store.activeAccountId,Array.from(new Uint8Array(privKey)));
     var pubB64=btoa(String.fromCharCode.apply(null,new Uint8Array(pubKey)));
     if(window.db){var fbUid=fbUserId();if(fbUid)db.collection(COLLECTIONS.USERS).doc(fbUid).update({publicKey:pubB64}).catch(console.error)};
-    store.e2eKeys={privateKey:keyPair.privateKey};store.e2eReady=true
+    store.e2eKeys={privateKey:keyPair.privateKey,publicKeyB64:pubB64};store.e2eReady=true;
+    if(oldPrivKey)store.e2eKeys._oldPrivateKey=oldPrivKey
   }catch(e){}
 }
 
@@ -41,6 +49,13 @@ async function initE2E(){
 async function e2eEncrypt(text,recipientPubKeyB64){
   var keys=recipientPubKeyB64.map?recipientPubKeyB64:[recipientPubKeyB64];
   if(!text||!keys.length||!window.crypto)throw new Error('E2E: missing key');
+  // Include sender's own public key so they can decrypt their sent messages later
+  if(store.e2eKeys&&store.e2eKeys.publicKeyB64){
+    var selfKey=store.e2eKeys.publicKeyB64;
+    var hasSelf=false;
+    for(var sei=0;sei<keys.length;sei++){if(keys[sei]===selfKey){hasSelf=true;break}}
+    if(!hasSelf)keys.push(selfKey)
+  }
   var aesKey=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt']);
   var aesRaw=await crypto.subtle.exportKey('raw',aesKey);
   var iv=crypto.getRandomValues(new Uint8Array(12));
@@ -84,6 +99,9 @@ async function e2eEncrypt(text,recipientPubKeyB64){
 
 async function e2eDecrypt(packed64){
   if(!packed64||packed64.indexOf('🔒')!==0||!store.e2eKeys||!store.e2eKeys.privateKey)return null;
+  var keysToTry=[store.e2eKeys.privateKey];
+  // Eski anahtari da dene (key reset sonrasi eski mesajlari okuyabilmek icin)
+  if(store.e2eKeys._oldPrivateKey)keysToTry.push(store.e2eKeys._oldPrivateKey);
   try{
     var raw=Uint8Array.from(atob(packed64.slice(2)),function(c){return c.charCodeAt(0)});
     var ver=raw[0];
@@ -92,10 +110,8 @@ async function e2eDecrypt(packed64){
       var keyLen=(raw[13]<<8)|raw[14];
       var encKey=raw.slice(15,15+keyLen);
       var encMsg=raw.slice(15+keyLen);
-      var aesRaw=await crypto.subtle.decrypt({name:'RSA-OAEP'},store.e2eKeys.privateKey,encKey);
-      var aesKey=await crypto.subtle.importKey('raw',aesRaw,{name:'AES-GCM',length:256},false,['decrypt']);
-      var dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:iv},aesKey,encMsg);
-      return new TextDecoder().decode(dec)
+      for(var _kt=0;_kt<keysToTry.length;_kt++){try{var aesRaw=await crypto.subtle.decrypt({name:'RSA-OAEP'},keysToTry[_kt],encKey);if(aesRaw){var aesKey=await crypto.subtle.importKey('raw',aesRaw,{name:'AES-GCM',length:256},false,['decrypt']);var dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:iv},aesKey,encMsg);if(dec)return new TextDecoder().decode(dec)}}catch(e){}}
+      return null
     }else if(ver===2){
       var numKeys=(raw[1]<<8)|raw[2];
       var off=3,foundKey=null;
@@ -103,7 +119,7 @@ async function e2eDecrypt(packed64){
         var kl=(raw[off]<<8)|raw[off+1];
         var ek=raw.slice(off+2,off+2+kl);
         off+=2+kl;
-        if(!foundKey){try{var maybe=await crypto.subtle.decrypt({name:'RSA-OAEP'},store.e2eKeys.privateKey,ek);foundKey=new Uint8Array(maybe)}catch(e){}}
+        if(!foundKey){for(var _kt2=0;_kt2<keysToTry.length;_kt2++){try{var maybe=await crypto.subtle.decrypt({name:'RSA-OAEP'},keysToTry[_kt2],ek);if(maybe){foundKey=new Uint8Array(maybe);break}}catch(e){}}}
       }
       if(!foundKey)return null;
       var iv=raw.slice(off,off+12);
@@ -170,18 +186,16 @@ function previewTheme(t){
   pe.textContent=':root,body{'+styles+'}'
 }
 function unpreviewTheme(){
-  var pe=document.getElementById('theme-preview-style');
-  if(pe)pe.textContent='';
   var w=$('app-window');
-  if(w)validThemes.forEach(function(c){w.classList.remove('t-'+c,'l-'+c)});
   var b=document.body;
-  validThemes.forEach(function(c){b.classList.remove('t-'+c,'l-'+c)});
   var t=getTheme();
   if(t&&t!=='default'&&validThemes.indexOf(t)!==-1){
     var p=lightThemes.indexOf(t)!==-1?'l-':'t-';
     if(w)w.classList.add(p+t);
     b.classList.add(p+t)
   }
+  var pe=document.getElementById('theme-preview-style');
+  if(pe)pe.textContent=''
 }
 function selectTheme(t){ls(STORAGE_KEYS.THEME,t);applyTheme(t);showSettingsCat('theme')}
 
@@ -207,12 +221,12 @@ function resetFirebaseAll(){
         try{
           var email=auth.currentUser.email;
           var pass=$('delete-password-input').value;
-          if(!pass){showAlert('Şifre gerekli.');$('delete-password-field').style.display='none';return}
+          if(!pass){showError('Şifre gerekli.','encryption.js:210');$('delete-password-field').style.display='none';return}
           var cred=firebase.auth.EmailAuthProvider.credential(email,pass);
           await auth.currentUser.reauthenticateWithCredential(cred);
           db.collection(COLLECTIONS.USERS).doc(auth.currentUser.uid).delete().catch(console.error);
           await auth.currentUser.delete()
-        }catch(e){$('delete-password-field').style.display='none';showAlert('Doğrulama başarısız. Hesap silinemedi.');return}
+        }catch(e){$('delete-password-field').style.display='none';showError('Doğrulama başarısız. Hesap silinemedi.','encryption.js:215');return}
       }
       $('delete-password-field').style.display='none';
       $('delete-password-input').value='';
@@ -240,7 +254,7 @@ function resetAllData(){
     if(window.auth&&auth.currentUser){
       try{
         var pass=$('delete-password-input').value;
-        if(!pass){$('delete-password-field').style.display='none';showAlert('Hesap silme iptal edildi.');return}
+        if(!pass){$('delete-password-field').style.display='none';showError('Hesap silme iptal edildi.','encryption.js:243');return}
         var cred=firebase.auth.EmailAuthProvider.credential(email,pass);
         await auth.currentUser.reauthenticateWithCredential(cred);
         if(window.db&&fbUid){
@@ -266,7 +280,7 @@ db.collection(COLLECTIONS.FRIENDS).doc(otherId).collection(COLLECTIONS.LIST).doc
           await db.collection(COLLECTIONS.USERS).doc(fbUid).delete().catch(console.error)
         }
         await auth.currentUser.delete()
-      }catch(e){$('delete-password-field').style.display='none';showAlert('Doğrulama başarısız. Hesap silinemedi.');return}
+      }catch(e){$('delete-password-field').style.display='none';showError('Doğrulama başarısız. Hesap silinemedi.','encryption.js:269');return}
     }
     $('delete-password-field').style.display='none';
     $('delete-password-input').value='';
