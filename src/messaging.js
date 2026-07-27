@@ -127,7 +127,7 @@ function renderConversations(list){
     '</div><div class="conv-info"><div class="conv-name"><span>'+(pinned?'📌 ':'')+(muted?'🔇 ':'')+esc(c.name)+'</span><span class="conv-time">'+esc(c.time||'')+'</span></div><div class="conv-preview">'+esc(c.lastMsg||'')+'</div></div>'+
     (c.unread>0?'<div class="conv-badge">'+c.unread+'</div>':'');
     div.onclick=function(){selectConversation(c.id)};
-    div.oncontextmenu=function(e){e.preventDefault();showConvContext(e.clientX,e.clientY,c.id)};
+    div.oncontextmenu=function(e){e.preventDefault();console.log('[ctx] right-click',c.id);showConvContext(e.clientX,e.clientY,c.id)};
     el.appendChild(div)
   })(data[i])}
   store._convListAnimatedOnce=true;
