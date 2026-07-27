@@ -28,6 +28,7 @@ import com.waxmes.app.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit) {
+    val t = LocalTheme.current
     var convs by remember { mutableStateOf<List<Conversation>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -36,26 +37,26 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit) {
     }
 
     Scaffold(
-        containerColor = Bg,
-        topBar = { TopAppBar(title = { Text("WaxMes", fontWeight = FontWeight.Bold, color = Text) }) },
-        bottomBar = { NavigationBar(containerColor = Surface) {
-            NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Chat, contentDescription = null) }, label = { Text("Sohbetler", fontSize = 11.sp) })
-            NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Add, contentDescription = null) }, label = { Text("Durum", fontSize = 11.sp) })
-            NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Settings, contentDescription = null) }, label = { Text("Ayarlar", fontSize = 11.sp) })
+        containerColor = t.bg,
+        topBar = { TopAppBar(title = { Text("WaxMes", fontWeight = FontWeight.Bold, color = t.text) }) },
+        bottomBar = { NavigationBar(containerColor = t.bg2) {
+            NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Chat, contentDescription = null, tint = t.accent) }, label = { Text("Sohbetler", fontSize = 11.sp, color = t.accent) })
+            NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Add, contentDescription = null, tint = t.text3) }, label = { Text("Durum", fontSize = 11.sp, color = t.text3) })
+            NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = t.text3) }, label = { Text("Ayarlar", fontSize = 11.sp, color = t.text3) })
         } }
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(Bg), contentPadding = PaddingValues(vertical = 4.dp)) {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg), contentPadding = PaddingValues(vertical = 4.dp)) {
             items(convs) { conv ->
                 Row(modifier = Modifier.fillMaxWidth().clickable { onChatClick(conv.id) }.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(conv.color)), contentAlignment = Alignment.Center) {
-                        Text(conv.name.first().uppercase(), color = Text, fontWeight = FontWeight.Bold)
+                        Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(conv.name, color = Text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (conv.lastMsg.isNotEmpty()) Text(conv.lastMsg, color = Text3, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(conv.name, color = t.text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (conv.lastMsg.isNotEmpty()) Text(conv.lastMsg, color = t.text3, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    if (conv.unread > 0) Box(modifier = Modifier.size(20.dp).clip(CircleShape).background(Red), contentAlignment = Alignment.Center) { Text("${conv.unread}", color = Text, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                    if (conv.unread > 0) Box(modifier = Modifier.size(20.dp).clip(CircleShape).background(Color(0xFFef4444)), contentAlignment = Alignment.Center) { Text("${conv.unread}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                 }
             }
         }
