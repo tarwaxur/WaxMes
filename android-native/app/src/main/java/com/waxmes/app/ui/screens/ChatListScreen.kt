@@ -189,26 +189,29 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             item {
                 // Stories row
                 Text("Stories", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp))
-                LazyRow(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    item {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { /* add story */ }) {
-                            Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(t.accent.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(28.dp))
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(convs.filter { it.online && !it.isGroup }.take(7)) { conv ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onChatClick(conv.id) }) {
+                                Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(conv.color)).padding(2.dp)) {
+                                    SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
+                                        error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+                                        loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 20.sp) })
+                                }
+                                Text(conv.name.take(6), color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                             }
-                            Text("Your Story", color = t.text4, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
                         }
-                    }
-                }
-                LazyRow(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(convs.filter { it.online && !it.isGroup }.take(8)) { conv ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onChatClick(conv.id) }) {
-                            Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(conv.color)).padding(2.dp)) {
-                                SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                                    error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
-                                    loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 20.sp) })
+                        item {
+                            Spacer(Modifier.width(4.dp))
+                            Surface(shape = CircleShape, color = t.bg, shadowElevation = 4.dp) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { /* add story */ }) {
+                                    Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(t.accent.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(28.dp))
+                                    }
+                                    Text("Your Story", color = t.text4, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+                                }
                             }
-                            Text(conv.name.take(8), color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                         }
                     }
                 }
