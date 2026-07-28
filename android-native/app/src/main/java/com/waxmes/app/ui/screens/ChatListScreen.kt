@@ -47,6 +47,9 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
 
     var selectedTab by remember { mutableStateOf("chats") }
     var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
+    var hasStory by remember { mutableStateOf(false) }
+    var showStoryViewer by remember { mutableStateOf(false) }
+    var showAddFriend by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         repo.getConversations { list ->
@@ -191,6 +194,22 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 Text("Stories", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp))
                 Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        item {
+                            Surface(shape = CircleShape, color = t.bg, shadowElevation = 4.dp) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable {
+                                    if (hasStory) showStoryViewer = true else { hasStory = true }
+                                }) {
+                                    Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(if (hasStory) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                                        if (hasStory) {
+                                            Text(repo.uid.take(1).uppercase(), color = t.text2, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                                        } else {
+                                            Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(28.dp))
+                                        }
+                                    }
+                                    Text(if (hasStory) "My Story" else "Add Story", color = t.text3, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+                                }
+                            }
+                        }
                         items(convs.filter { it.online && !it.isGroup }.take(7)) { conv ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onChatClick(conv.id) }) {
                                 Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(conv.color)).padding(2.dp)) {
@@ -202,22 +221,21 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 Text(conv.name.take(6), color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                             }
                         }
-                        item {
-                            Spacer(Modifier.width(4.dp))
-                            Surface(shape = CircleShape, color = t.bg, shadowElevation = 4.dp) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { /* add story */ }) {
-                                    Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(t.accent.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(28.dp))
-                                    }
-                                    Text("Your Story", color = t.text4, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
-                                }
-                            }
-                        }
                     }
                 }
             }
             item {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
+                Surface(shape = RoundedCornerShape(16.dp), color = t.accent.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { showAddFriend = true }) {
+                    Row(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PersonAdd, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Add Friend", color = t.accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = t.accent.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
                 Text("Friends", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, bottom = 8.dp))
             }
             items(convs.filter { !it.isGroup && !it.isArchived }.sortedByDescending { it.online }) { conv ->
@@ -239,6 +257,30 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             item { Spacer(Modifier.height(80.dp)) }
         }
     }
+    }
+
+    if (showStoryViewer) {
+        AlertDialog(onDismissRequest = { showStoryViewer = false },
+            containerColor = t.bg, shape = RoundedCornerShape(24.dp),
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    IconButton(onClick = { hasStory = false; showStoryViewer = false }) { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFef4444)) }
+                    Spacer(Modifier.weight(1f))
+                    Text("My Story", color = t.text, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { /* add another story */ }) { Icon(Icons.Default.Add, contentDescription = null, tint = t.accent) }
+                }
+            },
+            text = {
+                Box(modifier = Modifier.fillMaxWidth().height(300.dp).background(t.bg2, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                    Text("Your story will appear here", color = t.text3, fontSize = 14.sp)
+                }
+            },
+            confirmButton = { TextButton(onClick = { showStoryViewer = false }) { Text("Close", color = t.accent) } })
+    }
+
+    if (showAddFriend) {
+        AddFriendScreen(t, onBack = { showAddFriend = false })
     }
 
     if (contextConv != null) {
@@ -320,6 +362,42 @@ private fun ContextMenuItem(icon: ImageVector, label: String, desc: String, tint
                 Text(desc, color = ct.text4, fontSize = 11.sp)
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = ct.text4, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun AddFriendScreen(t: ThemeColors, onBack: () -> Unit) {
+    var page by remember { mutableStateOf("add") }
+    Box(modifier = Modifier.fillMaxSize().background(t.bg).clickable { /* consume clicks */ }) {
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp).navigationBarsPadding()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = t.text) }
+                Spacer(Modifier.width(8.dp))
+                Text("Add Friend", color = t.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = RoundedCornerShape(12.dp), color = if (page == "add") t.accent.copy(alpha = 0.15f) else t.bg3,
+                    modifier = Modifier.weight(1f).clickable { page = "add" }) {
+                    Text("Add Friend", color = if (page == "add") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(12.dp), fontSize = 13.sp)
+                }
+                Surface(shape = RoundedCornerShape(12.dp), color = if (page == "pending") t.accent.copy(alpha = 0.15f) else t.bg3,
+                    modifier = Modifier.weight(1f).clickable { page = "pending" }) {
+                    Text("Pending", color = if (page == "pending") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(12.dp), fontSize = 13.sp)
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            if (page == "add") {
+                OutlinedTextField(value = "", onValueChange = {}, placeholder = { Text("Search by username...", color = t.text4) },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = t.accent.copy(alpha = 0.5f), unfocusedBorderColor = t.border2.copy(alpha = 0.3f), cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text, focusedContainerColor = t.bg2.copy(alpha = 0.5f), unfocusedContainerColor = t.bg2.copy(alpha = 0.5f)))
+                Spacer(Modifier.height(16.dp))
+                Text("Search for users by their username to send a friend request.", color = t.text4, fontSize = 13.sp)
+            } else {
+                Text("No pending requests", color = t.text4, fontSize = 14.sp)
+            }
         }
     }
 }
