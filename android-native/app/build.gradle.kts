@@ -62,4 +62,7 @@ dependencies {
 
     // Accompanist (system UI controller)
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
+
+    // Image loading
+    implementation("io.coil-kt:coil-compose:2.7.0")
 }

@@ -6,8 +6,9 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
-import com.waxmes.app.ui.screens.appLog
-import com.waxmes.app.ui.screens._appLogs
+import com.waxmes.app.data.appLog
+import java.text.SimpleDateFormat
+import java.util.*
 
 fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<String, String>): Conversation? {
     val d = doc.data ?: return null
@@ -26,8 +27,11 @@ fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<
         is Number -> la.toLong()
         else -> 0L
     }
+    val avatarUrl = d["avatarUrl"] as? String ?: ""
+    val online = d["online"] as? Boolean ?: false
     return Conversation(id = doc.id, name = displayName, lastMsg = (d["lastMsg"] as? String) ?: "",
-        lastActivity = lastActivity, unread = 0, color = 0xFF818CF8, otherId = otherId)
+        lastActivity = lastActivity, unread = 0, avatarUrl = avatarUrl, color = 0xFF818CF8,
+        online = online, otherId = otherId)
 }
 
 fun docToMessage(doc: DocumentSnapshot, uid: String): Message {
@@ -43,12 +47,34 @@ class Repository {
     val uid get() = auth.currentUser?.uid ?: ""
     val nameCache = mutableMapOf<String, String>()
 
+    val userCache = mutableMapOf<String, String>()  // userId -> avatarUrl
+    val onlineCache = mutableMapOf<String, Boolean>()  // userId -> online
+
     fun fetchUserName(userId: String, onResult: (String) -> Unit) {
         if (nameCache.containsKey(userId)) { onResult(nameCache[userId]!!); return }
         db.collection("users").document(userId).get(Source.SERVER).addOnSuccessListener { snap ->
             val name = snap.getString("displayName") ?: snap.getString("username") ?: userId.take(8)
             nameCache[userId] = name
+            val avatar = snap.getString("avatarUrl") ?: snap.getString("avatar") ?: ""
+            userCache[userId] = avatar
+            onlineCache[userId] = snap.getBoolean("online") ?: false
             onResult(name)
+        }
+    }
+
+    fun fetchUserStatus(userId: String, onResult: (String, Boolean, String) -> Unit) {
+        val cachedName = nameCache[userId]
+        val cachedAvatar = userCache[userId]
+        val cachedOnline = onlineCache[userId]
+        if (cachedName != null && cachedAvatar != null && cachedOnline != null) {
+            onResult(cachedName, cachedOnline, cachedAvatar); return
+        }
+        db.collection("users").document(userId).get(Source.SERVER).addOnSuccessListener { snap ->
+            val name = snap.getString("displayName") ?: snap.getString("username") ?: userId.take(8)
+            val avatar = snap.getString("avatarUrl") ?: snap.getString("avatar") ?: ""
+            val online = snap.getBoolean("online") ?: false
+            nameCache[userId] = name; userCache[userId] = avatar; onlineCache[userId] = online
+            onResult(name, online, avatar)
         }
     }
 
@@ -113,8 +139,7 @@ class Repository {
                 onChange(snap.documents.map { docToMessage(it, uid) })
             }
 
-    fun getConversationName(convId: String, onResult: (String) -> Unit = {}): String? {
-        val conv = nameCache.entries.find { it.key == uid }
+    fun getConversationName(convId: String, onResult: (String) -> Unit = {}) {
         db.collection("conversations").document(convId).get().addOnSuccessListener { snap ->
             val name = snap.getString("name")
             if (!name.isNullOrEmpty()) { onResult(name); return@addOnSuccessListener }
@@ -122,7 +147,14 @@ class Repository {
             val otherId = mids.find { it != uid } ?: return@addOnSuccessListener
             fetchUserName(otherId) { onResult(it) }
         }
-        return null
+    }
+
+    fun getConversationStatus(convId: String, onResult: (String, Boolean, String) -> Unit) {
+        db.collection("conversations").document(convId).get().addOnSuccessListener { snap ->
+            val mids = snap.get("memberIds") as? List<String> ?: return@addOnSuccessListener
+            val otherId = mids.find { it != uid } ?: return@addOnSuccessListener
+            fetchUserStatus(otherId, onResult)
+        }
     }
 
     fun sendMessage(convId: String, text: String) {
