@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, nativeImage, Notification, Tray, Menu, safeStorage, dialog, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeImage, Notification, Tray, Menu, safeStorage, dialog, desktopCapturer, protocol, net } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -86,7 +86,7 @@ function createWindow() {
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, cb) => {
     cb({ responseHeaders: {
       ...details.responseHeaders,
-      'Content-Security-Policy': ["default-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app https://www.gstatic.com blob: data: mediastream:; style-src 'self' 'unsafe-inline'; script-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app"]
+      'Content-Security-Policy': ["default-src 'self' waxmes: https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app https://www.gstatic.com blob: data: mediastream:; style-src 'self' 'unsafe-inline'; script-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com https://*.firebasestorage.app"]
     }});
   });
 
@@ -110,7 +110,7 @@ function createWindow() {
     mainWindow?.webContents?.send('update-error', err.message || err);
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.loadURL('waxmes://index.html');
   mainWindow.once('ready-to-show', () => { mainWindow.show() });
   mainWindow.on('maximize', () => mainWindow?.webContents?.send('window-maximized', true));
   mainWindow.on('unmaximize', () => mainWindow?.webContents?.send('window-maximized', false));
@@ -280,7 +280,16 @@ ipcMain.handle('install-update', () => {
   return true;
 });
 
+if (protocol.registerSchemesAsPrivileged) {
+  protocol.registerSchemesAsPrivileged([{ scheme: 'waxmes', privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true } }]);
+}
+
 app.whenReady().then(() => {
+  protocol.handle('waxmes', (request) => {
+    var url = request.url.replace('waxmes://', '');
+    var filePath = path.join(__dirname, url);
+    return net.fetch('file://' + filePath);
+  });
   if (backgroundMode) createTray();
   createWindow();
 });
