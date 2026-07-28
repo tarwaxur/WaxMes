@@ -70,5 +70,177 @@ DESKTOP (ELEKTRON JS) SÜRÜMÜ — AKTIF HATALAR (27.07.2026)
             ayni member pair'ine sahip ID'si farkli konusmalari
             temizlesin, lastMsg guncel olani korusun.
 
+[ ] 11. ARKADAS LISTESINDE PROFIL FOTOGRAFI GORUNMUYOR
+     Dosyalar: src/ui-core.js (switchFriendsTab, sendFriendRequest, acceptFriendRequest)
+     Sorun: Arkadas listesinde, gelen/giden isteklerde kullanicinin profil
+            fotografi yerine sadece bas harf gorunuyor. Oysa DM kutusunda
+            ayni kullanicinin fotografi gorunuyor.
+     Sebep 1: Arkadas listesindeki avatar, Firestore'daki friends
+              koleksiyonundan geliyor. Buradaki avatar degeri, istek
+              GONDERILIRKEN localStorage'dan aliniyor (getAccounts()).
+              Kullanici kayit olurken avatar yuklemediyse localStorage'da
+              null olur, Firestore'a da null gider.
+              Oysa DM kutusu konusma olusturulurken Firestore user
+              doc'undan avatar cekiyor (firebase-data.js:54:
+              ud.avatar||(ud.displayName||'?').charAt(0).toUpperCase())
+     Sebep 2: sendFriendRequest() (ui-core.js:135-136):
+              myAv = getAccounts()'dan alinir → buyuk ihtimal null
+              toAvatar = targetUser.data().avatar → bu da null olabilir
+     Sebep 3: acceptFriendRequest() (ui-core.js:155-160):
+              friendAvatar = istekteki fromAvatar/toAvatar (yine null)
+              myAv = yine localStorage'dan (null)
+     Sebep 4: switchFriendsTab 'friends' (ui-core.js:284):
+              f.avatar kontrolu: if(fAv&&fAv.length>2)
+              Avatar null veya kisa string ise bas harf gosterilir
+     Cozum: - sendFriendRequest'te localStorage yerine Firestore user
+              doc'undan avatar cek: db.collection(USERS).doc(fbUid).get()
+            - acceptFriendRequest'te de ayni sekilde Firestore'dan cek
+            - Veya periyodik olarak localStorage'daki avatar'i
+              Firestore'daki ile senkronize et (syncSidebarProfile
+              cagrisinda guncelle)
+     DEBUG: console.log('[DEBUG]...') eklendi:
+            - ui-core.js:285 (friends list render) → avatar tipi/degeri
+            - ui-core.js:308 (incoming requests) → fromAvatar degeri
+            - ui-core.js:316 (sent requests) → toAvatar degeri
+            - ui-core.js:135-141 (sendFriendRequest) → myAv/targetAv
+            - ui-core.js:155-160 (acceptFriendRequest) → friendAvatar/myAv
+
+[ ] 12. MESAJ SILININCE DM PREVIEW GUNCELLENMIYOR — DETAYLI ANALIZ
+     Dosyalar: src/messaging.js:1070-1099, src/firebase-data.js:61-70,102-124
+     Sorun: Kullanici mesaj sildiginde DM listesinde hala eski mesaj
+            metni gorunuyor, "Bu mesaj silindi" yazmiyor.
+
+     SEBEP 1 — Race condition: Firestore .set() await'siz
+     confirmDelete() (messaging.js:1070):
+        1. updateConvPreview(convId) ile local'de conv.lastMsg guncellenir
+        2. db.collection().set({lastMsg:...}) FIRESTORE'a yazilir (await YOK)
+        3. renderConversations() ile UI guncellenir (dogru gorunur)
+        4. ANCAK Firestore yazmasi bitmeden fbListenConversations
+           listener'i tetiklenir (local cache snapshot'i ile)
+        5. Listener'daki modified handler (firebase-data.js:62-70)
+           conv.lastMsg = d.lastMsg || conv.lastMsg yapar
+        6. Eger Firestore yazmasi henuz tamamlanmadiysa d.lastMsg
+           ESKI degerdir → conv.lastMsg ESKI haline doner!
+     Tespit: confirmDelete satir 1078'de .set() Promise'i
+             beklenmedigi icin (await yok) bu yaris kosusu olusuyor.
+
+     SEBEP 2 — deduplicateConversations yanlis kaydi siliyor
+     confirmDelete() lastActivity: Date.now() (tam sayi) yazar.
+     sendMessage() ise lastActivity: Date.now() + seq*0.001 (kesirli).
+     deduplicateConversations (firebase-data.js:101-124):
+        - Iki konusma kaydi arasinda yuksek lastActivity olani korur
+        - Eger silinen mesajdan once gonderilmis bir mesaj varsa
+          onun lastActivity'si (+0.001 ile) silme islemindekinden
+          (Date.now()) daha yuksek olabilir
+        - Dedup yanlis kaydi tutup dogruyu silebilir!
+     Tespit: dedup karar mekanizmasi lastActivity'e bakar, silme
+             isleminin lastActivity'si genelde daha dusuk kalir.
+
+     SEBEP 3 — Silinen mesaj son mesaj degilse
+     updateConvPreview (messaging.js:1082):
+        - SADECE store.messages[convId] dizisindeki SON mesaja bakar
+        - Eger silinen mesaj son mesaj degilse, son mesaj gosterilir
+        - Bu dogru davranistir ama kullanici karistiriyor olabilir
+
+     COZUM:
+     a) confirmDelete'de Firestore .set()'i await'le:
+          await db.collection(...).set({...})
+     b) confirmDelete'de dedup'i gecici olarak kapat:
+          store._skipDedup=true;
+          ... islemler ...
+          store._skipDedup=false;
+        Ve deduplicateConversations'un basinda:
+          if(store._skipDedup)return;
+     c) Veya lastActivity'yi silme isleminde de +0.001 ekle:
+          lastActivity: Date.now() + 0.999
+        Boylece dedup en son silme islemini korur.
+     d) updateConvPreview'e alternatif: silinen mesaj ID'si son mesaj
+        olmasa bile, egere bu ID son goruntulenen mesaj ise guncelle.
+
+     DEBUG: console.log('[DEBUG]...') eklendi:
+            - messaging.js:1070-1080 (confirmDelete) → lastMsg before/after
+            - messaging.js:1082-1099 (updateConvPreview) → last msg durumu
+            - firebase-data.js:62-70 (convListener modified) → lastMsg degisimi
+            - firebase-data.js:102-124 (deduplicateConversations) → hangisi silindi
+
+[ ] 13. CHAT SUREKLI YENIDEN YUKLENIYOR (renderMessages fazla cagriliyor)
+     Dosyalar: src/messaging.js:192-196, 1310-1428, src/messaging.js:742-752
+     Sorun: Her 4-5 tus basiminda veya 4-5 saniyede bir chat mesaj
+            alani komple silinip yeniden olusturuluyor (animasyonlar
+            oynuyor, kullaniciyi rahatsiz ediyor).
+
+     SEBEP 1 — sendMessage() full re-render yapiyor
+     sendMessage() (messaging.js:~192):
+        store.messages[store.activeConvId].push(msg);
+        renderMessages(store.activeConvId);  // <-- FULL RE-RENDER!
+     renderMessages (messaging.js:1310):
+        el.innerHTML='';  // TUM DOM'U SIL
+        // ... tum mesajlari bastan olustur ...
+     Bu her mesaj gonderiminde tum mesaj alanini sifirliyor.
+     Oysa appendSingleMessage() (messaging.js:1261) sadece yeni
+     mesaji ekliyor, mevcut DOM'a dokunmuyor.
+
+     SEBEP 2 — E2E recursive renderMessages
+     renderMessages icindeki E2E cozumleme dongusu (satir 1317-1318):
+        HER sifreli mesaj cozulunce renderMessages TEKRAR cagriliyor.
+        5 sifreli mesaj varsa 5 kere full re-render!
+        Bu bir E2E sarmalina yol acabilir.
+
+     SEBEP 3 — startTyping her tusda Firestore'a yaziyor
+     startTyping() (messaging.js:742):
+        Her input event'inde Firestore'daki conversation doc'u guncelliyor
+        (1sn debounce var ama yine de gereksiz).
+        Bu fbListenConversations listener'ini tetikliyor.
+        Listener modified handler'i calisiyor, dedup calisiyor,
+        gereksiz islem yuku olusuyor.
+     Ayrica stopTyping() (satir 753) de ayrica bir Firestore yazmasi yapiyor.
+
+     COZUM:
+     a) sendMessage'da renderMessages yerine appendSingleMessage kullan:
+          store.messages[store.activeConvId].push(msg);
+          appendSingleMessage(store.activeConvId, msg);
+     b) E2E dongusundeki recursive renderMessages'i kaldir:
+          Cozulen mesaj icin DOM'da replaceWith ile guncelle
+          (appendSingleMessage'daki pattern'i kullan)
+     c) renderMessages icinde el.innerHTML='' yapma; DOM'a yeni
+        mesajlari append et, mevcutlari replace et.
+     d) Animasyonlari tamamen kaldir veya sadece YENI mesajlara uygula.
+        renderMessages basinda CSS animation'larini gecici olarak durdur:
+          el.style.animation='none';
+          el.offsetHeight; // reflow
+          el.style.animation='';
+
+     DEBUG: console.log('[DEBUG]...') eklendi:
+            - messaging.js:1310 (renderMessages) → cagri stack trace
+            - messaging.js:1317-1318 (E2E recursive) → recursive render
+            - messaging.js:742-752 (startTyping) → Firestore yazma
+            - firebase-data.js:62-70 (convListener) → hangi alan degisti
+
+[ ] 14. SOHBET ARAMA / FILTRELEME CALISMIYOR
+     Dosya: src/messaging.js:136 (filterConversations), satir 95 (renderConversations)
+     Sorun: Sidebar'daki arama kutusuna isim yazinca konusmalar
+            filtrelenmiyor, tum konusmalar gorunmeye devam ediyor.
+
+     Sebep: filterConversations(q) (satir 136):
+              store._searchQuery=q; -> sadece query'yi kaydediyor
+              renderConversations()  -> render ediyor
+            renderConversations icinde (satir 95):
+              if(!store._searchQuery)data=data.filter(...)
+            Bu satir "arama aktifse archive filtresini ATLA" anlamina
+            geliyor. Yani _searchQuery doluysa archive filtresi
+            uygulanmiyor — AMA hicbir yerde konusma adina gore
+            filtreleme (name matching) yapilmiyor!
+            _searchQuery sadece archive filtrelemesini atlamak icin
+            kullaniliyor, konusma adi filtrelemesi hic kodlanmamis.
+
+     Cozum: renderConversations icinde, data'nin uzerinde name
+            filtresi de uygulanmali. Ornegin satir 97'den once:
+              if(store._searchQuery){
+                var q=store._searchQuery.toLowerCase();
+                data=data.filter(function(c){return c.name.toLowerCase().indexOf(q)!==-1});
+              }
+            Ayrica arama yapilirken hidden/archived konusmalar da
+            gosterilmeli (su an archive filtresi atlaniyor zaten).
+
 NOT: Bu hatalar Desktop (Electron/JS) surumune aittir.
 Android Native surum icin yukaridaki listeden takip edin.

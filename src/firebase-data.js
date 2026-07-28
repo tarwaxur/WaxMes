@@ -101,6 +101,7 @@ function fbListenConversations(uid){
 
 function deduplicateConversations(){
   var uid=fbUserId();if(!uid)return;
+  if(store._skipDedup)return;
   var seen={};
   for(var di=store.conversations.length-1;di>=0;di--){
     var dc=store.conversations[di];

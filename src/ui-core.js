@@ -132,8 +132,8 @@ async function sendFriendRequest(){
     if(alreadySent){fail('Bu kullanıcıya zaten istek göndermişsin.');return}
     // Step 4: Send request
     var reqId=uid();
-    var myAccs=getAccounts(),myAv=null;
-    for(var ai=0;ai<myAccs.length;ai++){if(myAccs[ai].id===fbUid){myAv=myAccs[ai].avatar||null;break}}
+    var myAv=null;
+    try{var _uSnap=await db.collection(COLLECTIONS.USERS).doc(fbUid).get();if(_uSnap.exists){myAv=_uSnap.data().avatar||null}}catch(e){}
     resetTimer();
     await db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(reqId).set({
       from:fbUid,fromName:$('sidebar-username').textContent||'Sen',
@@ -152,8 +152,8 @@ async function acceptFriendRequest(reqId){
     var data=doc.data(),friendId=data.from===uid?data.to:data.from;
     var friendName=data.from===uid?data.toName:data.fromName;
     var friendAvatar=data.from===uid?data.toAvatar||null:data.fromAvatar||null;
-    var myAccs=getAccounts(),myAv=null;
-    for(var ai=0;ai<myAccs.length;ai++){if(myAccs[ai].id===uid){myAv=myAccs[ai].avatar||null;break}}
+    var myAv=null;
+    try{var _uSnap=await db.collection(COLLECTIONS.USERS).doc(uid).get();if(_uSnap.exists){myAv=_uSnap.data().avatar||null}}catch(e){}
       await db.collection(COLLECTIONS.FRIEND_REQUESTS).doc(reqId).update({status:'accepted'});
 await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTIONS.LIST).doc(friendId).set({id:friendId,name:friendName,avatar:friendAvatar,accepted:Date.now()});
       await db.collection(COLLECTIONS.FRIENDS).doc(friendId).collection(COLLECTIONS.LIST).doc(uid).set({id:uid,name:$('sidebar-username').textContent||'Sen',avatar:myAv,accepted:Date.now()});

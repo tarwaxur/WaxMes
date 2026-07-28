@@ -93,6 +93,8 @@ function renderConversations(list){
   });
   // Apply archive filter (skip if searching)
   if(!store._searchQuery)data=data.filter(function(c){return store._showArchived?isArchived(c.id):!isArchived(c.id)});
+  // Apply search filter (name matching)
+  if(store._searchQuery){var _sq=store._searchQuery.toLowerCase();data=data.filter(function(c){return c.name.toLowerCase().indexOf(_sq)!==-1})}
   // Update archive bar
   var ab=$('archive-label');
   if(ab){
@@ -1074,6 +1076,7 @@ function confirmDelete(){
   var msgId=store.pendingDeleteMsgId;store.pendingDeleteMsgId=null;
   hideDeleteModal();if(!msgId)return;
   var convId=store.activeConvId;if(!convId)return;
+  store._skipDedup=true;
   var msgs=store.messages[convId];
   for(var i=0;i<msgs.length;i++){if(msgs[i].id===msgId){msgs[i].deleted=true;msgs[i].text='';msgs[i].audio='';msgs[i].image='';msgs[i].video='';break}}
   updateConvPreview(convId);
@@ -1081,7 +1084,7 @@ function confirmDelete(){
   if(_conv&&window.db&&_conv.lastMsg){
     db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:_conv.lastMsg}).catch(function(){})
   }
-  renderMessages(convId);renderConversations();saveMessages()
+  renderMessages(convId);renderConversations();saveMessages();store._skipDedup=false
 }
 
 function updateConvPreview(convId){
@@ -1317,7 +1320,7 @@ function removeFromGroupConfirm(){
     var _oldHeight=el.scrollHeight,_oldTop=el.scrollTop,_preserve=store._preserveScrollBottom;store._preserveScrollBottom=false;
     el.innerHTML='';
    var conv=findConv(convId);var isGroupChat=conv&&conv.isGroup;
-   for(var di=0;di<raw.length;di++){if(raw[di].text&&raw[di].text.indexOf('🔒')===0&&!raw[di]._decrypted&&!raw[di]._decrypting){raw[di]._decrypting=true;(async function(m){try{var d=await e2eDecrypt(m.text);if(d){m._decrypted=d;m._decrypting=false;updateConvPreview(convId)}else{m._decrypting=false;m._decrypted='🔒 [Çözülemedi]'}if(store.activeConvId===convId)renderMessages(convId)}catch(e){m._decrypting=false;m._decrypted='🔒 [Çözülemedi]';if(store.activeConvId===convId)renderMessages(convId)}})(raw[di])}}
+    for(var di=0;di<raw.length;di++){if(raw[di].text&&raw[di].text.indexOf('🔒')===0&&!raw[di]._decrypted&&!raw[di]._decrypting){raw[di]._decrypting=true;(async function(m){try{var d=await e2eDecrypt(m.text);if(d){m._decrypted=d;m._decrypting=false;updateConvPreview(convId)}else{m._decrypting=false;m._decrypted='🔒 [Çözülemedi]'}if(store.activeConvId===convId){var _od=el.querySelector('#msg-'+m.id);if(_od){var _nd=buildSingleMsgDiv(m,conv,isGroupChat);if(_nd)_od.replaceWith(_nd)}}}catch(e){m._decrypting=false;m._decrypted='🔒 [Çözülemedi]';if(store.activeConvId===convId){var _od2=el.querySelector('#msg-'+m.id);if(_od2){var _nd2=buildSingleMsgDiv(m,conv,isGroupChat);if(_nd2)_od2.replaceWith(_nd2)}}}})(raw[di])}}
    var groups=[];var ci=0;
    while(ci<raw.length){
      var msg=raw[ci];
