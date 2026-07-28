@@ -464,36 +464,60 @@ async function toggleCallScreen(){
     return
   }
   try{
-    // Try standard getDisplayMedia first
+    // Try standard getDisplayMedia first (browser picker)
     if(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia){
       try{
         var stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
-        store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
-        videoEl.play().catch(console.error);
-        $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
-        stream.getVideoTracks()[0].onended=function(){
-          store.callScreenStream=null;videoEl.srcObject=null;container.style.display='none';
-          $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)'
-        };
-        return
-      }catch(e){console.log('[screen] std failed, trying electron desktopCapturer')}
+        if(stream){applyScreenStream(stream);return}
+      }catch(e){console.log('[screen] std failed')}
     }
-    // Fallback: Electron desktopCapturer via IPC
+    // Fallback: Electron desktopCapturer via IPC — show picker
     if(window.electronAPI&&window.electronAPI.getScreenStream){
       var result=await window.electronAPI.getScreenStream();
       if(result&&result.sources&&result.sources.length>0){
-        var source=result.sources[0];
-        try{
-          var stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:source.id}}});
-          store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
-          videoEl.play().catch(console.error);
-          $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
-          return
-        }catch(e2){console.log('[screen] desktopCapturer stream failed',e2.message)}
+        showScreenPicker(result.sources,function(sourceId){
+          captureScreenById(sourceId,videoEl,container)
+        });return
       }
     }
     console.log('[screen] all methods failed')
   }catch(e){console.error('[screen] error:',e.name,e.message,e.code)}
+}
+function applyScreenStream(stream){
+  var videoEl=$('call-local-video-el');var container=$('call-local-video');
+  store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
+  videoEl.play().catch(console.error);
+  $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
+  stream.getVideoTracks()[0].onended=function(){
+    store.callScreenStream=null;videoEl.srcObject=null;container.style.display='none';
+    $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)'
+  }
+}
+async function captureScreenById(sourceId,videoEl,container){
+  try{
+    var stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:sourceId}}});
+    applyScreenStream(stream)
+  }catch(e){console.log('[screen] capture failed',e.message)}
+}
+function showScreenPicker(sources,callback){
+  var existing=document.getElementById('screen-picker-overlay');
+  if(existing)existing.remove();
+  var overlay=document.createElement('div');
+  overlay.id='screen-picker-overlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;-webkit-app-region:no-drag';
+  overlay.innerHTML='<div style="color:#fff;font-size:18px;font-weight:600;margin-bottom:20px">Ekran veya Pencere Seç</div><div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:800px" id="screen-picker-list"></div><button style="margin-top:20px;padding:8px 24px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:13px" onclick="this.closest(\'#screen-picker-overlay\').remove()">İptal</button>';
+  document.body.appendChild(overlay);
+  var list=document.getElementById('screen-picker-list');
+  sources.forEach(function(s){
+    var item=document.createElement('div');
+    item.style.cssText='width:180px;cursor:pointer;border:2px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;transition:all .15s;background:rgba(255,255,255,.03)';
+    item.onmouseenter=function(){this.style.borderColor='var(--accent)'};
+    item.onmouseleave=function(){this.style.borderColor='rgba(255,255,255,.1)'};
+    item.innerHTML='<img src="'+s.thumbnail+'" style="width:100%;height:100px;object-fit:cover;display:block">'+
+      '<div style="padding:8px;font-size:11px;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.name)+'</div>';
+    item.onclick=function(){overlay.remove();callback(s.id)};
+    list.appendChild(item)
+  })
 }
 
 function toggleCallSpeaker(){
