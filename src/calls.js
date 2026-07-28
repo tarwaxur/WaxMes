@@ -418,7 +418,7 @@ function enlargeCallVideo(){
   if(!el||!el.srcObject)return;
   var overlay=document.createElement('div');
   overlay.id='call-video-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;-webkit-app-region:no-drag';
   overlay.onclick=function(e){if(e.target===overlay)closeCallVideo()};
   var video=document.createElement('video');
   video.srcObject=el.srcObject;video.autoplay=true;video.muted=true;
@@ -473,7 +473,7 @@ async function toggleCallScreen(){
       store.callScreenStream=null;videoEl.srcObject=null;container.style.display='none';
       $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)'
     }
-  }catch(e){console.error('Screen share error:',e)}
+  }catch(e){console.error('[screen] error:',e.name,e.message,e.code)}
 }
 
 function toggleCallSpeaker(){
