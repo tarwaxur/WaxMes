@@ -209,6 +209,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                             Icon(Icons.Default.MoreVert, contentDescription = null, tint = t.text)
                         }
                         DropdownMenu(expanded = showChatMenu, onDismissRequest = { showChatMenu = false },
+                            shape = RoundedCornerShape(20.dp),
                             offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {
                             DropdownMenuItem(text = { Text("Pinned Messages", color = t.text) },
                                 onClick = { showChatMenu = false; appLog("Pinned messages - coming soon") },
@@ -227,17 +228,20 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                 })
             },
             bottomBar = {
-                Column {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = t.bg2.copy(alpha = 0.92f),
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp).navigationBarsPadding()
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth()
-                            .background(t.bg2)
-                            .padding(horizontal = 8.dp, vertical = 8.dp).navigationBarsPadding(),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { mediaPickerLauncher.launch("image/*") }) {
-                            Icon(Icons.Default.AttachFile, contentDescription = null, tint = t.text3, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.AttachFile, contentDescription = null, tint = t.text3, modifier = Modifier.size(22.dp))
                         }
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(2.dp))
                         OutlinedTextField(value = text, onValueChange = { text = it },
                             placeholder = { Text(if (replyToMsg != null) "Reply..." else "Message...", color = t.text4) },
                             modifier = Modifier.weight(1f), singleLine = true,
@@ -259,23 +263,26 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                 }
                             ),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = t.accent, unfocusedBorderColor = t.border2,
+                                focusedBorderColor = t.accent.copy(alpha = 0.5f), unfocusedBorderColor = t.border2.copy(alpha = 0.3f),
                                 cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text,
-                                focusedContainerColor = t.bg, unfocusedContainerColor = t.bg
+                                focusedContainerColor = t.bg.copy(alpha = 0.5f), unfocusedContainerColor = t.bg.copy(alpha = 0.5f)
                             ),
-                            shape = RoundedCornerShape(12.dp))
-                        Spacer(Modifier.width(6.dp))
-                        IconButton(onClick = {
-                            if (text.isNotBlank()) {
-                                if (replyToMsg != null) {
-                                    val replyText = if (replyToMsg!!.text.isNotEmpty()) replyToMsg!!.text else "📷 Image"
-                                    repo.sendMessage(convId, text, replyToId = replyToMsg!!.id, replyToText = replyText)
-                                } else {
-                                    repo.sendMessage(convId, text)
+                            shape = RoundedCornerShape(24.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Surface(shape = CircleShape, color = if (text.isNotBlank()) t.accent else t.text4.copy(alpha = 0.3f),
+                            modifier = Modifier.size(40.dp)) {
+                            IconButton(onClick = {
+                                if (text.isNotBlank()) {
+                                    if (replyToMsg != null) {
+                                        val replyText = if (replyToMsg!!.text.isNotEmpty()) replyToMsg!!.text else "📷 Image"
+                                        repo.sendMessage(convId, text, replyToId = replyToMsg!!.id, replyToText = replyText)
+                                    } else {
+                                        repo.sendMessage(convId, text)
+                                    }
+                                    text = ""; replyToMsg = null
                                 }
-                                text = ""; replyToMsg = null
-                            }
-                        }) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = if (text.isNotBlank()) t.accent else t.text4, modifier = Modifier.size(26.dp)) }
+                            }) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp)) }
+                        }
                     }
                 }
             }

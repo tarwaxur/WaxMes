@@ -73,8 +73,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             TopAppBar(title = {
                 if (isSearching) {
                     OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Search...", color = t.text4) }, singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = t.accent, unfocusedBorderColor = t.border, cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text, focusedContainerColor = t.bg2, unfocusedContainerColor = t.bg2),
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp))
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = t.accent.copy(alpha = 0.5f), unfocusedBorderColor = t.border.copy(alpha = 0.3f), cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text, focusedContainerColor = t.bg2.copy(alpha = 0.5f), unfocusedContainerColor = t.bg2.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp))
                 } else {
                     Text("WaxMes", fontWeight = FontWeight.Bold, color = t.text)
                 }
@@ -85,7 +85,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     IconButton(onClick = { isSearching = true }) { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) }
                     Box {
                         IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = null, tint = t.text3) }
-                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(20.dp), offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {
                             DropdownMenuItem(text = { Text("Settings", color = t.text) }, onClick = { showMenu = false; onSettingsClick() }, leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = t.text3) })
                             DropdownMenuItem(text = { Text("Logout", color = Color(0xFFef4444)) }, onClick = {
                                 showMenu = false; repo.logout(); prefs.edit().clear().apply()
