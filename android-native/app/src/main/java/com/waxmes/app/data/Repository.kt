@@ -213,6 +213,59 @@ class Repository {
     private var contentResolver: ContentResolver? = null
     fun setContentResolver(cr: ContentResolver) { contentResolver = cr }
 
+    var ownStories = mutableListOf<Story>()
+    var activeStories = mutableListOf<Story>()
+
+    fun listenStories(onChange: (List<Story>) -> Unit) {
+        val now = System.currentTimeMillis()
+        db.collection("stories").whereGreaterThan("expiresAt", now)
+            .addSnapshotListener { snap, _ ->
+                if (snap == null) return@addSnapshotListener
+                val all = snap.documents.mapNotNull { doc ->
+                    val d = doc.data ?: return@mapNotNull null
+                    Story(id = doc.id, authorId = d["authorId"] as? String ?: "",
+                        authorName = d["authorName"] as? String ?: "",
+                        authorAvatar = d["authorAvatar"] as? String ?: "",
+                        authorColor = d["authorColor"] as? Long ?: 0xFF818CF8,
+                        text = d["text"] as? String ?: "",
+                        mediaUrl = d["mediaUrl"] as? String ?: "",
+                        type = d["type"] as? String ?: "text",
+                        bgColor = d["bgColor"] as? String ?: "#818cf8",
+                        fontFamily = d["fontFamily"] as? String ?: "sans",
+                        caption = d["caption"] as? String ?: "",
+                        createdAt = (d["createdAt"] as? com.google.firebase.Timestamp)?.toDate()?.time ?: 0,
+                        expiresAt = (d["expiresAt"] as? com.google.firebase.Timestamp)?.toDate()?.time ?: 0,
+                        viewers = (d["viewers"] as? List<String>) ?: emptyList())
+                }
+                ownStories = all.filter { it.authorId == uid }.toMutableList()
+                activeStories = all.filter { it.expiresAt > System.currentTimeMillis() && !it.viewers.contains(uid) }.toMutableList()
+                onChange(all)
+            }
+    }
+
+    fun createStory(text: String, type: String = "text", onResult: (String?) -> Unit) {
+        val myName = nameCache[uid] ?: uid.take(6)
+        val storyData = mutableMapOf<String, Any>(
+            "authorId" to uid, "authorName" to myName,
+            "authorAvatar" to (userCache[uid] ?: myName.first().uppercase().toString()),
+            "authorColor" to 0xFF818CF8,
+            "type" to type,
+            "text" to text,
+            "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+            "expiresAt" to com.google.firebase.Timestamp(com.google.firebase.Timestamp.now().seconds + 86400, 0),
+            "viewers" to emptyList<String>()
+        )
+        db.collection("stories").add(storyData).addOnSuccessListener { onResult(it.id) }.addOnFailureListener { onResult(null) }
+    }
+
+    fun deleteStory(storyId: String) {
+        db.collection("stories").document(storyId).delete()
+    }
+
+    fun viewStory(storyId: String) {
+        db.collection("stories").document(storyId).update("viewers", com.google.firebase.firestore.FieldValue.arrayUnion(uid))
+    }
+
     var updateAvailable = false
     var latestVersion = ""
 
