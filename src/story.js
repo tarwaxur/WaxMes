@@ -478,16 +478,18 @@ function updateStoryProgressBar(progress) {
 
 function renderStoryViewer() {
   if (!store.storyViewerOpen) return;
-  store.storyViewerProgress = 0;
-  if (store.storyStoryTimer) { clearInterval(store.storyStoryTimer); store.storyStoryTimer = null; }
+  var item = store.storyViewerItems[store.storyViewerIdx];
+  var author = store.storyViewerAuthor;
+  if (!item || !author) { closeStoryViewer(); return; }
+  // Progress'i sadece farkli story'ye gecildiginde sifirla
+  if (store._lastViewedStoryId !== item.id) {
+    store._lastViewedStoryId = item.id;
+    store.storyViewerProgress = 0;
+  }
 
   // Eski viewer'ı kaldır
   var old = $('story-viewer');
   if (old) old.remove();
-
-  var item = store.storyViewerItems[store.storyViewerIdx];
-  var author = store.storyViewerAuthor;
-  if (!item || !author) { closeStoryViewer(); return; }
 
   // Görüntüleme kaydı
   fbViewStory(item.id);
@@ -612,7 +614,7 @@ function renderCreateStoryModal() {
     }
     fontsHtml += '</div>';
     var _currFontStack=STORY_FONTS[0].stack;for(var _ff=0;_ff<STORY_FONTS.length;_ff++){if(STORY_FONTS[_ff].id===store.storyDraft.font){_currFontStack=STORY_FONTS[_ff].stack;break}}
-    bodyHtml = '<textarea id="story-text-input" class="story-text-input" placeholder="Ne düşünüyorsun?" maxlength="500">' + esc(store.storyDraft.text || '') + '</textarea>' +
+    bodyHtml = '<textarea id="story-text-input" class="story-text-input" placeholder="Ne düşünüyorsun?" maxlength="500" style="font-family:' + _currFontStack + '">' + esc(store.storyDraft.text || '') + '</textarea>' +
       colorsHtml +
       '<div style="margin-top:10px;padding:10px;background:var(--bg3);border-radius:8px;text-align:center;font-size:22px;color:var(--text2);font-family:' + _currFontStack + '" id="story-font-preview">' + esc(store.storyDraft.text || 'Aa') + '</div>' +
       fontsHtml;
