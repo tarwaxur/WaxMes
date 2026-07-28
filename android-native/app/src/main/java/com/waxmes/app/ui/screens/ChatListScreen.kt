@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +44,9 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     var searchQuery by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
     var contextConv by remember { mutableStateOf<Conversation?>(null) }
+
+    var selectedTab by remember { mutableStateOf("chats") }
+    var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         repo.getConversations { list ->
@@ -95,8 +99,32 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     }
                 }
             })
+        },
+        bottomBar = {
+            Surface(shape = RoundedCornerShape(28.dp), color = t.bg2.copy(alpha = 0.92f), shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).navigationBarsPadding()) {
+                Row(modifier = Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    Surface(shape = RoundedCornerShape(20.dp), color = if (selectedTab == "chats") t.accent.copy(alpha = 0.15f) else Color.Transparent,
+                        modifier = Modifier.weight(1f).clickable { selectedTab = "chats" }) {
+                        Row(modifier = Modifier.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.ChatBubble, contentDescription = null, tint = if (selectedTab == "chats") t.accent else t.text3, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Chats", color = if (selectedTab == "chats") t.accent else t.text3, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    Surface(shape = RoundedCornerShape(20.dp), color = if (selectedTab == "new") t.accent.copy(alpha = 0.15f) else Color.Transparent,
+                        modifier = Modifier.weight(1f).clickable { selectedTab = "new" }) {
+                        Row(modifier = Modifier.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = if (selectedTab == "new") t.accent else t.text3, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("New", color = if (selectedTab == "new") t.accent else t.text3, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
         }
     ) { padding ->
+        if (selectedTab == "chats") {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding(), contentPadding = PaddingValues(vertical = 4.dp)) {
             items(displayConvs) { conv ->
                 Row(modifier = Modifier.fillMaxWidth().combinedClickable(
@@ -156,6 +184,58 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 item { Text("No conversations yet", color = t.text4, modifier = Modifier.padding(40.dp).fillMaxWidth(), fontSize = 13.sp) }
             }
         }
+        } else {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding()) {
+            item {
+                // Stories row
+                Text("Stories", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp))
+                LazyRow(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { /* add story */ }) {
+                            Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(t.accent.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(28.dp))
+                            }
+                            Text("Your Story", color = t.text4, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+                }
+                LazyRow(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(convs.filter { it.online && !it.isGroup }.take(8)) { conv ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onChatClick(conv.id) }) {
+                            Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(conv.color)).padding(2.dp)) {
+                                SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
+                                    error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+                                    loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 20.sp) })
+                            }
+                            Text(conv.name.take(8), color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+                }
+            }
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text("Friends", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, bottom = 8.dp))
+            }
+            items(convs.filter { !it.isGroup && !it.isArchived }.sortedByDescending { it.online }) { conv ->
+                Row(modifier = Modifier.fillMaxWidth().clickable { onChatClick(conv.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Color(conv.color)), contentAlignment = Alignment.Center) {
+                        SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
+                            error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                            loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 16.sp) })
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(conv.name, color = t.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(if (conv.online) "Online" else "Offline", color = t.text3, fontSize = 11.sp)
+                    }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = t.text4, modifier = Modifier.size(18.dp))
+                }
+            }
+            item { Spacer(Modifier.height(80.dp)) }
+        }
+    }
     }
 
     if (contextConv != null) {
