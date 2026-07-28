@@ -187,7 +187,7 @@ async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!tx
   var finalText=txt;
   if(conv&&store.e2eReady&&window.db){var pubKeyResult=await getRecipientPubKey(store.activeConvId);if(pubKeyResult&&pubKeyResult.keys&&pubKeyResult.keys.length>0){if(pubKeyResult.missing&&pubKeyResult.missing.length>0){showAlert(pubKeyResult.missing.length+' kullanıcı henüz E2E\'yi etkinleştirmemiş. Mesaj E2E şifrelenmeden gönderiliyor.')}else{try{var enc=await e2eEncrypt(txt,pubKeyResult.keys);if(enc&&enc.indexOf('🔒')===0)finalText=enc}catch(e){}}}}
   var myId=fbUserId();
-  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);renderMessages(store.activeConvId);inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;var _na=Date.now();if(store._lastActTs===_na)store._lastActSeq=(store._lastActSeq||0)+1;else{store._lastActTs=_na;store._lastActSeq=0}conv.lastActivity=_na+store._lastActSeq*0.001;conv.time=timeNow()}renderConversations();saveConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
+  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);var _me=$('chat-messages');if(_me){var _dv=buildSingleMsgDiv(msg,conv,conv&&conv.isGroup);if(_dv){_me.appendChild(_dv);var _nb=_me.scrollHeight-_me.scrollTop-_me.clientHeight<150;if(_nb)_me.scrollTop=_me.scrollHeight}}else{renderMessages(store.activeConvId)}inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;var _na=Date.now();if(store._lastActTs===_na)store._lastActSeq=(store._lastActSeq||0)+1;else{store._lastActTs=_na;store._lastActSeq=0}conv.lastActivity=_na+store._lastActSeq*0.001;conv.time=timeNow()}renderConversations();saveConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
 
 function addToGroup(groupId,userId){
   hideContextMenu();
@@ -743,7 +743,10 @@ function startTyping(){
   if(!store.activeConvId||!window.db||!fbUserId())return;
   var h=$('chat-header-status');
   if(!h)return;
-  db.collection(COLLECTIONS.CONVERSATIONS).doc(store.activeConvId).update({typing:fbUserId(),typingAt:Date.now()}).catch(console.error);
+  var now=Date.now();
+  if(store._lastTypingTs&&now-store._lastTypingTs<1000)return;
+  store._lastTypingTs=now;
+  db.collection(COLLECTIONS.CONVERSATIONS).doc(store.activeConvId).update({typing:fbUserId(),typingAt:now}).catch(console.error);
   if(store.typingTimer)clearTimeout(store.typingTimer);
   store.typingTimer=setTimeout(stopTyping,2500)
 }
@@ -1073,9 +1076,11 @@ function confirmDelete(){
   var convId=store.activeConvId;if(!convId)return;
   var msgs=store.messages[convId];
   for(var i=0;i<msgs.length;i++){if(msgs[i].id===msgId){msgs[i].deleted=true;msgs[i].text='';msgs[i].audio='';msgs[i].image='';msgs[i].video='';break}}
-  // Update sidebar with last non-deleted message
   updateConvPreview(convId);
-  var _conv=findConv(convId);if(_conv&&window.db){db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).set({lastMsg:_conv.lastMsg||'',lastActivity:Date.now(),lastTime:timeNow()},{merge:true}).catch(function(){})}
+  var _conv=findConv(convId);
+  if(_conv&&window.db&&_conv.lastMsg){
+    db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:_conv.lastMsg}).catch(function(){})
+  }
   renderMessages(convId);renderConversations();saveMessages()
 }
 

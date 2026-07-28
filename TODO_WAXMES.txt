@@ -16,3 +16,59 @@ WaxMes - Android Native Sürüm Durumu
 ✅ 12. DM sıralaması (lastActivity + pinned)
 ⏳ 13. Güncelleme butonu (GitHub API)
 ✅ 14. Medya/Emoji butonları (göndergeç)
+
+===============================================================================
+DESKTOP (ELEKTRON JS) SÜRÜMÜ — AKTIF HATALAR (27.07.2026)
+===============================================================================
+
+[ ] 9. MESAJ YAZARKEN TUM MESAJLAR YENILENIYOR (renderMessages)
+     Dosya: src/messaging.js:1310-1428
+     Sebep 1: sendMessage() (satir ~192) her mesaj gonderiminde
+              renderMessages(convId) cagiriyor. Bu fonksiyon
+              el.innerHTML='' ile tum mesaj alanini SILIP tum
+              mesajlari bastan olusturuyor. Bu da tum CSS
+              animasyonlarinin tekrar oynamasina yol aciyor.
+     Sebep 2: renderMessages icindeki E2E cozumleme dongusu
+              (satir 1315) cozulen HER sifreli mesaj icin
+              renderMessages'i TEKRAR cagiriyor (recursive).
+              Birden fazla sifreli mesaj varsa zincirleme
+              re-render oluyor.
+     Sebep 3: Input/klavye her tus basiminda startTyping()
+              (messaging.js:742) cagriliyor, Firestore'a yaziyor,
+              fbListenConversations listener'i tetikleniyor,
+              modified handler'i calisiyor (performans dususu).
+     Cozum: sendMessage()'da renderMessages yerine
+            appendSingleMessage() kullan (sadece son mesaji ekler).
+            E2E dongusundeki recursive renderMessages cagrisini
+            kaldir (cozulen mesaj DOM'da replaceWith ile degistir,
+            appendSingleMessage'daki gibi).
+            startTyping()'i debounce ile 1sn'de 1 kez calisacak
+            sekilde sinirla.
+
+[ ] 10. MESAJ SILINCE DM ONIZLEMESI GUNCELLENMIYOR
+     Dosya: src/messaging.js:1070-1080 (confirmDelete)
+     Sebep 1: Firestore .set() cagrisi (satir 1078) beklenmiyor
+              (await yok). Bu yuzden local'de conv.lastMsg
+              guncellense bile Firestore listener'i eski veriyle
+              tetiklenip conv.lastMsg'i TEKRAR eski haline
+              getirebilir (race condition).
+     Sebep 2: deduplicateConversations() (firebase-data.js:101)
+              ayni kullaniciya ait iki konusma kaydi varsa
+              son aktivitesi yuksek olani tutar. confirmDelete
+              lastActivity:Date.now() yazarken, sendMessage
+              lastActivity'e +0.001 ekledigi icin (monotonic
+              counter), gonderilen mesaj daha yuksek aktiviteye
+              sahip olur. Dedup yanlis kaydi koruyabilir.
+     Sebep 3: Silinen mesaj dizideki SON mesaj degilse (arka
+              planda daha yeni bir mesaj varsa) preview dogal
+              olarak son mesaji gosterir. Bu dogru davranis
+              olabilir ama kullanici beklentisi farkli.
+     Cozum: Firestore .set()'i await'le. confirmDelete icinde
+            tikla-silme arasinda dedup'i gecici olarak devre
+            disi birak (ornegin store._skipDedup=true).
+            Veya dedup fonksiyonunu iyilestir: sadece gercekten
+            ayni member pair'ine sahip ID'si farkli konusmalari
+            temizlesin, lastMsg guncel olani korusun.
+
+NOT: Bu hatalar Desktop (Electron/JS) surumune aittir.
+Android Native surum icin yukaridaki listeden takip edin.
