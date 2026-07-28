@@ -215,18 +215,18 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         item {
-                            Surface(shape = CircleShape, color = t.bg, shadowElevation = 4.dp) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
+                            Surface(shape = RoundedCornerShape(8.dp), color = t.bg, shadowElevation = 4.dp) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable {
                                     if (hasStory) showStoryViewer = true else { hasStory = true }
                                 }) {
-                                    Box(modifier = Modifier.size(62.dp).background(if (hasStory) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.size(60.dp).background(if (hasStory) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
                                         if (hasStory) {
-                                            Text(repo.uid.take(1).uppercase(), color = t.text2, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                                            Text(repo.uid.take(1).uppercase(), color = t.text2, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                                         } else {
-                                            Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(24.dp))
+                                            Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                                         }
                                     }
-                                    Text(if (hasStory) "My Story" else "Add Story", color = t.text3, fontSize = 10.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp).width(62.dp))
+                                    Text(if (hasStory) "My Story" else "Add Story", color = t.text3, fontSize = 10.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
                                 }
                             }
                         }
@@ -235,10 +235,10 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 Box(modifier = Modifier.size(60.dp).background(Color(conv.color), CircleShape).padding(2.dp)) {
                                     SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
                                         modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                                        error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
-                                        loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 20.sp) })
+                                        error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                                        loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) })
                                 }
-                                Text(conv.name, color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp).width(60.dp))
+                                Text(conv.name, color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                             }
                         }
                     }
