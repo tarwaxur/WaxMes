@@ -1096,7 +1096,7 @@ function confirmDelete(){
     console.log('[del] firestore update lastMsg:',_conv.lastMsg);
     db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:_conv.lastMsg}).catch(function(e){console.log('[del] fs update fail',e)})
   }
-  renderMessages(convId);renderConversations();saveMessages();store._skipDedup=false;
+  renderMessages(convId);renderConversations();saveMessages();setTimeout(function(){store._skipDedup=false},2000);
   console.log('[del] done, preview:',_conv?_conv.lastMsg:'?')
 }
 

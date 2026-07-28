@@ -265,6 +265,155 @@ Her satirin basindaki kutucugu [ ] -> [x] yaparak cozuldugunu isaretleyebilirsin
     gorunmeli (su an archive filtresi atlaniyor, hidden da gorunmeli).
 
 ===============================================================================
+STORIES / 24h DURUM — KESIF EDILEN HATALAR (27.07.2026)
+===============================================================================
+
+[ ] 5. renderStoryBar() KAPANIS BRACE'I EKSIK → TUM STORY FONKSIYONLARI KIRIK
+    Dosya: src/story.js:271-319 (+ 321-1063)
+    Seviye: KRITIK — tum story ozelliklerini etkiler
+
+    TESPIT:
+    renderStoryBar() fonksiyonu satir 271'de aciliyor ({)
+    ancak hic kapatilmiyor. Kapanmasi gereken yer satir 320.
+    Bunun sonucunda satir 321'den itibaren TUM fonksiyonlar
+    renderStoryBar'in ICINDE nested hale geliyor:
+
+    271: function renderStoryBar() {
+    272-319: // govde
+    (320: }  ← EKSIK!)
+    321: function renderStoryAvatar(...) { → renderStoryBar'in ICINDE
+    343: function openStoryViewer(...)    → renderStoryBar'in ICINDE
+    439: function renderStoryViewer(...)  → renderStoryBar'in ICINDE
+    535: function showCreateStoryModal()  → renderStoryBar'in ICINDE
+    549: function renderCreateStoryModal()→ renderStoryBar'in ICINDE
+    589: function renderCreateStoryModal()→ renderStoryBar'in ICINDE
+    660: function pickStoryMedia()        → renderStoryBar'in ICINDE
+    681: function confirmCreateStory()   → renderStoryBar'in ICINDE
+    781: document.addEventListener()     → renderStoryBar'in ICINDE
+    ...tum story viewer/kb/actions...
+    1053: function closeDevtools()      → renderStoryBar'in ICINDE
+    1063: } ← BU renderStoryBar'I KAPATIR (cok gec!)
+
+    SONUCLARI (bu eksik brace yuzunden olusan tum hatalar):
+
+    a) Story paneli acilmiyor
+       showCreateStoryModal() global degil.
+       init-ui.js:364'te typeof kontrolu FALSE doner.
+       + butonlarina tiklayinca hicbir sey olmaz.
+
+    b) Story izleyici acilmiyor
+       openStoryViewer() global degil.
+       init-ui.js:404'te typeof kontrolu FALSE doner.
+
+    c) Story ring halkasi maviden griye donmuyor
+       openStoryViewer() calismadigi icin fbViewStory()
+       hicbir zaman cagrilmaz. store.storyViewed guncellenmez.
+       renderStoryBar() viewed parametresi hep 0 gelir.
+       makeStoryRingSvg() hep 'tumunu gorulmedi' olarak cizer.
+       Kullanici story izlese bile halka mavi kalir.
+
+    d) Story viewer klavye kisa yollari calismiyor
+       document.addEventListener('keydown', ...) (satir 781)
+       renderStoryBar icinde nested oldugu icin hicbir zaman
+       document'e eklenmez. Ok tuslari/ESC calismaz.
+
+    e) Story silme (delete-my-story) calismiyor
+       fbDeleteStory() satir 212'de TANIMLI (renderStoryBar'dan
+       once) → global. ANCAK showConfirmModal() nested oldugu
+       icin init-ui.js:420'de typeof kontrolu FALSE doner.
+       Silme akisi baslamaz.
+
+    f) Tum story yardimci fonksiyonlari global scope'ta yok
+       closeStoryViewer, nextStorySegment, prevStorySegment,
+       pauseStoryViewer, resumeStoryViewer, startStoryTimer,
+       updateStoryProgressBar, pickStoryMedia, findConvByUid
+       — hicbiri disaridan erisilemez.
+
+    COZUM:
+    Satir 320'ye (319 ile 321 arasina) kapatma brace'i ekle:
+      319:   try{console.log('[sb] done users:'+others.length)}catch(e){}
+      320: }  // <-- EKLE: renderStoryBar kapanisi
+      321: function renderStoryAvatar(entry, itemIdx) {
+    Boylece satir 321'den itibaren tum fonksiyonlar global
+    olur ve init-ui.js'deki typeof kontrolleri TRUE doner.
+
+[ ] 6. renderStoryBar ILK RENDER'DA $('story-bar') NULL ISE ERRORYE TAKILIR
+    Dosya: src/story.js:274
+    Seviye: Orta
+
+    TESPIT:
+    renderStoryBar() satir 274'te:
+      if (!el) {try{console.log('SB_EL_NULL')}catch(e){};return}
+    Eger #story-bar elementi DOM'da yoksa erken donuyor.
+    Bu normalde dogru ama sonraki renderStoryBar cagrilari
+    da hep erken donecek cunku el hala null.
+    Firestore listener'i her snapshot'ta renderStoryBar'i
+    cagirir. Eger ilk cagrida el null'sa, sonraki tum
+    cagrilar da hicbir sey yapmaz.
+
+    HTML'de #story-bar elementi var (index.html:123).
+    Sorun: DOMContentLoaded'dan once fbListenStories
+    calisirsa el null olur. Ilk render kacirilir.
+
+    COZUM:
+    setTimeout veya DOM kontrolu ile renderStoryBar
+    cagrilarini geciktir. Veya el bulunana kadar
+    setInterval ile dene. Veya MutationObserver kullan.
+
+[ ] 7. STORY VIEWER PROGRESS BAR HER RENDERDA SIFIRLANIYOR
+    Dosya: src/story.js:477-496 (renderStoryViewer)
+    Seviye: Dusuk-Orta
+
+    TESPIT:
+    renderStoryViewer() her cagrildiginda progress bar'i
+    sifirdan baslatiyor. Kullanici 'ileri' okuna basinca
+    nextStorySegment() renderStoryViewer()'i tekrar cagirir.
+    Bu, mevcut story'nin izleme suresinin sifirlanmasina
+    yol acar.
+
+    Ornegin 5 saniyelik bir story'nin 4. saniyesinde
+    kullanici saga tiklasa, bir sonraki story'nin progress'i
+    sifirdan baslar (dogru). Ama ayni story'ye geri donerse
+    (onceki ok) progress tekrar sifirlanir.
+
+    COZUM:
+    renderStoryViewer icinde progress'i koru. Sadece
+    gecis yapildiginda sifirla. Veya mevcut item'in
+    gecmiste ne kadar izlendigini store'da sakla.
+
+[ ] 8. STORY CREATE MODAL'DA TEXTAREA FONT ONIZLEMESI YOK
+    Dosya: src/story.js:615 (renderCreateStoryModal)
+    Seviye: Dusuk (UX)
+
+    TESPIT:
+    Textarea (metin girisi): style'inda font-family yok
+      <textarea class="story-text-input" style="font-family:inherit">
+    Font degistiginde textarea'nin fontu degismez.
+    Ayri bir <div id="story-font-preview"> var (satir 617)
+    ama kullanici yazi yazarken textarea'da gordugu font
+    degismez, sadece altindaki preview div'inde degisir.
+
+    COZUM:
+    Textarea'ya da secili fontu inline style olarak ekle:
+      style="font-family:' + _currFontStack + '"
+
+[ ] 9. STORY MEDYA PAYLASIMINDA STORAGE YUKLEMESI YOK (dataUrl gidiyor)
+    Dosya: src/story.js:700-722 (confirmCreateStory media kolu)
+    Seviye: YUKSEK
+
+    TESPIT:
+    Media story'si olusturulurken payload.mediaUrl dogrudan
+    dataUrl olarak ataniyor. Firebase Storage'a yukleme
+    yapilmiyor. dataUrl:
+    - Cok buyuk (1MB sinirini asabilir)
+    - Baska kullanicilar tarafindan goruntulenemez
+
+    COZUM:
+    fbUploadFile() cagrisi eklenmeli:
+      var url = await fbUploadFile(dataUrl, 'stories/'+fbUserId()+'/'+...);
+      payload.mediaUrl = url;
+
+===============================================================================
 
 NOT: Bu hatalarin tamami Desktop (Electron/JS) surumune aittir.
 Kodlarda debug log'u veya gecici cozum bulunmamaktadir.
