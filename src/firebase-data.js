@@ -160,8 +160,11 @@ async function applyFirestoreGroupConversation(gid,gd,uid){
     normalizeGroupMembers(group);
     var existing=findConv(gid);
     if(existing){
-      existing.name=group.name;existing.avatar=group.avatar;existing.avatarLetter=group.avatarLetter;existing.color=group.color;existing.members=group.members;existing.memberIds=group.memberIds;existing.adminIds=group.adminIds;existing.creatorId=group.creatorId;existing.lastActivity=group.lastActivity;
-      saveGroup(existing);renderConversations();if(store.activeConvId===gid)renderMessages(gid)
+      var _oldMsg=existing.lastMsg;
+      existing.name=group.name;existing.avatar=group.avatar;existing.avatarLetter=group.avatarLetter;existing.color=group.color;existing.members=group.members;existing.memberIds=group.memberIds;existing.adminIds=group.adminIds;existing.creatorId=group.creatorId;existing.lastActivity=group.lastActivity;existing.lastMsg=group.lastMsg;existing.time=group.time;
+      saveGroup(existing);
+      if(store.activeConvId===gid&&group.lastMsg!==_oldMsg)renderMessages(gid);
+      renderConversations()
     }else{
       convListenerAddConv(group);saveGroup(group)
     }

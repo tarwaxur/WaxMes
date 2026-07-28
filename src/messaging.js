@@ -745,6 +745,8 @@ function startTyping(){
   if(!store.activeConvId||!window.db||!fbUserId())return;
   var h=$('chat-header-status');
   if(!h)return;
+  // Groups: typing indicator Firestore'a yazinca tum grup yeniden yukleniyor, pas gec
+  var _conv=findConv(store.activeConvId);if(_conv&&_conv.isGroup)return;
   var now=Date.now();
   if(store._lastTypingTs&&now-store._lastTypingTs<1000)return;
   store._lastTypingTs=now;
