@@ -2,14 +2,12 @@ package com.waxmes.app.data
 
 import android.content.ContentResolver
 import android.net.Uri
-import android.webkit.MimeTypeMap
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.Source
-import com.google.firebase.storage.FirebaseStorage
 import com.waxmes.app.data.appLog
 import java.text.SimpleDateFormat
 import java.util.*
@@ -179,19 +177,25 @@ class Repository {
                 com.google.firebase.firestore.SetOptions.merge())
     }
 
-    private val storage = FirebaseStorage.getInstance()
     private var contentResolver: ContentResolver? = null
     fun setContentResolver(cr: ContentResolver) { contentResolver = cr }
 
     fun uploadImage(uri: Uri, onResult: (String?) -> Unit) {
         val cr = contentResolver ?: run { onResult(null); return }
-        val mimeType = cr.getType(uri) ?: "image/jpeg"
-        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType) ?: "jpg"
-        val fileName = "msg_${uid}_${System.currentTimeMillis()}.$ext"
-        val ref = storage.reference.child("chat_images/$fileName")
-        ref.putFile(uri).addOnSuccessListener {
-            ref.downloadUrl.addOnSuccessListener { url -> onResult(url.toString()) }
-        }.addOnFailureListener { appLog("Upload fail: ${it.message}"); onResult(null) }
+        try {
+            val inputStream = cr.openInputStream(uri) ?: run { onResult(null); return }
+            val bytes = inputStream.readBytes()
+            inputStream.close()
+            val mimeType = cr.getType(uri) ?: "image/jpeg"
+            val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            val dataUrl = "data:$mimeType;base64,$base64"
+            if (dataUrl.length > 1048000) { appLog("Image too large: ${dataUrl.length} bytes"); onResult(null); return }
+            appLog("Image encoded: ${dataUrl.length} bytes")
+            onResult(dataUrl)
+        } catch (e: Exception) {
+            appLog("Image read error: ${e.message}")
+            onResult(null)
+        }
     }
 
     fun clearMessages(convId: String) {

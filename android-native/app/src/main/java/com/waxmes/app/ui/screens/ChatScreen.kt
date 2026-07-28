@@ -38,7 +38,6 @@ import coil.compose.AsyncImage
 import com.waxmes.app.data.Message
 import com.waxmes.app.data.Repository
 import com.waxmes.app.ui.theme.*
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -56,7 +55,6 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
     var contextMsg by remember { mutableStateOf<Message?>(null) }
     val listState = rememberLazyListState()
     val clipboard = LocalClipboardManager.current
-    val scope = rememberCoroutineScope()
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -77,7 +75,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
             convName = displayName; convOnline = online; convAvatar = avatar
         }
     }
-    LaunchedEffect(msgs.size) { if (msgs.isNotEmpty()) scope.launch { listState.animateScrollToItem(msgs.size - 1) } }
+    LaunchedEffect(msgs.size) { if (msgs.isNotEmpty()) { listState.scrollToItem(msgs.size - 1) } }
 
     if (showProfileSheet) {
         ModalBottomSheet(
