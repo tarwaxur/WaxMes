@@ -1,5 +1,6 @@
 package com.waxmes.app.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -50,6 +51,9 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
     val drawerState = rememberDrawerState(DrawerValue.Closed)
 
     val scope = rememberCoroutineScope()
+
+    BackHandler(enabled = themeView != null) { themeView = null }
+    BackHandler(enabled = selectedCategory != "profile" && themeView == null) { selectedCategory = "profile" }
 
     ModalNavigationDrawer(
         drawerState = drawerState,

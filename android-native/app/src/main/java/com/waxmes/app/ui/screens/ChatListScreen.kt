@@ -1,7 +1,6 @@
 package com.waxmes.app.ui.screens
 
 import android.content.Context
-import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,6 +28,8 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.waxmes.app.data.Conversation
 import com.waxmes.app.data.Repository
 import com.waxmes.app.ui.theme.*
@@ -66,7 +67,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         convs.filter { !it.isArchived }
     } else {
         convs.filter { !it.isArchived && (it.name.contains(searchQuery, ignoreCase = true) || it.lastMsg.contains(searchQuery, ignoreCase = true)) }
-    }
+    }.sortedWith(compareByDescending<Conversation> { it.isPinned }.thenByDescending { it.lastActivity })
 
     Scaffold(
         containerColor = t.bg,
@@ -104,12 +105,12 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     onClick = { onChatClick(conv.id) },
                     onLongClick = { contextConv = conv }
                 ).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(conv.color)), contentAlignment = Alignment.Center) {
-                        if (conv.avatarUrl.isNotEmpty()) {
+                    Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(if (conv.isGroup) 0xFF6366f1 else conv.color)), contentAlignment = Alignment.Center) {
+                        if (conv.avatarUrl.isNotEmpty() && !conv.isGroup) {
                             AsyncImage(model = conv.avatarUrl, contentDescription = null,
                                 modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
                         } else {
-                            Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(if (conv.isGroup) "G" else conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         }
                     }
                     Spacer(Modifier.width(14.dp))
@@ -123,12 +124,18 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 Icon(Icons.Default.VolumeOff, contentDescription = null, tint = t.text4, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(3.dp))
                             }
+                            if (conv.isGroup) {
+                                Icon(Icons.Default.Groups, contentDescription = null, tint = t.text3, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(3.dp))
+                            }
                             Text(conv.name, color = t.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Spacer(Modifier.weight(1f))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if (conv.online) Color(0xFF22c55e) else t.text4))
-                                Spacer(Modifier.width(4.dp))
-                                Text(if (conv.online) "Online" else "", color = t.text4, fontSize = 10.sp)
+                            if (!conv.isGroup) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if (conv.online) Color(0xFF22c55e) else t.text4))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(if (conv.online) "Online" else "", color = t.text4, fontSize = 10.sp)
+                                }
                             }
                         }
                         Spacer(Modifier.height(2.dp))
@@ -160,26 +167,29 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)) {
-                    Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(conv.color)), contentAlignment = Alignment.Center) {
-                        if (conv.avatarUrl.isNotEmpty()) {
+                    Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(if (conv.isGroup) 0xFF6366f1 else conv.color)), contentAlignment = Alignment.Center) {
+                        if (conv.avatarUrl.isNotEmpty() && !conv.isGroup) {
                             AsyncImage(model = conv.avatarUrl, contentDescription = null,
                                 modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
                         } else {
-                            Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            Text(if (conv.isGroup) "G" else conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                         }
                     }
                     Spacer(Modifier.width(14.dp))
                     Column {
                         Text(conv.name, color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(if (conv.online) Color(0xFF22c55e) else t.text4))
-                            Spacer(Modifier.width(5.dp))
-                            Text(if (conv.online) "Online" else "Offline", color = t.text3, fontSize = 12.sp)
+                        if (!conv.isGroup) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(if (conv.online) Color(0xFF22c55e) else t.text4))
+                                Spacer(Modifier.width(5.dp))
+                                Text(if (conv.online) "Online" else "Offline", color = t.text3, fontSize = 12.sp)
+                            }
+                        } else {
+                            Text("Group", color = t.text3, fontSize = 12.sp)
                         }
                     }
                 }
                 Text("Conversation Actions", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
-
                 ContextMenuItem(icon = if (conv.isMuted) Icons.Default.Notifications else Icons.Default.VolumeOff,
                     label = if (conv.isMuted) "Unmute" else "Mute", desc = if (conv.isMuted) "Receive notifications" else "Silence notifications",
                     tint = t.text, onClick = {

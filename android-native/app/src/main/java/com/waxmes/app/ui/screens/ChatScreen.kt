@@ -3,8 +3,10 @@ package com.waxmes.app.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,19 +23,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.waxmes.app.data.Message
 import com.waxmes.app.data.Repository
 import com.waxmes.app.ui.theme.*
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
     val t = LocalTheme.current
@@ -42,9 +49,14 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
     var convName by remember { mutableStateOf("") }
     var convAvatar by remember { mutableStateOf("") }
     var convOnline by remember { mutableStateOf(false) }
+    var convIsGroup by remember { mutableStateOf(false) }
     var showProfileSheet by remember { mutableStateOf(false) }
     var mediaUri by remember { mutableStateOf<Uri?>(null) }
+    var showChatMenu by remember { mutableStateOf(false) }
+    var contextMsg by remember { mutableStateOf<Message?>(null) }
     val listState = rememberLazyListState()
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -60,14 +72,12 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
 
     LaunchedEffect(convId) {
         repo.listenMessages(convId) { msgs = it }
-        repo.getConversationName(convId) { name ->
-            convName = name
-            repo.getConversationStatus(convId) { displayName, online, avatar ->
-                convName = displayName; convOnline = online; convAvatar = avatar
-            }
+        repo.getConversationName(convId) { name -> convName = name }
+        repo.getConversationStatus(convId) { displayName, online, avatar ->
+            convName = displayName; convOnline = online; convAvatar = avatar
         }
     }
-    LaunchedEffect(msgs.size) { if (msgs.isNotEmpty()) listState.animateScrollToItem(msgs.size - 1) }
+    LaunchedEffect(msgs.size) { if (msgs.isNotEmpty()) scope.launch { listState.animateScrollToItem(msgs.size - 1) } }
 
     if (showProfileSheet) {
         ModalBottomSheet(
@@ -99,6 +109,31 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
         }
     }
 
+    if (contextMsg != null) {
+        val msg = contextMsg!!
+        AlertDialog(onDismissRequest = { contextMsg = null },
+            containerColor = t.bg2, shape = RoundedCornerShape(20.dp),
+            title = { Text("Message Actions", color = t.text, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Surface(shape = RoundedCornerShape(10.dp), color = t.bg3, modifier = Modifier.fillMaxWidth()) {
+                        Text(msg.text.take(50) + if (msg.text.length > 50) "..." else "",
+                            modifier = Modifier.padding(12.dp), color = t.text3, fontSize = 12.sp, maxLines = 2)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    MsgActionItem(Icons.Default.ContentCopy, "Copy Text", t, t.text) {
+                        clipboard.setText(AnnotatedString(msg.text)); contextMsg = null
+                    }
+                    MsgActionItem(Icons.Default.Reply, "Reply", t, t.text) { contextMsg = null }
+                    MsgActionItem(Icons.Default.PushPin, "Pin Message", t, t.text) { contextMsg = null }
+                    MsgActionItem(Icons.Default.Forward, "Forward", t, t.text) { contextMsg = null }
+                    MsgActionItem(Icons.Default.Edit, "Edit", t, t.text) { contextMsg = null }
+                    MsgActionItem(Icons.Default.Delete, "Delete", t, Color(0xFFef4444)) { contextMsg = null }
+                }
+            },
+            confirmButton = { TextButton(onClick = { contextMsg = null }) { Text("Cancel", color = t.accent) } })
+    }
+
     Scaffold(
         containerColor = t.bg,
         topBar = {
@@ -114,19 +149,35 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(verticalArrangement = Arrangement.Center) {
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(3.dp))
                         Text(convName.ifEmpty { "Loading..." }, color = t.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if (convOnline) Color(0xFF22c55e) else t.text4))
                             Spacer(Modifier.width(5.dp))
                             Text(if (convOnline) "Online" else "Offline", color = t.text3, fontSize = 11.sp)
                         }
-                        Spacer(Modifier.height(2.dp))
                     }
                 }
             }, navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = t.text)
+                }
+            }, actions = {
+                Box {
+                    IconButton(onClick = { showChatMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = null, tint = t.text)
+                    }
+                    DropdownMenu(expanded = showChatMenu, onDismissRequest = { showChatMenu = false },
+                        offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {
+                        DropdownMenuItem(text = { Text("Pinned Messages", color = t.text) },
+                            onClick = { showChatMenu = false }, leadingIcon = { Icon(Icons.Default.PushPin, contentDescription = null, tint = t.text3) })
+                        DropdownMenuItem(text = { Text("Media Gallery", color = t.text) },
+                            onClick = { showChatMenu = false }, leadingIcon = { Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = t.text3) })
+                        DropdownMenuItem(text = { Text("Search", color = t.text) },
+                            onClick = { showChatMenu = false }, leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) })
+                        DropdownMenuItem(text = { Text("Voice Call (Beta)", color = t.text) },
+                            onClick = { showChatMenu = false }, leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = t.text3) })
+                    }
                 }
             })
         },
@@ -153,11 +204,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                         imeAction = ImeAction.Send
                     ),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onSend = {
-                            if (text.isNotBlank()) {
-                                repo.sendMessage(convId, text); text = ""
-                            }
-                        }
+                        onSend = { if (text.isNotBlank()) { repo.sendMessage(convId, text); text = "" } }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = t.accent, unfocusedBorderColor = t.border2,
@@ -178,7 +225,11 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                 val isMine = msg.type == "sent"
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                     Surface(shape = RoundedCornerShape(14.dp, if (isMine) 14.dp else 4.dp, if (isMine) 4.dp else 14.dp, 14.dp),
-                        color = if (isMine) t.accent.copy(alpha = 0.15f) else t.msgReceived) {
+                        color = if (isMine) t.accent.copy(alpha = 0.15f) else t.msgReceived,
+                        modifier = Modifier.combinedClickable(
+                            onClick = {},
+                            onLongClick = { contextMsg = msg }
+                        )) {
                         if (msg.image.isNotEmpty()) {
                             AsyncImage(model = msg.image, contentDescription = null,
                                 modifier = Modifier.size(240.dp).clip(RoundedCornerShape(14.dp)),
@@ -189,6 +240,18 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MsgActionItem(icon: ImageVector, label: String, t: ThemeColors, tint: Color = t.text, onClick: () -> Unit) {
+    Surface(shape = RoundedCornerShape(10.dp), color = t.bg3,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).clickable(onClick = onClick)) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
+            Text(label, color = tint, fontSize = 14.sp, fontWeight = FontWeight.Normal)
         }
     }
 }

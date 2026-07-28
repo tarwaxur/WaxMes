@@ -17,10 +17,11 @@ import java.util.*
 fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<String, String>, avatarCache: MutableMap<String, String> = mutableMapOf(), onlineCache: MutableMap<String, Boolean> = mutableMapOf()): Conversation? {
     val d = doc.data ?: return null
     val mids = d["memberIds"] as? List<String> ?: return null
-    val otherId = mids.find { it != uid } ?: return null
+    val isGroup = d["isGroup"] as? Boolean ?: (mids.size > 2)
     val name = d["name"] as? String
+    val otherId = if (isGroup) mids.firstOrNull { it != uid } ?: mids.firstOrNull() ?: "" else mids.find { it != uid } ?: return null
     val displayName = when {
-        name != null && name.length < 30 -> name
+        !name.isNullOrEmpty() -> name
         nameCache[otherId] != null -> nameCache[otherId]!!
         else -> otherId.take(8) + "..."
     }
@@ -31,11 +32,11 @@ fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<
         is Number -> la.toLong()
         else -> 0L
     }
-    val cachedAvatar = avatarCache[otherId] ?: ""
-    val cachedOnline = onlineCache[otherId] ?: false
+    val cachedAvatar = if (isGroup) "" else (avatarCache[otherId] ?: "")
+    val cachedOnline = if (isGroup) false else (onlineCache[otherId] ?: false)
     return Conversation(id = doc.id, name = displayName, lastMsg = (d["lastMsg"] as? String) ?: "",
-        lastActivity = lastActivity, unread = 0, avatarUrl = cachedAvatar, color = 0xFF818CF8,
-        online = cachedOnline, otherId = otherId)
+        lastActivity = lastActivity, unread = 0, avatarUrl = cachedAvatar, color = if (isGroup) 0xFF818CF8 else 0xFF818CF8,
+        online = cachedOnline, otherId = otherId, isGroup = isGroup)
 }
 
 fun docToMessage(doc: DocumentSnapshot, uid: String): Message {
@@ -51,9 +52,8 @@ class Repository {
     val db = FirebaseFirestore.getInstance()
     val uid get() = auth.currentUser?.uid ?: ""
     val nameCache = mutableMapOf<String, String>()
-
-    val userCache = mutableMapOf<String, String>()  // userId -> avatarUrl
-    val onlineCache = mutableMapOf<String, Boolean>()  // userId -> online
+    val userCache = mutableMapOf<String, String>()
+    val onlineCache = mutableMapOf<String, Boolean>()
 
     fun fetchUserName(userId: String, onResult: (String) -> Unit) {
         if (nameCache.containsKey(userId)) { onResult(nameCache[userId]!!); return }
@@ -103,8 +103,9 @@ class Repository {
     fun dedup(convs: List<Conversation>): List<Conversation> {
         val seen = mutableMapOf<String, Conversation>()
         convs.forEach { c ->
-            val existing = seen[c.otherId]
-            if (existing == null || c.lastActivity > existing.lastActivity) seen[c.otherId] = c
+            val key = if (c.isGroup) c.id else c.otherId
+            val existing = seen[key]
+            if (existing == null || c.lastActivity > existing.lastActivity) seen[key] = c
         }
         return seen.values.sortedByDescending { it.lastActivity }
     }
@@ -118,10 +119,12 @@ class Repository {
                 appLog("Got ${convs.size} conversations")
                 var pending = 0
                 convs.forEach { c ->
-                    if (c.name.length == 11 && c.name.endsWith("...") || userCache[c.otherId] == null) {
+                    val needFetch = if (c.isGroup) c.name.length >= 30 else (c.name.length == 11 && c.name.endsWith("...") || userCache[c.otherId] == null)
+                    if (needFetch) {
                         pending++
                         fetchUserName(c.otherId) { name ->
-                            c.name = name; c.avatarUrl = userCache[c.otherId] ?: ""; c.online = onlineCache[c.otherId] ?: false
+                            if (!c.isGroup) c.name = name
+                            c.avatarUrl = userCache[c.otherId] ?: ""; c.online = onlineCache[c.otherId] ?: false
                             pending--
                             if (pending == 0) onResult(dedup(convs).sortedByDescending { it.lastActivity })
                         }
@@ -157,6 +160,8 @@ class Repository {
 
     fun getConversationStatus(convId: String, onResult: (String, Boolean, String) -> Unit) {
         db.collection("conversations").document(convId).get().addOnSuccessListener { snap ->
+            val isGroup = snap.getBoolean("isGroup") ?: false
+            if (isGroup) { onResult(snap.getString("name") ?: "Group", false, ""); return@addOnSuccessListener }
             val mids = snap.get("memberIds") as? List<String> ?: return@addOnSuccessListener
             val otherId = mids.find { it != uid } ?: return@addOnSuccessListener
             fetchUserStatus(otherId, onResult)
@@ -176,7 +181,6 @@ class Repository {
 
     private val storage = FirebaseStorage.getInstance()
     private var contentResolver: ContentResolver? = null
-
     fun setContentResolver(cr: ContentResolver) { contentResolver = cr }
 
     fun uploadImage(uri: Uri, onResult: (String?) -> Unit) {
