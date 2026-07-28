@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.waxmes.app.data.Message
 import com.waxmes.app.data.Repository
+import com.waxmes.app.data.appLog
 import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -120,13 +121,24 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                     }
                     Spacer(Modifier.height(8.dp))
                     MsgActionItem(Icons.Default.ContentCopy, "Copy Text", t, t.text) {
-                        clipboard.setText(AnnotatedString(msg.text)); contextMsg = null
+                        clipboard.setText(AnnotatedString(if (msg.text.isNotEmpty()) msg.text else "📷 Image")); contextMsg = null
+                        appLog("Text copied to clipboard")
                     }
-                    MsgActionItem(Icons.Default.Reply, "Reply", t, t.text) { contextMsg = null }
-                    MsgActionItem(Icons.Default.PushPin, "Pin Message", t, t.text) { contextMsg = null }
-                    MsgActionItem(Icons.Default.Forward, "Forward", t, t.text) { contextMsg = null }
-                    MsgActionItem(Icons.Default.Edit, "Edit", t, t.text) { contextMsg = null }
-                    MsgActionItem(Icons.Default.Delete, "Delete", t, Color(0xFFef4444)) { contextMsg = null }
+                    MsgActionItem(Icons.Default.Reply, "Reply", t, t.text) {
+                        appLog("Reply - coming soon"); contextMsg = null
+                    }
+                    MsgActionItem(Icons.Default.PushPin, "Pin Message", t, t.text) {
+                        appLog("Pin message - coming soon"); contextMsg = null
+                    }
+                    MsgActionItem(Icons.Default.Forward, "Forward", t, t.text) {
+                        appLog("Forward - coming soon"); contextMsg = null
+                    }
+                    MsgActionItem(Icons.Default.Edit, "Edit", t, t.text) {
+                        appLog("Edit - coming soon"); contextMsg = null
+                    }
+                    MsgActionItem(Icons.Default.Delete, "Delete", t, Color(0xFFef4444)) {
+                        appLog("Delete - coming soon"); contextMsg = null
+                    }
                 }
             },
             confirmButton = { TextButton(onClick = { contextMsg = null }) { Text("Cancel", color = t.accent) } })
@@ -168,13 +180,17 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                     DropdownMenu(expanded = showChatMenu, onDismissRequest = { showChatMenu = false },
                         offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {
                         DropdownMenuItem(text = { Text("Pinned Messages", color = t.text) },
-                            onClick = { showChatMenu = false }, leadingIcon = { Icon(Icons.Default.PushPin, contentDescription = null, tint = t.text3) })
+                            onClick = { showChatMenu = false; appLog("Pinned messages - coming soon") },
+                            leadingIcon = { Icon(Icons.Default.PushPin, contentDescription = null, tint = t.text3) })
                         DropdownMenuItem(text = { Text("Media Gallery", color = t.text) },
-                            onClick = { showChatMenu = false }, leadingIcon = { Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = t.text3) })
+                            onClick = { showChatMenu = false; appLog("Media gallery - coming soon") },
+                            leadingIcon = { Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = t.text3) })
                         DropdownMenuItem(text = { Text("Search", color = t.text) },
-                            onClick = { showChatMenu = false }, leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) })
+                            onClick = { showChatMenu = false; appLog("Search - coming soon") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) })
                         DropdownMenuItem(text = { Text("Voice Call (Beta)", color = t.text) },
-                            onClick = { showChatMenu = false }, leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = t.text3) })
+                            onClick = { showChatMenu = false; appLog("Voice call - coming soon") },
+                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = t.text3) })
                     }
                 }
             })
@@ -229,10 +245,13 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                             onLongClick = { contextMsg = msg }
                         )) {
                         if (msg.image.isNotEmpty()) {
-                            AsyncImage(model = msg.image, contentDescription = null,
-                                modifier = Modifier.size(240.dp).clip(RoundedCornerShape(14.dp)),
-                                contentScale = ContentScale.Crop)
-                        } else {
+                            Column {
+                                AsyncImage(model = msg.image, contentDescription = null,
+                                    modifier = Modifier.size(240.dp).clip(RoundedCornerShape(14.dp)).padding(4.dp),
+                                    contentScale = ContentScale.Crop)
+                                if (msg.text.isNotEmpty()) Text(msg.text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp), color = t.text3, fontSize = 12.sp)
+                            }
+                        } else if (msg.text.isNotEmpty()) {
                             Text(msg.text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp), color = t.text, fontSize = 15.sp, maxLines = 10)
                         }
                     }

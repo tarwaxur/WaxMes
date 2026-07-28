@@ -108,6 +108,17 @@ class Repository {
         return seen.values.sortedByDescending { it.lastActivity }
     }
 
+    private fun enrichConversation(c: Conversation) {
+        if (c.isGroup) return
+        if (userCache[c.otherId] != null || nameCache[c.otherId] == null) {
+            fetchUserName(c.otherId) { name ->
+                c.name = name; c.avatarUrl = userCache[c.otherId] ?: ""; c.online = onlineCache[c.otherId] ?: false
+            }
+        } else {
+            c.avatarUrl = userCache[c.otherId] ?: ""; c.online = onlineCache[c.otherId] ?: false
+        }
+    }
+
     fun getConversations(onResult: (List<Conversation>) -> Unit) {
         if (uid.isEmpty()) { onResult(emptyList()); return }
         appLog("Fetching conversations...")
@@ -117,8 +128,7 @@ class Repository {
                 appLog("Got ${convs.size} conversations")
                 var pending = 0
                 convs.forEach { c ->
-                    val needFetch = if (c.isGroup) c.name.length >= 30 else (c.name.length == 11 && c.name.endsWith("...") || userCache[c.otherId] == null)
-                    if (needFetch) {
+                    if (c.name.length == 11 && c.name.endsWith("...") || (!c.isGroup && userCache[c.otherId] == null)) {
                         pending++
                         fetchUserName(c.otherId) { name ->
                             if (!c.isGroup) c.name = name
@@ -132,12 +142,24 @@ class Repository {
             }
     }
 
-    fun listenConversations(onChange: (List<Conversation>) -> Unit) =
+    fun listenConversations(onChange: (List<Conversation>) -> Unit) {
         db.collection("conversations").whereArrayContains("memberIds", uid).addSnapshotListener { snap, _ ->
             if (snap == null) return@addSnapshotListener
             val convs = snap.documents.mapNotNull { docToConversation(it, uid, nameCache, userCache, onlineCache) }
-            onChange(dedup(convs))
+            var pending = 0
+            convs.forEach { c ->
+                if (!c.isGroup && userCache[c.otherId] == null) {
+                    pending++
+                    fetchUserName(c.otherId) { name ->
+                        c.name = name; c.avatarUrl = userCache[c.otherId] ?: ""; c.online = onlineCache[c.otherId] ?: false
+                        pending--
+                        if (pending == 0) onChange(dedup(convs))
+                    }
+                }
+            }
+            if (pending == 0) onChange(dedup(convs))
         }
+    }
 
     fun listenMessages(convId: String, onChange: (List<Message>) -> Unit) =
         db.collection("conversations").document(convId).collection("messages")
@@ -168,9 +190,10 @@ class Repository {
 
     fun sendMessage(convId: String, text: String, isMedia: Boolean = false) {
         appLog("Sending ${if (isMedia) "media" else "text"} message to $convId")
-        val msg = mutableMapOf<String, Any>("text" to text, "time" to SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
+        val msg = mutableMapOf<String, Any>("time" to SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
             "senderId" to uid, "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp())
-        if (isMedia) msg["image"] = text
+        if (isMedia) { msg["image"] = text; msg["text"] = "" }
+        else msg["text"] = text
         db.collection("conversations").document(convId).collection("messages").add(msg)
         db.collection("conversations").document(convId)
             .set(mapOf("lastMsg" to if (isMedia) "📷 Photo" else text, "lastActivity" to com.google.firebase.firestore.FieldValue.serverTimestamp()),
@@ -189,8 +212,12 @@ class Repository {
             val mimeType = cr.getType(uri) ?: "image/jpeg"
             val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
             val dataUrl = "data:$mimeType;base64,$base64"
-            if (dataUrl.length > 1048000) { appLog("Image too large: ${dataUrl.length} bytes"); onResult(null); return }
-            appLog("Image encoded: ${dataUrl.length} bytes")
+            val sizeKB = dataUrl.length / 1024
+            if (dataUrl.length > 1048000) {
+                appLog("Image too large: ${dataUrl.length} bytes (${sizeKB}KB). Max 1MB")
+                onResult(null); return
+            }
+            appLog("Image encoded: ${dataUrl.length} bytes (${sizeKB}KB)")
             onResult(dataUrl)
         } catch (e: Exception) {
             appLog("Image read error: ${e.message}")
