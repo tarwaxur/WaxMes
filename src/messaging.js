@@ -189,7 +189,7 @@ async function sendMessage(){var inp=$('chat-input'),txt=inp.value.trim();if(!tx
   var finalText=txt;
   if(conv&&store.e2eReady&&window.db){var pubKeyResult=await getRecipientPubKey(store.activeConvId);if(pubKeyResult&&pubKeyResult.keys&&pubKeyResult.keys.length>0){if(pubKeyResult.missing&&pubKeyResult.missing.length>0){showAlert(pubKeyResult.missing.length+' kullanıcı henüz E2E\'yi etkinleştirmemiş. Mesaj E2E şifrelenmeden gönderiliyor.')}else{try{var enc=await e2eEncrypt(txt,pubKeyResult.keys);if(enc&&enc.indexOf('🔒')===0)finalText=enc}catch(e){}}}}
   var myId=fbUserId();
-  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);var _me=$('chat-messages');if(_me){var _dv=buildSingleMsgDiv(msg,conv,conv&&conv.isGroup);if(_dv){_me.appendChild(_dv);var _nb=_me.scrollHeight-_me.scrollTop-_me.clientHeight<150;if(_nb)_me.scrollTop=_me.scrollHeight}}else{renderMessages(store.activeConvId)}inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;var _na=Date.now();if(store._lastActTs===_na)store._lastActSeq=(store._lastActSeq||0)+1;else{store._lastActTs=_na;store._lastActSeq=0}conv.lastActivity=_na+store._lastActSeq*0.001;conv.time=timeNow()}renderConversations();saveConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
+  var id=uid(),msg={id:id,type:'sent',senderId:myId,text:finalText,time:timeNow(),edited:false,deleted:false};if(store.replyToMsgId){msg.replyTo=store.replyToMsgId;msg.replyText=store.replyToMsgText&&store.replyToMsgText.indexOf('🔒')===0?'🔒 [Şifreli]':store.replyToMsgText;cancelReply()}if(conv&&finalText!==txt){msg.e2e=true;msg._decrypted=txt}if(!store.messages[store.activeConvId])store.messages[store.activeConvId]=[];store.messages[store.activeConvId].push(msg);console.log('[send] msg pushed, using',_me?'appendChild':'renderMessages');var _me=$('chat-messages');if(_me){var _dv=buildSingleMsgDiv(msg,conv,conv&&conv.isGroup);if(_dv){_me.appendChild(_dv);var _nb=_me.scrollHeight-_me.scrollTop-_me.clientHeight<150;if(_nb)_me.scrollTop=_me.scrollHeight}}else{renderMessages(store.activeConvId)}inp.value='';$('chat-send').disabled=true;if(conv){conv.lastMsg=msg._decrypted||txt;var _na=Date.now();if(store._lastActTs===_na)store._lastActSeq=(store._lastActSeq||0)+1;else{store._lastActTs=_na;store._lastActSeq=0}conv.lastActivity=_na+store._lastActSeq*0.001;conv.time=timeNow()}renderConversations();saveConversations();saveMessages();fbSendMessage(store.activeConvId,msg);stopTyping();setTimeout(function(){var fi=$('chat-input');if(fi){fi.focus();var fl=fi.value.length;fi.setSelectionRange(fl,fl)}},30)}
 
 function addToGroup(groupId,userId){
   hideContextMenu();
@@ -745,11 +745,11 @@ function startTyping(){
   if(!store.activeConvId||!window.db||!fbUserId())return;
   var h=$('chat-header-status');
   if(!h)return;
-  // Groups: typing indicator Firestore'a yazinca tum grup yeniden yukleniyor, pas gec
-  var _conv=findConv(store.activeConvId);if(_conv&&_conv.isGroup)return;
+  var _conv=findConv(store.activeConvId);if(_conv&&_conv.isGroup){console.log('[typ] skip group');return}
   var now=Date.now();
   if(store._lastTypingTs&&now-store._lastTypingTs<1000)return;
   store._lastTypingTs=now;
+  console.log('[typ] firestore write',store.activeConvId);
   db.collection(COLLECTIONS.CONVERSATIONS).doc(store.activeConvId).update({typing:fbUserId(),typingAt:now}).catch(console.error);
   if(store.typingTimer)clearTimeout(store.typingTimer);
   store.typingTimer=setTimeout(stopTyping,2500)
@@ -1078,21 +1078,25 @@ function confirmDelete(){
   var msgId=store.pendingDeleteMsgId;store.pendingDeleteMsgId=null;
   hideDeleteModal();if(!msgId)return;
   var convId=store.activeConvId;if(!convId)return;
+  console.log('[del] deleting',msgId,'in',convId);
   store._skipDedup=true;
   var msgs=store.messages[convId];
   for(var i=0;i<msgs.length;i++){if(msgs[i].id===msgId){msgs[i].deleted=true;msgs[i].text='';msgs[i].audio='';msgs[i].image='';msgs[i].video='';break}}
   updateConvPreview(convId);
   var _conv=findConv(convId);
   if(_conv&&window.db&&_conv.lastMsg){
-    db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:_conv.lastMsg}).catch(function(){})
+    console.log('[del] firestore update lastMsg:',_conv.lastMsg);
+    db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:_conv.lastMsg}).catch(function(e){console.log('[del] fs update fail',e)})
   }
-  renderMessages(convId);renderConversations();saveMessages();store._skipDedup=false
+  renderMessages(convId);renderConversations();saveMessages();store._skipDedup=false;
+  console.log('[del] done, preview:',_conv?_conv.lastMsg:'?')
 }
 
 function updateConvPreview(convId){
   var conv=findConv(convId);if(!conv)return;
-  if(!store.messages[convId]||store.messages[convId].length===0){conv.lastMsg='Sohbet temizlendi';conv.time='';return}
+  if(!store.messages[convId]||store.messages[convId].length===0){conv.lastMsg='Sohbet temizlendi';conv.time='';console.log('[preview] set to empty for',convId);return}
   var last=store.messages[convId][store.messages[convId].length-1];
+  console.log('[preview] last msg:',last.id,last.deleted?'DELETED':'active',last.text?.substring(0,20)||'(empty)');
   if(last.deleted){
     conv.lastMsg=last.deletedByMe?'Bu mesajı sildiniz':'Bu mesaj silindi';
     conv.time=last.time

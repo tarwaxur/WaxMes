@@ -60,6 +60,7 @@ function fbListenConversations(uid){
             }
           }
         }else if(change.type==='modified'){
+          console.log('[mod] DM conv',cid,'lastMsg:',(d.lastMsg||'').substring(0,30));
           for(var uci=0;uci<store.conversations.length;uci++){
             if(store.conversations[uci].id===cid){
               store.conversations[uci].lastMsg=d.lastMsg||store.conversations[uci].lastMsg||'';
@@ -143,6 +144,7 @@ function fbStopConversations(){
 
 
 async function applyFirestoreGroupConversation(gid,gd,uid){
+  console.log('[group] update',gid,'name:',gd.name,'lastMsg:',(gd.lastMsg||'').substring(0,20));
   var mids=gd.memberIds||[];
   var memberFetches=mids.filter(function(mid){return mid!==uid}).map(async function(mid){
     try {

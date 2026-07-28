@@ -821,9 +821,24 @@ function showConfirmModal(title, desc, confirmText, confirmBg, onConfirm) {
 
 // ===== DEVTOOLS PANEL (Ctrl+Shift+I) =====
 var _devLogs = [];
+var _devLogCounts = {}; // "level:msg" -> count
+var _devLogOrder = [];  // ordered list of keys for dedup display
+
 function _pushDevLog(level, args) {
-  _devLogs.push({level:level,args:args,time:new Date()});
-  if (_devLogs.length > 200) _devLogs.shift();
+  var msg = args.map(function(a) { return typeof a === 'string' ? a : (a && a.message) || JSON.stringify(a) || String(a); }).join(' ');
+  var key = level + ':' + msg;
+  var now = new Date();
+  if (_devLogCounts[key]) {
+    _devLogCounts[key].count++;
+    _devLogCounts[key].time = now;
+  } else {
+    _devLogCounts[key] = { level: level, msg: msg, count: 1, time: now, firstTime: now };
+    _devLogOrder.push(key);
+    if (_devLogOrder.length > 200) {
+      var oldKey = _devLogOrder.shift();
+      delete _devLogCounts[oldKey];
+    }
+  }
   var el = $('dev-console-area');
   if (el) { renderDevConsole(el); }
 }
@@ -990,11 +1005,14 @@ function showDevToast(title, msg, color) {
 
 function renderDevConsole(el) {
   var html = '';
-  for (var i = Math.max(0, _devLogs.length - 100); i < _devLogs.length; i++) {
-    var l = _devLogs[i];
+  var start = Math.max(0, _devLogOrder.length - 100);
+  for (var i = start; i < _devLogOrder.length; i++) {
+    var key = _devLogOrder[i];
+    var l = _devLogCounts[key];
+    if (!l) continue;
     var t = ('0' + l.time.getHours()).slice(-2) + ':' + ('0' + l.time.getMinutes()).slice(-2) + ':' + ('0' + l.time.getSeconds()).slice(-2);
-    var msg = l.args.map(function(a) { return typeof a === 'string' ? a : (a && a.message) || JSON.stringify(a) || String(a); }).join(' ');
-    html += '<div class="log-row"><span class="log-time">' + t + '</span><span class="log-lvl log-' + l.level + '">[' + l.level.toUpperCase() + ']</span><span class="log-msg">' + esc(msg) + '</span></div>';
+    var countLabel = l.count > 1 ? ' <span style="color:var(--text4)">(x' + l.count + ')</span>' : '';
+    html += '<div class="log-row"><span class="log-time">' + t + '</span><span class="log-lvl log-' + l.level + '">[' + l.level.toUpperCase() + ']</span><span class="log-msg">' + esc(l.msg) + countLabel + '</span></div>';
   }
   el.innerHTML = html || '<div style="color:#005a1a;text-align:center;padding:30px">// no console output yet</div>';
   el.scrollTop = el.scrollHeight;
