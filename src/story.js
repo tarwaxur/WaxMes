@@ -315,7 +315,7 @@ function renderStoryBar() {
     }
   }
   el.innerHTML = html;
-  if(store._sbShowLog<3){store._sbShowLog=(store._sbShowLog||0)+1;console.log('[sb] rendered',others.length,'users, viewed stories:',others.map(function(e){return e.items.filter(function(it){return store.storyViewed[it.id]}).length+'/'+e.items.length}).join(', '))}
+  if(typeof _origLog==='function'){try{_origLog('[sb] rendered','users:',others.length,'viewed:',others.map(function(e){return e.items.filter(function(it){return store.storyViewed[it.id]}).length+'/'+e.items.length}).join(', '))}catch(e){}}
 }
 
 function renderStoryAvatar(entry, itemIdx) {
