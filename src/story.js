@@ -304,6 +304,7 @@ function renderStoryBar() {
       var e = others[j];
       var viewedCount = e.items.filter(function(it){return store.storyViewed[it.id]}).length;
       var hasUnseen = e.items.some(function(it){return !store.storyViewed[it.id]});
+      console.log('[storybar]',e.authorName,'viewed:',viewedCount,'/',e.items.length);
       html += '<div class="story-item" data-action="open-story" data-author-id="' + esc(e.authorId) + '">';
       html += '<div class="story-avatar-wrap ' + (hasUnseen ? 'unseen' : 'seen') + '">';
       html += makeStoryRingSvg(e.items.length, viewedCount, false);
