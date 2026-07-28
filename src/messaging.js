@@ -1095,9 +1095,6 @@ function confirmDelete(){
   renderMessages(convId);renderConversations();saveMessages();store._skipDedup=false;
   console.log('[del] done, preview:',_conv?_conv.lastMsg:'?')
 }
-  renderMessages(convId);renderConversations();saveMessages();store._skipDedup=false;
-  console.log('[del] done, preview:',_conv?_conv.lastMsg:'?')
-}
 
 function updateConvPreview(convId){
   var conv=findConv(convId);if(!conv)return;
