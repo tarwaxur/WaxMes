@@ -232,7 +232,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                     shape = RoundedCornerShape(28.dp),
                     color = t.bg2.copy(alpha = 0.92f),
                     shadowElevation = 8.dp,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp).navigationBarsPadding()
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp).navigationBarsPadding().imePadding()
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
@@ -287,7 +287,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                 }
             }
         ) { padding ->
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg),
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).imePadding(),
                 state = listState, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                 items(msgs) { msg ->
                     val isMine = msg.type == "sent"
