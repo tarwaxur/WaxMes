@@ -39,10 +39,12 @@ fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<
 
 fun docToMessage(doc: DocumentSnapshot, uid: String): Message {
     val d = doc.data ?: return Message(id = doc.id)
+    appLog("docToMessage: id=${doc.id} text=${(d["text"] as? String ?: "").take(30)} replyTo=${d["replyTo"] ?: "null"}")
     return Message(id = doc.id, text = d["text"] as? String ?: "",
         time = d["time"] as? String ?: "", senderId = d["senderId"] as? String ?: "",
         type = if ((d["senderId"] as? String) == uid) "sent" else "received",
-        image = d["image"] as? String ?: "")
+        image = d["image"] as? String ?: "", replyTo = d["replyTo"] as? String ?: "",
+        replyText = d["replyText"] as? String ?: "")
 }
 
 class Repository {
@@ -55,30 +57,34 @@ class Repository {
 
     fun fetchUserName(userId: String, onResult: (String) -> Unit) {
         if (nameCache.containsKey(userId)) { onResult(nameCache[userId]!!); return }
+        appLog("fetchUserName: userId=$userId fetching from Firestore...")
         db.collection("users").document(userId).get(Source.SERVER).addOnSuccessListener { snap ->
             val name = snap.getString("displayName") ?: snap.getString("username") ?: userId.take(8)
-            nameCache[userId] = name
             val avatar = snap.getString("avatarUrl") ?: snap.getString("avatar") ?: ""
-            userCache[userId] = avatar
-            onlineCache[userId] = snap.getBoolean("online") ?: false
+            val online = snap.getBoolean("online") ?: false
+            nameCache[userId] = name; userCache[userId] = avatar; onlineCache[userId] = online
+            appLog("fetchUserName: name=$name avatar=${if (avatar.isNotEmpty()) avatar.take(30) + "..." else "EMPTY"} online=$online")
             onResult(name)
-        }
+        }.addOnFailureListener { e -> appLog("fetchUserName FAIL: ${e.message}") }
     }
 
     fun fetchUserStatus(userId: String, onResult: (String, Boolean, String) -> Unit) {
         val cachedName = nameCache[userId]
         val cachedAvatar = userCache[userId]
         val cachedOnline = onlineCache[userId]
+        appLog("fetchUserStatus: userId=$userId cachedName=$cachedName cachedAvatar=${if (cachedAvatar != null) cachedAvatar.take(30) + "..." else "null"} cachedOnline=$cachedOnline")
         if (cachedName != null && cachedAvatar != null && cachedOnline != null) {
+            appLog("fetchUserStatus: using cache -> name=$cachedName online=$cachedOnline avatarLen=${cachedAvatar.length}")
             onResult(cachedName, cachedOnline, cachedAvatar); return
         }
         db.collection("users").document(userId).get(Source.SERVER).addOnSuccessListener { snap ->
             val name = snap.getString("displayName") ?: snap.getString("username") ?: userId.take(8)
             val avatar = snap.getString("avatarUrl") ?: snap.getString("avatar") ?: ""
             val online = snap.getBoolean("online") ?: false
+            appLog("fetchUserStatus: Firestore -> name=$name online=$online avatarField='${snap.getString("avatarUrl") ?: snap.getString("avatar") ?: "EMPTY"}' avatarLen=${avatar.length}")
             nameCache[userId] = name; userCache[userId] = avatar; onlineCache[userId] = online
             onResult(name, online, avatar)
-        }
+        }.addOnFailureListener { e -> appLog("fetchUserStatus FAIL: ${e.message}") }
     }
 
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
@@ -188,15 +194,17 @@ class Repository {
         }
     }
 
-    fun sendMessage(convId: String, text: String, isMedia: Boolean = false) {
-        appLog("Sending ${if (isMedia) "media" else "text"} message to $convId")
+    fun sendMessage(convId: String, text: String, isMedia: Boolean = false, replyToId: String = "", replyToText: String = "") {
+        appLog("Sending ${if (isMedia) "media" else "text"} to $convId replyTo=$replyToId")
         val msg = mutableMapOf<String, Any>("time" to SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
             "senderId" to uid, "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp())
         if (isMedia) { msg["image"] = text; msg["text"] = "" }
         else msg["text"] = text
+        if (replyToId.isNotEmpty()) { msg["replyTo"] = replyToId; msg["replyText"] = replyToText }
         db.collection("conversations").document(convId).collection("messages").add(msg)
+        val lastMsg = if (isMedia) "📷 Photo" else if (replyToId.isNotEmpty()) "↩ $replyToText: $text" else text
         db.collection("conversations").document(convId)
-            .set(mapOf("lastMsg" to if (isMedia) "📷 Photo" else text, "lastActivity" to com.google.firebase.firestore.FieldValue.serverTimestamp()),
+            .set(mapOf("lastMsg" to lastMsg, "lastActivity" to com.google.firebase.firestore.FieldValue.serverTimestamp()),
                 com.google.firebase.firestore.SetOptions.merge())
     }
 

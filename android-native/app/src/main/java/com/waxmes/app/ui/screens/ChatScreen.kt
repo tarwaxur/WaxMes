@@ -250,7 +250,17 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                 keyboardType = KeyboardType.Text, imeAction = ImeAction.Send
                             ),
                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                                onSend = { if (text.isNotBlank()) { repo.sendMessage(convId, if (replyToMsg != null) "↩ ${replyToMsg!!.text.take(30)}: $text" else text); text = ""; replyToMsg = null } }
+                                onSend = {
+                                    if (text.isNotBlank()) {
+                                        if (replyToMsg != null) {
+                                            val replyText = if (replyToMsg!!.text.isNotEmpty()) replyToMsg!!.text else "📷 Image"
+                                            repo.sendMessage(convId, text, replyToId = replyToMsg!!.id, replyToText = replyText)
+                                        } else {
+                                            repo.sendMessage(convId, text)
+                                        }
+                                        text = ""; replyToMsg = null
+                                    }
+                                }
                             ),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = t.accent, unfocusedBorderColor = t.border2,
@@ -260,7 +270,15 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                             shape = RoundedCornerShape(12.dp))
                         Spacer(Modifier.width(6.dp))
                         IconButton(onClick = {
-                            if (text.isNotBlank()) { repo.sendMessage(convId, if (replyToMsg != null) "↩ ${replyToMsg!!.text.take(30)}: $text" else text); text = ""; replyToMsg = null }
+                            if (text.isNotBlank()) {
+                                if (replyToMsg != null) {
+                                    val replyText = if (replyToMsg!!.text.isNotEmpty()) replyToMsg!!.text else "📷 Image"
+                                    repo.sendMessage(convId, text, replyToId = replyToMsg!!.id, replyToText = replyText)
+                                } else {
+                                    repo.sendMessage(convId, text)
+                                }
+                                text = ""; replyToMsg = null
+                            }
                         }) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = if (text.isNotBlank()) t.accent else t.text4, modifier = Modifier.size(26.dp)) }
                     }
                 }
@@ -278,15 +296,22 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                     onClick = {},
                                     onLongClick = { contextMsg = msg }
                                 )) {
-                            if (msg.image.isNotEmpty()) {
-                                Column {
+                            Column {
+                                if (msg.replyTo.isNotEmpty()) {
+                                    Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Box(modifier = Modifier.width(3.dp).height(28.dp).background(t.accent.copy(alpha = 0.6f), RoundedCornerShape(2.dp)))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(msg.replyText.ifEmpty { "📷 Image" }, color = t.text4, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                    }
+                                }
+                                if (msg.image.isNotEmpty()) {
                                     AsyncImage(model = msg.image, contentDescription = null,
                                         modifier = Modifier.size(240.dp).clip(RoundedCornerShape(18.dp)).padding(4.dp),
                                         contentScale = ContentScale.Crop)
                                     if (msg.text.isNotEmpty()) Text(msg.text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp), color = t.text3, fontSize = 12.sp)
+                                } else if (msg.text.isNotEmpty()) {
+                                    Text(msg.text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), color = t.text, fontSize = 15.sp, maxLines = 10)
                                 }
-                            } else if (msg.text.isNotEmpty()) {
-                                Text(msg.text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), color = t.text, fontSize = 15.sp, maxLines = 10)
                             }
                         }
                     }
