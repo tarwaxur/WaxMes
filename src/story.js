@@ -271,7 +271,7 @@ function makeStoryRingSvg(total, viewed, isOwn) {
 function renderStoryBar() {
   try{console.log('RENDER_STORY_BAR_CALLED')}catch(e){}
   var el = $('story-bar');
-  if (!el) return;
+  if (!el) {try{console.log('SB_EL_NULL')}catch(e){};return}
   var feed = store.storyFeed || [];
   var myUid = fbUserId();
   var myEntry = null;
