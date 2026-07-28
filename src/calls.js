@@ -446,6 +446,7 @@ async function toggleCallCamera(){
     return
   }
   try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){console.log('[cam] getUserMedia not available');return}
     var stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
     store.callCamStream=stream;videoEl.srcObject=stream;container.style.display='';
     videoEl.play().catch(console.error);
@@ -463,6 +464,7 @@ async function toggleCallScreen(){
     return
   }
   try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){console.log('[screen] getDisplayMedia not available');return}
     var stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
     store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
     videoEl.play().catch(console.error);
