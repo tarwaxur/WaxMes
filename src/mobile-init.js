@@ -1,78 +1,177 @@
 // ===== MOBILE LAYOUT INIT =====
 (function() {
-  var isMobile = window.Capacitor && Capacitor.isNativePlatform();
-  if (!isMobile) return;
-  document.body.classList.add('is-mobile');
+  function isNativeMobile() {
+    return !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+  }
 
-  var tabs = document.querySelectorAll('.mobile-nav-item');
+  function isNarrowScreen() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches);
+  }
+
+  function shouldUseMobileShell() {
+    return isNativeMobile() || isNarrowScreen();
+  }
+
+  if (!shouldUseMobileShell()) return;
+
+  document.body.classList.add('is-mobile', 'show-chats');
+  if (window.innerWidth <= 380) document.body.classList.add('is-compact');
+
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.mobile-nav-item'));
+  var backBtn = $('chat-back-btn');
+  var appChat = $('app-chat');
+  var settingsPage = $('settings-page');
+  var chatInput = $('chat-input');
+
+  function setActiveTab(name) {
+    tabs.forEach(function(tab) {
+      tab.classList.toggle('active', tab.dataset.mtab === name);
+    });
+  }
+
+  function closeChatPanel() {
+    document.body.classList.remove('mobile-chat-open');
+    if (appChat) appChat.classList.remove('open');
+    if (backBtn) backBtn.style.display = 'none';
+  }
+
+  function openChatPanel() {
+    document.body.classList.remove('show-settings');
+    document.body.classList.add('show-chats', 'mobile-chat-open');
+    if (settingsPage) settingsPage.classList.remove('active');
+    if (appChat) appChat.classList.add('open');
+    if (backBtn) backBtn.style.display = 'flex';
+    setActiveTab('chats');
+  }
+
+  function showChatsTab() {
+    document.body.classList.remove('show-status', 'show-settings');
+    document.body.classList.add('show-chats');
+    if (settingsPage) settingsPage.classList.remove('active');
+    closeChatPanel();
+    setActiveTab('chats');
+  }
+
+  function showStatusTab() {
+    document.body.classList.remove('show-chats', 'show-settings');
+    document.body.classList.add('show-status');
+    if (settingsPage) settingsPage.classList.remove('active');
+    closeChatPanel();
+    if (typeof renderStoryBar === 'function') renderStoryBar();
+    setActiveTab('status');
+  }
+
+  function showSettingsTab() {
+    closeChatPanel();
+    document.body.classList.remove('show-chats', 'show-status');
+    document.body.classList.add('show-settings');
+    setActiveTab('settings');
+    if (typeof showSettings === 'function') showSettings();
+  }
+
   tabs.forEach(function(tab) {
-    tab.onclick = function() {
+    tab.addEventListener('click', function() {
       var mtab = tab.dataset.mtab;
-      tabs.forEach(function(t) { t.classList.remove('active'); });
-      tab.classList.add('active');
-      if (mtab === 'chats') {
-        document.body.classList.remove('show-status', 'show-settings');
-        document.body.classList.add('show-chats');
-        $('settings-page').classList.remove('active');
-      } else if (mtab === 'status') {
-        document.body.classList.remove('show-chats', 'show-settings');
-        document.body.classList.add('show-status');
-        $('settings-page').classList.remove('active');
-      } else if (mtab === 'settings') {
-        document.body.classList.remove('show-chats', 'show-status');
-        document.body.classList.add('show-settings');
-        if (typeof showSettings === 'function') showSettings();
-      }
-    };
+      if (mtab === 'chats') showChatsTab();
+      else if (mtab === 'status') showStatusTab();
+      else if (mtab === 'settings') showSettingsTab();
+    });
   });
 
-  var backBtn = $('chat-back-btn');
   if (backBtn) {
-    backBtn.onclick = function() {
+    backBtn.addEventListener('click', function(e) {
+      e.preventDefault();
       if (typeof goToHome === 'function') goToHome();
-      else if (typeof closeProfilePanel === 'function') closeProfilePanel();
-    };
+      closeChatPanel();
+      setActiveTab('chats');
+    });
   }
 
-  var origGoToHome = window.goToHome;
-  if (origGoToHome) {
-    window.goToHome = function() {
-      origGoToHome();
-      if (backBtn) backBtn.style.display = 'none';
+  function wrapGlobal(name, after) {
+    var original = window[name];
+    if (typeof original !== 'function' || original._mobileWrapped) return;
+    window[name] = function() {
+      var result = original.apply(this, arguments);
+      after.apply(this, arguments);
+      return result;
     };
+    window[name]._mobileWrapped = true;
   }
 
-  var origSelectConv = window.selectConversation;
-  if (origSelectConv) {
-    window.selectConversation = function(id) {
-      origSelectConv(id);
-      if (backBtn) backBtn.style.display = 'flex';
-    };
-  }
+  wrapGlobal('goToHome', function() {
+    closeChatPanel();
+    setActiveTab('chats');
+  });
 
-  var origRenderConv = window.renderConversations;
-  if (origRenderConv) {
-    window.renderConversations = function(list) {
-      origRenderConv(list);
-      var total = 0;
-      if (store && store.conversations) {
-        for (var i = 0; i < store.conversations.length; i++) {
-          total += store.conversations[i].unread || 0;
-        }
+  wrapGlobal('selectConversation', function() {
+    openChatPanel();
+    if (chatInput) setTimeout(function() { chatInput.blur(); }, 0);
+  });
+
+  wrapGlobal('showSettings', function() {
+    if (!document.body.classList.contains('mobile-chat-open')) {
+      document.body.classList.remove('show-chats', 'show-status');
+      document.body.classList.add('show-settings');
+      setActiveTab('settings');
+    }
+  });
+
+  wrapGlobal('hideSettings', function() {
+    if (!document.body.classList.contains('mobile-chat-open')) {
+      document.body.classList.remove('show-settings');
+      document.body.classList.add('show-chats');
+      setActiveTab('chats');
+    }
+  });
+
+  function updateUnreadBadge() {
+    var total = 0;
+    if (window.store && store.conversations) {
+      for (var i = 0; i < store.conversations.length; i++) {
+        total += store.conversations[i].unread || 0;
       }
-      var wrap = document.querySelector('.mobile-nav-item[data-mtab="chats"] .mobile-nav-item-wrap');
-      var b = wrap ? wrap.querySelector('.badge') : null;
-      if (total > 0) {
-        if (!b) {
-          b = document.createElement('span');
-          b.className = 'badge';
-          if (wrap) wrap.appendChild(b);
-        }
-        b.textContent = total > 99 ? '99+' : total;
-        b.style.display = 'flex';
-      } else if (b) {
-        b.style.display = 'none';
+    }
+    var wrap = document.querySelector('.mobile-nav-item[data-mtab="chats"] .mobile-nav-item-wrap');
+    var badge = wrap ? wrap.querySelector('.badge') : null;
+    if (total > 0) {
+      if (!badge && wrap) {
+        badge = document.createElement('span');
+        badge.className = 'badge';
+        wrap.appendChild(badge);
       }
-    };
+      if (badge) {
+        badge.textContent = total > 99 ? '99+' : total;
+        badge.style.display = 'flex';
+      }
+    } else if (badge) {
+      badge.style.display = 'none';
+    }
   }
+
+  wrapGlobal('renderConversations', updateUnreadBadge);
+  updateUnreadBadge();
+
+  function updateKeyboardState() {
+    if (!window.visualViewport) return;
+    var keyboardOpen = window.visualViewport.height < window.innerHeight - 120;
+    document.body.classList.toggle('mobile-keyboard-open', keyboardOpen);
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateKeyboardState);
+    window.visualViewport.addEventListener('scroll', updateKeyboardState);
+    updateKeyboardState();
+  }
+
+  window.addEventListener('resize', function() {
+    document.body.classList.toggle('is-compact', window.innerWidth <= 380);
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.body.classList.contains('mobile-chat-open')) {
+      e.preventDefault();
+      if (typeof goToHome === 'function') goToHome();
+      closeChatPanel();
+    }
+  });
 })();
