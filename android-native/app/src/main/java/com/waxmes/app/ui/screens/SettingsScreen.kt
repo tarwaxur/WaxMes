@@ -109,8 +109,8 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
 private fun DrawerItem(icon: ImageVector, label: String, selected: Boolean, t: ThemeColors, onClick: () -> Unit) {
     Surface(color = if (selected) t.accent.copy(alpha = 0.12f) else Color.Transparent,
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp).clickable { onClick() }) {
-        Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, tint = if (selected) t.accent else t.text2, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(14.dp))
             Text(label, color = if (selected) t.accent else t.text, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, fontSize = 15.sp)
@@ -159,19 +159,19 @@ fun ProfileSection(t: ThemeColors, repo: Repository) {
         var updateVer by remember { mutableStateOf("") }
         val ctx = LocalContext.current
         LaunchedEffect(Unit) { repo.checkForUpdate { avail, ver -> updateStatus = if (avail) "update" else "latest"; updateVer = ver } }
-        Surface(shape = RoundedCornerShape(16.dp), color = t.bg3, modifier = Modifier.fillMaxWidth().clickable {
-            if (updateStatus == "update") {
-                ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/tarwaxur/WaxMes/releases/latest")).apply {
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
-            } else {
-                updateStatus = "checking"
-                repo.checkForUpdate { avail, ver ->
-                    updateStatus = if (avail) "update" else "latest"; updateVer = ver
+        Surface(shape = RoundedCornerShape(16.dp), color = t.bg3, modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable {
+                if (updateStatus == "update") {
+                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/tarwaxur/WaxMes/releases/latest")).apply {
+                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    })
+                } else {
+                    updateStatus = "checking"
+                    repo.checkForUpdate { avail, ver ->
+                        updateStatus = if (avail) "update" else "latest"; updateVer = ver
+                    }
                 }
-            }
-        }) {
-            Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            }.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     when (updateStatus) {
                         "update" -> Icons.Default.SystemUpdateAlt
@@ -247,9 +247,8 @@ fun ThemesPage(t: ThemeColors, currentTheme: String, onThemeChange: (String) -> 
 @Composable
 private fun ThemeCategoryCard(label: String, count: Int, previewColor: Color, accentColor: Color, t: ThemeColors, onClick: () -> Unit) {
     Surface(shape = RoundedCornerShape(20.dp), color = t.bg3,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        tonalElevation = 2.dp) {
-        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+        modifier = Modifier.fillMaxWidth(), tonalElevation = 2.dp) {
+        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable(onClick = onClick).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
             // Phone preview mockup
             Box(modifier = Modifier.size(70.dp, 120.dp).clip(RoundedCornerShape(12.dp)).background(previewColor), contentAlignment = Alignment.TopCenter) {
                 Box(modifier = Modifier.fillMaxWidth().height(14.dp).background(accentColor.copy(alpha = 0.3f)))
@@ -350,10 +349,10 @@ fun ThemePreview(category: String, currentTheme: String, onThemeChange: (String)
                 val isSelected = name == selectedTheme
                 Surface(shape = RoundedCornerShape(14.dp), color = t.bg3,
                     border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, t.accent) else null,
-                    modifier = Modifier.fillMaxWidth().clickable {
+                    modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable {
                         selectedTheme = name; onThemeChange(name); appLog("Theme changed: $name")
-                    }) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    }.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(26.dp).clip(RoundedCornerShape(6.dp)).background(theme.accent))
                             Spacer(Modifier.width(10.dp))
@@ -417,18 +416,19 @@ fun DebugSection(t: ThemeColors) {
             Spacer(Modifier.height(12.dp))
             Box(modifier = Modifier.fillMaxSize()) {
                 Surface(shape = RoundedCornerShape(12.dp), color = t.bg3,
-                    modifier = Modifier.fillMaxSize().clickable {
+                    modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).clickable {
                         if (logs.isNotEmpty()) {
                             clipboard.setText(AnnotatedString(logs.joinToString("\n")))
                             showCopied = true
                         }
                     }) {
-                    if (logs.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No logs yet", color = t.text4, fontSize = 13.sp)
-                        }
-                    } else {
-                        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(10.dp)) {
+                        if (logs.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("No logs yet", color = t.text4, fontSize = 13.sp)
+                            }
+                        } else {
+                            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(10.dp)) {
                             items(logs) { log ->
                                 Text(log, color = t.text3, fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, lineHeight = 15.sp)
                             }
@@ -454,6 +454,7 @@ fun DebugSection(t: ThemeColors) {
             }
         }
     }
+}
 }
 
 @Composable

@@ -247,8 +247,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             item {
                 Spacer(Modifier.height(12.dp))
                 Surface(shape = RoundedCornerShape(16.dp), color = t.accent.copy(alpha = 0.12f),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { showAddFriend = true }) {
-                    Row(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { showAddFriend = true }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.PersonAdd, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(12.dp))
                         Text("Add Friend", color = t.accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -373,8 +373,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
 private fun ContextMenuItem(icon: ImageVector, label: String, desc: String, tint: Color, onClick: () -> Unit) {
     val ct = LocalTheme.current
     Surface(shape = RoundedCornerShape(12.dp), color = ct.bg3,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp).clickable { onClick() }) {
-        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -398,14 +398,18 @@ private fun AddFriendScreen(t: ThemeColors, onBack: () -> Unit) {
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Surface(shape = RoundedCornerShape(12.dp), color = if (page == "add") t.accent.copy(alpha = 0.15f) else t.bg3,
-                    modifier = Modifier.weight(1f).clickable { page = "add" }) {
-                    Text("Add Friend", color = if (page == "add") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(12.dp), fontSize = 13.sp)
+                    modifier = Modifier.weight(1f)) {
+                    Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { page = "add" }) {
+                        Text("Add Friend", color = if (page == "add") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(12.dp), fontSize = 13.sp)
+                    }
                 }
                 Surface(shape = RoundedCornerShape(12.dp), color = if (page == "pending") t.accent.copy(alpha = 0.15f) else t.bg3,
-                    modifier = Modifier.weight(1f).clickable { page = "pending" }) {
-                    Text("Pending", color = if (page == "pending") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(12.dp), fontSize = 13.sp)
+                    modifier = Modifier.weight(1f)) {
+                    Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { page = "pending" }) {
+                        Text("Pending", color = if (page == "pending") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(12.dp), fontSize = 13.sp)
+                    }
                 }
             }
             Spacer(Modifier.height(20.dp))
