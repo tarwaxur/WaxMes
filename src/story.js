@@ -305,7 +305,7 @@ function renderStoryBar() {
       var e = others[j];
       var viewedCount = e.items.filter(function(it){return store.storyViewed[it.id]}).length;
       var hasUnseen = e.items.some(function(it){return !store.storyViewed[it.id]});
-      if(!store._sbLog){store._sbLog={};console.log('[sb] bar rendering',e.authorName,'vc:',viewedCount,'/',e.items.length)}
+      try{console.log('[sb] '+e.authorName+' vc:'+viewedCount+'/'+e.items.length)}catch(e){}
       html += '<div class="story-item" data-action="open-story" data-author-id="' + esc(e.authorId) + '">';
       html += '<div class="story-avatar-wrap ' + (hasUnseen ? 'unseen' : 'seen') + '">';
       html += makeStoryRingSvg(e.items.length, viewedCount, false);
@@ -316,8 +316,7 @@ function renderStoryBar() {
     }
   }
   el.innerHTML = html;
-  if(typeof _origLog==='function'){try{_origLog('[sb] rendered','users:',others.length,'viewed:',others.map(function(e){return e.items.filter(function(it){return store.storyViewed[it.id]}).length+'/'+e.items.length}).join(', '))}catch(e){}}
-}
+  try{console.log('[sb] done users:'+others.length)}catch(e){}
 
 function renderStoryAvatar(entry, itemIdx) {
   var it = entry.items[itemIdx] || {};
