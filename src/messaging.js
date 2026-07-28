@@ -1026,7 +1026,11 @@ async function saveEdit(msgId){
     // Re-encrypt if original was E2E
     var newTxt=t;
     if(msgs[si].e2e||(msgs[si].text&&msgs[si].text.indexOf('🔒')===0)){var conv=findConv(convId);if(conv&&store.e2eReady&&window.db){var pubKeys=await getRecipientPubKey(convId);if(pubKeys&&(Array.isArray(pubKeys)?pubKeys.length:1)){try{var enc=await e2eEncrypt(t,pubKeys);if(enc&&enc.indexOf('🔒')===0)newTxt=enc}catch(e){}}}}
-    msgs[si].text=newTxt;msgs[si].edited=true;msgs[si].editedTime=timeNow();msgs[si]._decrypted=null;break
+    msgs[si].text=newTxt;msgs[si].edited=true;msgs[si].editedTime=timeNow();msgs[si]._decrypted=null;
+    // Update DM list preview if this is the last message
+    if(si===msgs.length-1){var _ec=findConv(convId);if(_ec){_ec.lastMsg=newTxt.indexOf('🔒')===0?'':newTxt;if(msgs[si].image)_ec.lastMsg='📷 Fotoğraf';else if(msgs[si].video)_ec.lastMsg='🎬 Video';else if(msgs[si].audio)_ec.lastMsg='🎤 Ses'}
+    if(window.db)db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:_ec.lastMsg||''}).catch(function(){})}
+    break
   }}
   renderMessages(convId);saveMessages()
 }

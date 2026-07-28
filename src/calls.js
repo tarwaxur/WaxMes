@@ -509,7 +509,8 @@ function showScreenPicker(sources,callback){
   var existing=document.getElementById('screen-picker-overlay');
   if(existing)existing.remove();
   var screens=sources.filter(function(s){return s.isScreen});
-  var windows=sources.filter(function(s){return !s.isScreen});
+  if(screens.length===0){console.log('[picker] no screens found');return}
+  // Sadece ekranları göster, window paylaşımını kaldır (Electron desktopCapturer sınırlı)
   var activeTab='screens';
 
   var overlay=document.createElement('div');
@@ -528,46 +529,37 @@ function showScreenPicker(sources,callback){
     '<button style="width:30px;height:30px;border:none;border-radius:7px;background:transparent;cursor:pointer;color:var(--text4);font-size:18px;display:flex;align-items:center;justify-content:center" onclick="this.closest(\'#screen-picker-overlay\').remove()">✕</button>';
   card.appendChild(header);
 
-  // Tabs
-  var tabs=document.createElement('div');
-  tabs.style.cssText='display:flex;gap:4px;padding:12px 20px;background:var(--bg3)';
-  tabs.innerHTML=
-    '<button class="sc-pick-tab" data-tab="screens" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;background:var(--accent);color:#fff">Ekranlar ('+screens.length+')</button>'+
-    '<button class="sc-pick-tab" data-tab="windows" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;background:transparent;color:var(--text3)">Pencereler ('+windows.length+')</button>';
-  tabs.querySelectorAll('.sc-pick-tab').forEach(function(b){
-    b.onclick=function(){
-      tabs.querySelectorAll('.sc-pick-tab').forEach(function(x){x.style.background='transparent';x.style.color='var(--text3)'});
-      b.style.background='var(--accent)';b.style.color='#fff';
-      activeTab=b.dataset.tab;
-      renderList(activeTab)
-    }
-  });
-  card.appendChild(tabs);
-
-  // List container
+  // Grid: sadece ekranlar
   var listContainer=document.createElement('div');
   listContainer.style.cssText='flex:1;overflow-y:auto;padding:16px;min-height:120px';
   card.appendChild(listContainer);
 
-  function renderList(tab){
-    var items=tab==='screens'?screens:windows;
-    if(items.length===0){listContainer.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--text4);font-size:13px">'+tab.charAt(0).toUpperCase()+tab.slice(1)+' bulunamadı</div>';return}
-    var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">';
+  function renderScreens(){
+    var items=screens;
+    if(items.length===0){listContainer.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4);font-size:13px">Ekran bulunamad\u0131</div>';return}
+    listContainer.innerHTML='';
+    var grid=document.createElement('div');
+    grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px';
     items.forEach(function(s){
-      html+='<div class="sc-pick-item" data-id="'+escJs(s.id)+'" style="border:2px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .15s;background:var(--bg3)">'+
-        '<img src="'+escJs(s.thumbnail)+'" style="width:100%;height:90px;object-fit:cover;display:block">'+
-        '<div style="padding:7px 8px;font-size:10px;color:var(--text3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.name)+'</div></div>'
-    });
-    html+='</div>';
-    listContainer.innerHTML=html;
-    listContainer.querySelectorAll('.sc-pick-item').forEach(function(item){
+      var item=document.createElement('div');
+      item.style.cssText='border:2px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;background:var(--bg3)';
       item.onmouseenter=function(){this.style.borderColor='var(--accent)'};
       item.onmouseleave=function(){this.style.borderColor='var(--border)'};
-      item.onclick=function(){overlay.remove();callback(this.dataset.id)}
-    })
+      var img=document.createElement('img');
+      img.src=s.thumbnail;
+      img.style.cssText='width:100%;height:90px;object-fit:cover;display:block';
+      item.appendChild(img);
+      var label=document.createElement('div');
+      label.textContent=s.name;
+      label.style.cssText='padding:7px 8px;font-size:10px;color:var(--text3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      item.appendChild(label);
+      item.onclick=function(){console.log('[picker] selected',s.id);overlay.remove();callback(s.id)};
+      grid.appendChild(item)
+    });
+    listContainer.appendChild(grid)
   }
-  renderList('screens');
-  console.log('[picker] overlay created, waiting for selection');
+  renderScreens();
+  console.log('[picker] ready');
 }
 
 function toggleCallSpeaker(){
