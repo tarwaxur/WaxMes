@@ -282,7 +282,12 @@ var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTION
       else{
         var html='<div style="font-size:11px;color:var(--text4);margin-bottom:8px">'+friends.length+' arkadaş</div>';
         friends.forEach(function(f){
-          var fAv=f.avatar;var fAvHtml;if(fAv&&fAv.length>2){fAvHtml='<img src="'+escJs(sanitizeUrl(fAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(f.name.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{fAvHtml=esc(f.name.charAt(0).toUpperCase())}
+          var fAv=f.avatar;var fAvHtml;
+          // Avatar yoksa DM konuşmasından veya users koleksiyonundan al
+          if(!fAv||fAv.length<=2){
+            for(var _fi=0;_fi<store.conversations.length;_fi++){if(store.conversations[_fi].id===f.id||store.conversations[_fi].name===f.name){fAv=store.conversations[_fi].avatar;break}}
+          }
+          if(fAv&&fAv.length>2){fAvHtml='<img src="'+escJs(sanitizeUrl(fAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(f.name.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{fAvHtml=esc(f.name.charAt(0).toUpperCase())}
           html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all .15s" data-action="start-conv" data-friend-name="'+escJs(f.name)+'" data-friend-id="'+escJs(f.id)+'" data-context="friend-menu"><div style="width:34px;height:34px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;overflow:hidden">'+fAvHtml+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--text2)">'+esc(f.name)+'</div><div style="font-size:10px;color:var(--text4)">Çevrimiçi</div></div></div>'
         });
         html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><button class="btn-primary" data-action="create-group" style="padding:8px 16px;font-size:11px;border-radius:8px;width:100%">Grup Oluştur</button></div>';
@@ -304,7 +309,9 @@ var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTION
       if(incoming.length>0){
         html+='<div style="font-size:11px;color:var(--text4);margin-bottom:6px">Gelen istekler</div>';
         incoming.forEach(function(r){
-          var rAv=r.data.fromAvatar;var rAvHtml;if(rAv&&rAv.length>2){rAvHtml='<img src="'+escJs(sanitizeUrl(rAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(r.data.fromName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{rAvHtml=esc(r.data.fromName.charAt(0).toUpperCase())}
+          var rAv=r.data.fromAvatar;
+          if(!rAv||rAv.length<=2){for(var _ri=0;_ri<store.conversations.length;_ri++){if(store.conversations[_ri].name===r.data.fromName){rAv=store.conversations[_ri].avatar;break}}}
+          var rAvHtml;if(rAv&&rAv.length>2){rAvHtml='<img src="'+escJs(sanitizeUrl(rAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--grad)" data-err-text="'+esc(r.data.fromName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{rAvHtml=esc(r.data.fromName.charAt(0).toUpperCase())}
           html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);margin-bottom:4px"><div style="width:34px;height:34px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;overflow:hidden">'+rAvHtml+'</div><div style="flex:1;font-size:12px;color:var(--text2)">'+esc(r.data.fromName)+'</div><button data-action="accept-friend" data-req-id="'+escJs(r.id)+'" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(34,197,94,.15);color:#22c55e;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Kabul Et</button><button data-action="decline-friend" data-req-id="'+escJs(r.id)+'" style="padding:5px 12px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">Reddet</button></div>'
         })
       }
@@ -312,7 +319,9 @@ var snap=await db.collection(COLLECTIONS.FRIENDS).doc(uid).collection(COLLECTION
         if(html)html+='<div style="margin-top:10px"></div>';
         html+='<div style="font-size:11px;color:var(--text4);margin-bottom:6px">Bekleyen isteklerin</div>';
         sent.forEach(function(r){
-          var sAv=r.data.toAvatar;var sAvHtml;if(sAv&&sAv.length>2){sAvHtml='<img src="'+escJs(sanitizeUrl(sAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--bg3)" data-err-text="'+esc(r.data.toName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{sAvHtml=esc(r.data.toName.charAt(0).toUpperCase())}
+          var sAv=r.data.toAvatar;
+          if(!sAv||sAv.length<=2){for(var _si=0;_si<store.conversations.length;_si++){if(store.conversations[_si].name===r.data.toName){sAv=store.conversations[_si].avatar;break}}}
+          var sAvHtml;if(sAv&&sAv.length>2){sAvHtml='<img src="'+escJs(sanitizeUrl(sAv))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="var(--bg3)" data-err-text="'+esc(r.data.toName.charAt(0).toUpperCase())+'" data-err-avatar="1">'}else{sAvHtml=esc(r.data.toName.charAt(0).toUpperCase())}
           html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface);margin-bottom:4px"><div style="width:34px;height:34px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text4);font-size:12px;overflow:hidden">'+sAvHtml+'</div><div style="flex:1;font-size:12px;color:var(--text2)">'+esc(r.data.toName)+'</div><button data-action="withdraw-request" data-req-id="'+escJs(r.id)+'" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;font-family:inherit;font-size:10px;font-weight:600">İsteği Geri Al</button></div>'
         })
       }
