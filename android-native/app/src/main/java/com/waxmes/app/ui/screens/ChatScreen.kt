@@ -3,7 +3,6 @@ package com.waxmes.app.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +23,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -40,7 +42,6 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
     var convName by remember { mutableStateOf("") }
     var convAvatar by remember { mutableStateOf("") }
     var convOnline by remember { mutableStateOf(false) }
-    var showEmoji by remember { mutableStateOf(false) }
     var showProfileSheet by remember { mutableStateOf(false) }
     var mediaUri by remember { mutableStateOf<Uri?>(null) }
     val listState = rememberLazyListState()
@@ -48,8 +49,12 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
     val mediaPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             mediaUri = uri
-            val name = uri.lastPathSegment?.substringAfterLast('/') ?: "Media"
-            text = "[Media: $name]"
+            repo.uploadImage(uri) { downloadUrl ->
+                if (downloadUrl != null) {
+                    repo.sendMessage(convId, downloadUrl, isMedia = true)
+                }
+                mediaUri = null
+            }
         }
     }
 
@@ -108,13 +113,15 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.width(12.dp))
-                    Column {
+                    Column(verticalArrangement = Arrangement.Center) {
+                        Spacer(Modifier.height(4.dp))
                         Text(convName.ifEmpty { "Loading..." }, color = t.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if (convOnline) Color(0xFF22c55e) else t.text4))
                             Spacer(Modifier.width(5.dp))
                             Text(if (convOnline) "Online" else "Offline", color = t.text3, fontSize = 11.sp)
                         }
+                        Spacer(Modifier.height(2.dp))
                     }
                 }
             }, navigationIcon = {
@@ -124,47 +131,57 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
             })
         },
         bottomBar = {
-            Surface(color = t.inputBg) {
-                Column(modifier = Modifier.navigationBarsPadding()) {
-                    AnimatedVisibility(visible = showEmoji) {
-                        Surface(color = t.bg3, shadowElevation = 0.dp) {
-                            val emojis = listOf("😊", "😂", "👍", "❤️", "🎉", "🔥", "✅", "🙏", "😍", "🤔", "😢", "😡", "🥳", "💀", "👋", "🙌")
-                            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                                emojis.forEach { emoji ->
-                                    Text(emoji, modifier = Modifier.clickable { text += emoji }.padding(horizontal = 4.dp), fontSize = 22.sp)
-                                }
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .background(t.bg2)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { mediaPickerLauncher.launch("image/*") }) {
+                    Icon(Icons.Default.AttachFile, contentDescription = null, tint = t.text3, modifier = Modifier.size(24.dp))
+                }
+                Spacer(Modifier.width(4.dp))
+                OutlinedTextField(value = text, onValueChange = { text = it },
+                    placeholder = { Text("Message...", color = t.text4) },
+                    modifier = Modifier.weight(1f), singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        autoCorrectEnabled = true,
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Send
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onSend = {
+                            if (text.isNotBlank()) {
+                                repo.sendMessage(convId, text); text = ""
                             }
                         }
-                    }
-                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp).fillMaxWidth().imePadding(), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { showEmoji = !showEmoji }) { Icon(Icons.Default.EmojiEmotions, contentDescription = null, tint = t.text3, modifier = Modifier.size(24.dp)) }
-                        Spacer(Modifier.width(2.dp))
-                        IconButton(onClick = { mediaPickerLauncher.launch("image/*") }) { Icon(Icons.Default.AttachFile, contentDescription = null, tint = t.text3, modifier = Modifier.size(24.dp)) }
-                        Spacer(Modifier.width(2.dp))
-                        OutlinedTextField(value = text, onValueChange = { text = it }, placeholder = { Text("Message...", color = t.text4) },
-                            modifier = Modifier.weight(1f), singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = t.accent, unfocusedBorderColor = t.border2, cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text, focusedContainerColor = t.bg2, unfocusedContainerColor = t.bg2),
-                            shape = RoundedCornerShape(12.dp))
-                        Spacer(Modifier.width(6.dp))
-                        IconButton(onClick = {
-                            val msgText = mediaUri?.let { "[Image attached]" } ?: text
-                            if (msgText.isNotBlank()) { repo.sendMessage(convId, msgText); text = ""; mediaUri = null }
-                        }) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = t.accent, modifier = Modifier.size(26.dp)) }
-                    }
-                }
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = t.accent, unfocusedBorderColor = t.border2,
+                        cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text,
+                        focusedContainerColor = t.bg, unfocusedContainerColor = t.bg
+                    ),
+                    shape = RoundedCornerShape(12.dp))
+                Spacer(Modifier.width(6.dp))
+                IconButton(onClick = {
+                    if (text.isNotBlank()) { repo.sendMessage(convId, text); text = "" }
+                }) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = if (text.isNotBlank()) t.accent else t.text4, modifier = Modifier.size(26.dp)) }
             }
         }
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding(),
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg),
             state = listState, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
             items(msgs) { msg ->
                 val isMine = msg.type == "sent"
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
                     Surface(shape = RoundedCornerShape(14.dp, if (isMine) 14.dp else 4.dp, if (isMine) 4.dp else 14.dp, 14.dp),
                         color = if (isMine) t.accent.copy(alpha = 0.15f) else t.msgReceived) {
-                        if (msg.text == "[Image attached]" && msg.image.isNotEmpty()) {
+                        if (msg.image.isNotEmpty()) {
                             AsyncImage(model = msg.image, contentDescription = null,
-                                modifier = Modifier.size(200.dp).clip(RoundedCornerShape(14.dp)),
+                                modifier = Modifier.size(240.dp).clip(RoundedCornerShape(14.dp)),
                                 contentScale = ContentScale.Crop)
                         } else {
                             Text(msg.text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp), color = t.text, fontSize = 15.sp, maxLines = 10)

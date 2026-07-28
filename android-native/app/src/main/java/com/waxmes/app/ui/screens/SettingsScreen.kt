@@ -1,6 +1,8 @@
 package com.waxmes.app.ui.screens
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,6 +32,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.appLog
@@ -52,10 +57,10 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
             ModalDrawerSheet(drawerContainerColor = t.bg2, drawerContentColor = t.text) {
                 Spacer(Modifier.height(24.dp))
                 Text("Menu", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
-                DrawerItem(icon = Icons.Default.Person, label = "Profile", selected = selectedCategory == "profile", t = t) { selectedCategory = "profile"; themeView = null }
-                DrawerItem(icon = Icons.Default.Palette, label = "Themes", selected = selectedCategory == "themes", t = t) { selectedCategory = "themes"; themeView = null }
-                DrawerItem(icon = Icons.Default.BugReport, label = "Debug", selected = selectedCategory == "debug", t = t) { selectedCategory = "debug"; themeView = null }
-                DrawerItem(icon = Icons.Default.Info, label = "About", selected = selectedCategory == "about", t = t) { selectedCategory = "about"; themeView = null }
+                DrawerItem(icon = Icons.Default.Person, label = "Profile", selected = selectedCategory == "profile", t = t) { scope.launch { drawerState.close() }; selectedCategory = "profile"; themeView = null }
+                DrawerItem(icon = Icons.Default.Palette, label = "Themes", selected = selectedCategory == "themes", t = t) { scope.launch { drawerState.close() }; selectedCategory = "themes"; themeView = null }
+                DrawerItem(icon = Icons.Default.BugReport, label = "Debug", selected = selectedCategory == "debug", t = t) { scope.launch { drawerState.close() }; selectedCategory = "debug"; themeView = null }
+                DrawerItem(icon = Icons.Default.Info, label = "About", selected = selectedCategory == "about", t = t) { scope.launch { drawerState.close() }; selectedCategory = "about"; themeView = null }
                 Spacer(Modifier.weight(1f))
                 Text("WaxMes v0.1.0", color = t.text4, fontSize = 11.sp, modifier = Modifier.padding(24.dp))
             }
@@ -285,7 +290,7 @@ fun ThemePreview(category: String, currentTheme: String, onThemeChange: (String)
 
         // Color swatches
         Text("Select Theme", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 10.dp))
-        LazyVerticalGrid(columns = GridCells.Adaptive(100.dp), modifier = Modifier.fillMaxWidth(),
+        LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 80.dp)) {
             items(themes.toList()) { (name, theme) ->
@@ -326,6 +331,8 @@ fun ThemePreview(category: String, currentTheme: String, onThemeChange: (String)
 fun DebugSection(t: ThemeColors) {
     val listState = rememberLazyListState()
     var logs by remember { mutableStateOf(appLogs.toList()) }
+    val clipboard = LocalClipboardManager.current
+    var showCopied by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -335,25 +342,58 @@ fun DebugSection(t: ThemeColors) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(20.dp).navigationBarsPadding()) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Console", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = t.text)
-            TextButton(onClick = { appLogs.clear(); logs = emptyList() }) { Text("Clear", color = t.accent, fontSize = 12.sp) }
-        }
-        Spacer(Modifier.height(12.dp))
-        Surface(shape = RoundedCornerShape(12.dp), color = t.bg3, modifier = Modifier.fillMaxSize()) {
-            if (logs.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No logs yet", color = t.text4, fontSize = 13.sp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(20.dp).navigationBarsPadding()) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Console", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = t.text)
+                Row {
+                    if (logs.isNotEmpty()) {
+                        TextButton(onClick = {
+                            clipboard.setText(AnnotatedString(logs.joinToString("\n")))
+                            showCopied = true
+                        }) { Text("Copy", color = t.accent, fontSize = 12.sp) }
+                    }
+                    TextButton(onClick = { appLogs.clear(); logs = emptyList() }) { Text("Clear", color = t.accent, fontSize = 12.sp) }
                 }
-            } else {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(10.dp)) {
-                    items(logs) { log ->
-                        Text(log, color = t.text3, fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, lineHeight = 15.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            Surface(shape = RoundedCornerShape(12.dp), color = t.bg3,
+                modifier = Modifier.fillMaxSize().clickable {
+                    if (logs.isNotEmpty()) {
+                        clipboard.setText(AnnotatedString(logs.joinToString("\n")))
+                        showCopied = true
+                    }
+                }) {
+                if (logs.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No logs yet", color = t.text4, fontSize = 13.sp)
+                    }
+                } else {
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(10.dp)) {
+                        items(logs) { log ->
+                            Text(log, color = t.text3, fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, lineHeight = 15.sp)
+                        }
                     }
                 }
             }
         }
+
+        // Toast notification
+        AnimatedVisibility(visible = showCopied, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp).padding(bottom = 24.dp).align(Alignment.BottomCenter)) {
+                Surface(shape = RoundedCornerShape(50),
+                    color = t.text.copy(alpha = 0.85f),
+                    shadowElevation = 6.dp) {
+                    Text("Copied to clipboard", color = t.bg, fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp))
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(showCopied) {
+        if (showCopied) { delay(2000); showCopied = false }
     }
 }
 

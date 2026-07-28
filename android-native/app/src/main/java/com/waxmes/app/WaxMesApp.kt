@@ -27,6 +27,8 @@ fun WaxMesApp() {
     var isLoggedIn by remember { mutableStateOf(repo.auth.currentUser != null) }
     var currentTheme by remember { mutableStateOf(prefs.getString("theme", "default") ?: "default") }
 
+    LaunchedEffect(Unit) { repo.setContentResolver(ctx.contentResolver) }
+
     BackHandler(enabled = navController.currentBackStackEntry?.destination?.route != "chats" && isLoggedIn) {
         navController.popBackStack()
     }
