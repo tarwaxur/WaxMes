@@ -27,9 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
-import coil.request.ImageRequest
 import com.waxmes.app.data.Conversation
 import com.waxmes.app.data.Repository
 import com.waxmes.app.ui.theme.*
@@ -106,11 +104,13 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     onLongClick = { contextConv = conv }
                 ).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(if (conv.isGroup) 0xFF6366f1 else conv.color)), contentAlignment = Alignment.Center) {
-                        if (conv.avatarUrl.isNotEmpty() && !conv.isGroup) {
-                            AsyncImage(model = conv.avatarUrl, contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                        if (!conv.isGroup) {
+                            SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
+                                error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                                loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) })
                         } else {
-                            Text(if (conv.isGroup) "G" else conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("G", color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         }
                     }
                     Spacer(Modifier.width(14.dp))
@@ -168,11 +168,13 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)) {
                     Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(if (conv.isGroup) 0xFF6366f1 else conv.color)), contentAlignment = Alignment.Center) {
-                        if (conv.avatarUrl.isNotEmpty() && !conv.isGroup) {
-                            AsyncImage(model = conv.avatarUrl, contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                        if (!conv.isGroup) {
+                            SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
+                                error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+                                loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 20.sp) })
                         } else {
-                            Text(if (conv.isGroup) "G" else conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            Text("G", color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                         }
                     }
                     Spacer(Modifier.width(14.dp))

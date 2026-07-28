@@ -233,6 +233,19 @@ class Repository {
         }
     }
 
+    fun deleteMessage(convId: String, msgId: String) {
+        appLog("Deleting message $msgId from $convId")
+        db.collection("conversations").document(convId).collection("messages").document(msgId)
+            .update("deleted", true, "text", "[deleted]")
+            .addOnSuccessListener { appLog("Message deleted") }
+            .addOnFailureListener { e -> appLog("Delete fail: ${e.message}") }
+    }
+
+    fun forwardMessage(convId: String, text: String, originalMsgId: String) {
+        appLog("Forwarding message $originalMsgId to $convId")
+        sendMessage(convId, "↪ Forwarded: $text")
+    }
+
     fun clearMessages(convId: String) {
         appLog("Clearing messages for $convId")
         db.collection("conversations").document(convId).collection("messages").get().addOnSuccessListener { snap ->

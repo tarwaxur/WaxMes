@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImagePainter
 import com.waxmes.app.data.Message
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.appLog
@@ -108,14 +110,12 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
             onDismissRequest = { showProfileSheet = false }
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(modifier = Modifier.size(72.dp).clip(CircleShape).background(t.bg3), contentAlignment = Alignment.Center) {
-                    if (convAvatar.isNotEmpty()) {
-                        AsyncImage(model = convAvatar, contentDescription = null,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
-                    } else {
-                        Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                    Box(modifier = Modifier.size(72.dp).clip(CircleShape).background(t.bg3), contentAlignment = Alignment.Center) {
+                        SubcomposeAsyncImage(model = convAvatar, contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
+                            error = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2, fontSize = 30.sp, fontWeight = FontWeight.Bold) },
+                            loading = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2.copy(alpha = 0.5f), fontSize = 30.sp, fontWeight = FontWeight.Bold) })
                     }
-                }
                 Spacer(Modifier.height(14.dp))
                 Text(convName.ifEmpty { "Unknown" }, color = t.text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
@@ -168,9 +168,9 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                     }
                     MsgActionItem(Icons.Default.Reply, "Reply", t, t.text) { replyToMsg = msg; contextMsg = null }
                     MsgActionItem(Icons.Default.PushPin, "Pin Message", t, t.text) { appLog("Pin - coming soon"); contextMsg = null }
-                    MsgActionItem(Icons.Default.Forward, "Forward", t, t.text) { appLog("Forward - coming soon"); contextMsg = null }
+                    MsgActionItem(Icons.Default.Forward, "Forward", t, t.text) { repo.forwardMessage(convId, if (msg.text.isNotEmpty()) msg.text else "📷 Image", msg.id); contextMsg = null; appLog("Message forwarded") }
                     MsgActionItem(Icons.Default.Edit, "Edit", t, t.text) { appLog("Edit - coming soon"); contextMsg = null }
-                    MsgActionItem(Icons.Default.Delete, "Delete", t, Color(0xFFef4444)) { appLog("Delete - coming soon"); contextMsg = null }
+                    MsgActionItem(Icons.Default.Delete, "Delete", t, Color(0xFFef4444)) { repo.deleteMessage(convId, msg.id); contextMsg = null; appLog("Message deleted") }
                 }
             },
             confirmButton = { TextButton(onClick = { contextMsg = null }) { Text("Cancel", color = t.accent) } })
@@ -182,14 +182,12 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
             topBar = {
                 TopAppBar(title = {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { showProfileSheet = true }) {
-                        Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(t.bg3), contentAlignment = Alignment.Center) {
-                            if (convAvatar.isNotEmpty()) {
-                                AsyncImage(model = convAvatar, contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
-                            } else {
-                                Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            }
-                        }
+                    Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(t.bg3), contentAlignment = Alignment.Center) {
+                        SubcomposeAsyncImage(model = convAvatar, contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
+                            error = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                            loading = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 16.sp) })
+                    }
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Spacer(Modifier.height(2.dp))
@@ -232,10 +230,8 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth()
-                            .navigationBarsPadding()
-                            .imePadding()
                             .background(t.bg2)
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .padding(horizontal = 8.dp, vertical = 8.dp).navigationBarsPadding(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { mediaPickerLauncher.launch("image/*") }) {
@@ -284,7 +280,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                 }
             }
         ) { padding ->
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).imePadding(),
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg),
                 state = listState, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                 items(msgs) { msg ->
                     val isMine = msg.type == "sent"
