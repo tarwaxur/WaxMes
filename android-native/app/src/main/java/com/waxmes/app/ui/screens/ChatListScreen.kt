@@ -118,7 +118,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).navigationBarsPadding()) {
                 Row(modifier = Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                     Surface(shape = RoundedCornerShape(20.dp), color = if (selectedTab == "chats") t.accent.copy(alpha = 0.15f) else Color.Transparent,
-                        modifier = Modifier.weight(1f).clickable { selectedTab = "chats" }) {
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).clickable { selectedTab = "chats" }) {
                         Row(modifier = Modifier.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.ChatBubble, contentDescription = null, tint = if (selectedTab == "chats") t.accent else t.text3, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(4.dp))

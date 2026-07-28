@@ -181,7 +181,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
             containerColor = t.bg,
             topBar = {
                 TopAppBar(title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { showProfileSheet = true }) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { showProfileSheet = true }) {
                     Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(t.bg3), contentAlignment = Alignment.Center) {
                         SubcomposeAsyncImage(model = convAvatar, contentDescription = null,
                             modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
