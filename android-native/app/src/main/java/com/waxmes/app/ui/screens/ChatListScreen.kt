@@ -140,7 +140,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         if (selectedTab == "chats") {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding(), contentPadding = PaddingValues(vertical = 4.dp)) {
             items(displayConvs) { conv ->
-                Row(modifier = Modifier.fillMaxWidth().combinedClickable(
+                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).combinedClickable(
                     onClick = { onChatClick(conv.id) },
                     onLongClick = { contextConv = conv }
                 ).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -216,29 +216,29 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         item {
                             Surface(shape = CircleShape, color = t.bg, shadowElevation = 4.dp) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
                                     if (hasStory) showStoryViewer = true else { hasStory = true }
                                 }) {
-                                    Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(if (hasStory) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.size(62.dp).background(if (hasStory) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
                                         if (hasStory) {
-                                            Text(repo.uid.take(1).uppercase(), color = t.text2, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                                            Text(repo.uid.take(1).uppercase(), color = t.text2, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                                         } else {
-                                            Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(28.dp))
+                                            Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(24.dp))
                                         }
                                     }
-                                    Text(if (hasStory) "My Story" else "Add Story", color = t.text3, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+                                    Text(if (hasStory) "My Story" else "Add Story", color = t.text3, fontSize = 10.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp).width(62.dp))
                                 }
                             }
                         }
                         items(filteredStories) { conv ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onChatClick(conv.id) }) {
-                                Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(conv.color)).padding(2.dp)) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChatClick(conv.id) }) {
+                                Box(modifier = Modifier.size(60.dp).background(Color(conv.color), CircleShape).padding(2.dp)) {
                                     SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
                                         modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
                                         error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
                                         loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 20.sp) })
                                 }
-                                Text(conv.name.take(6), color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                                Text(conv.name, color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp).width(60.dp))
                             }
                         }
                     }
@@ -259,7 +259,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 Text("Friends", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, bottom = 8.dp))
             }
             items(filteredConvs) { conv ->
-                Row(modifier = Modifier.fillMaxWidth().clickable { onChatClick(conv.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onChatClick(conv.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Color(conv.color)), contentAlignment = Alignment.Center) {
                         SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
                             modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
