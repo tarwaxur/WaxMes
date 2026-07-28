@@ -35,9 +35,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.appLog
 import com.waxmes.app.data.appLogs
@@ -149,6 +152,51 @@ fun ProfileSection(t: ThemeColors, repo: Repository) {
                 ProfileRow("User ID", repo.uid.take(16) + "...", t)
                 ProfileRow("Display Name", name, t)
                 ProfileRow("Email", repo.auth.currentUser?.email ?: "", t)
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        var updateStatus by remember { mutableStateOf("") }
+        var updateVer by remember { mutableStateOf("") }
+        val ctx = LocalContext.current
+        LaunchedEffect(Unit) { repo.checkForUpdate { avail, ver -> updateStatus = if (avail) "update" else "latest"; updateVer = ver } }
+        Surface(shape = RoundedCornerShape(16.dp), color = t.bg3, modifier = Modifier.fillMaxWidth().clickable {
+            if (updateStatus == "update") {
+                ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/tarwaxur/WaxMes/releases/latest")).apply {
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+            } else {
+                updateStatus = "checking"
+                repo.checkForUpdate { avail, ver ->
+                    updateStatus = if (avail) "update" else "latest"; updateVer = ver
+                }
+            }
+        }) {
+            Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    when (updateStatus) {
+                        "update" -> Icons.Default.SystemUpdateAlt
+                        "checking" -> Icons.Default.HourglassTop
+                        else -> Icons.Default.Update
+                    }, contentDescription = null,
+                    tint = if (updateStatus == "update") Color(0xFF22c55e) else t.text3, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        when (updateStatus) {
+                            "update" -> "Update Available"
+                            "checking" -> "Checking..."
+                            else -> "Check for Updates"
+                        }, color = if (updateStatus == "update") Color(0xFF22c55e) else t.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        when (updateStatus) {
+                            "update" -> "Version $updateVer ready to install"
+                            "checking" -> "Please wait..."
+                            else -> "Current: v0.1.0"
+                        }, color = t.text4, fontSize = 11.sp)
+                }
+                if (updateStatus == "update") {
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF22c55e), modifier = Modifier.size(20.dp))
+                }
             }
         }
     }

@@ -3,6 +3,8 @@ package com.waxmes.app.data
 import android.content.ContentResolver
 import android.net.Uri
 import com.google.firebase.Timestamp
+import java.net.HttpURLConnection
+import java.net.URL
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -210,6 +212,30 @@ class Repository {
 
     private var contentResolver: ContentResolver? = null
     fun setContentResolver(cr: ContentResolver) { contentResolver = cr }
+
+    var updateAvailable = false
+    var latestVersion = ""
+
+    fun checkForUpdate(onResult: (Boolean, String) -> Unit) {
+        if (updateAvailable) { onResult(true, latestVersion); return }
+        Thread {
+            try {
+                val url = URL("https://api.github.com/repos/tarwaxur/WaxMes/releases/latest")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.connectTimeout = 5000; conn.readTimeout = 5000
+                val text = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+                val tag = text.substringAfter("\"tag_name\":\"").substringBefore("\"")
+                val current = "v0.1.0"
+                if (tag > current) { updateAvailable = true; latestVersion = tag }
+                else { updateAvailable = false; latestVersion = current }
+                onResult(updateAvailable, latestVersion)
+            } catch (e: Exception) {
+                appLog("Update check failed: ${e.message}")
+                onResult(false, "v0.1.0")
+            }
+        }.start()
+    }
 
     fun uploadImage(uri: Uri, onResult: (String?) -> Unit) {
         val cr = contentResolver ?: run { onResult(null); return }

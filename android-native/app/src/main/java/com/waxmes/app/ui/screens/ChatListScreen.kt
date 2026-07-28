@@ -1,6 +1,7 @@
 package com.waxmes.app.ui.screens
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -89,6 +90,15 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 if (isSearching) {
                     IconButton(onClick = { isSearching = false; searchQuery = "" }) { Icon(Icons.Default.Close, contentDescription = null, tint = t.text3) }
                 } else {
+                    if (repo.updateAvailable) {
+                        IconButton(onClick = {
+                            (ctx as? android.app.Activity)?.let {
+                                it.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/tarwaxur/WaxMes/releases/latest")).apply {
+                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                })
+                            }
+                        }) { BadgedBox(badge = { Badge(containerColor = Color(0xFF22c55e)) }) { Icon(Icons.Default.FileDownload, contentDescription = null, tint = Color(0xFF22c55e)) } }
+                    }
                     IconButton(onClick = { isSearching = true }) { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) }
                     Box {
                         IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = null, tint = t.text3) }
