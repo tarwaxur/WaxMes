@@ -1082,12 +1082,19 @@ function confirmDelete(){
   store._skipDedup=true;
   var msgs=store.messages[convId];
   for(var i=0;i<msgs.length;i++){if(msgs[i].id===msgId){msgs[i].deleted=true;msgs[i].text='';msgs[i].audio='';msgs[i].image='';msgs[i].video='';break}}
-  updateConvPreview(convId);
+  // Manual preview update (bypass shadowed updateConvPreview)
   var _conv=findConv(convId);
+  if(_conv){
+    var _last=store.messages[convId]&&store.messages[convId][store.messages[convId].length-1];
+    if(_last&&_last.deleted){_conv.lastMsg=_last.deletedByMe?'Bu mesajı sildiniz':'Bu mesaj silindi';_conv.time=_last.time}
+  }
   if(_conv&&window.db&&_conv.lastMsg){
     console.log('[del] firestore update lastMsg:',_conv.lastMsg);
     db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:_conv.lastMsg}).catch(function(e){console.log('[del] fs update fail',e)})
   }
+  renderMessages(convId);renderConversations();saveMessages();store._skipDedup=false;
+  console.log('[del] done, preview:',_conv?_conv.lastMsg:'?')
+}
   renderMessages(convId);renderConversations();saveMessages();store._skipDedup=false;
   console.log('[del] done, preview:',_conv?_conv.lastMsg:'?')
 }
