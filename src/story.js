@@ -269,6 +269,7 @@ function makeStoryRingSvg(total, viewed, isOwn) {
 }
 
 function renderStoryBar() {
+  try{console.log('RENDER_STORY_BAR_CALLED')}catch(e){}
   var el = $('story-bar');
   if (!el) return;
   var feed = store.storyFeed || [];
