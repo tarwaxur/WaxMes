@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -337,6 +338,7 @@ fun DebugSection(t: ThemeColors) {
     var logs by remember { mutableStateOf(appLogs.toList()) }
     val clipboard = LocalClipboardManager.current
     var showCopied by remember { mutableStateOf(false) }
+    var toastAnim by remember { mutableStateOf(0f) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -344,6 +346,10 @@ fun DebugSection(t: ThemeColors) {
             logs = appLogs.toList()
             if (logs.isNotEmpty()) listState.animateScrollToItem(logs.size - 1)
         }
+    }
+
+    LaunchedEffect(showCopied) {
+        if (showCopied) { toastAnim = 1f; delay(2000); toastAnim = 0f; delay(300); showCopied = false }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -361,43 +367,44 @@ fun DebugSection(t: ThemeColors) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Surface(shape = RoundedCornerShape(12.dp), color = t.bg3,
-                modifier = Modifier.fillMaxSize().clickable {
-                    if (logs.isNotEmpty()) {
-                        clipboard.setText(AnnotatedString(logs.joinToString("\n")))
-                        showCopied = true
+            Box(modifier = Modifier.fillMaxSize()) {
+                Surface(shape = RoundedCornerShape(12.dp), color = t.bg3,
+                    modifier = Modifier.fillMaxSize().clickable {
+                        if (logs.isNotEmpty()) {
+                            clipboard.setText(AnnotatedString(logs.joinToString("\n")))
+                            showCopied = true
+                        }
+                    }) {
+                    if (logs.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No logs yet", color = t.text4, fontSize = 13.sp)
+                        }
+                    } else {
+                        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(10.dp)) {
+                            items(logs) { log ->
+                                Text(log, color = t.text3, fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, lineHeight = 15.sp)
+                            }
+                        }
                     }
-                }) {
-                if (logs.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No logs yet", color = t.text4, fontSize = 13.sp)
-                    }
-                } else {
-                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(10.dp)) {
-                        items(logs) { log ->
-                            Text(log, color = t.text3, fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, lineHeight = 15.sp)
+                }
+                // Toast positioned at bottom of console box
+                if (showCopied || toastAnim > 0f) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(12.dp).align(Alignment.BottomCenter).graphicsLayer(
+                        alpha = toastAnim,
+                        scaleX = 0.6f + 0.4f * toastAnim,
+                        scaleY = 0.6f + 0.4f * toastAnim
+                    )) {
+                        Surface(shape = RoundedCornerShape(50),
+                            color = t.text.copy(alpha = 0.85f),
+                            shadowElevation = 6.dp) {
+                            Text("Copied to clipboard", color = t.bg, fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp))
                         }
                     }
                 }
             }
         }
-
-        // Toast notification
-        AnimatedVisibility(visible = showCopied, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp).padding(bottom = 24.dp).align(Alignment.BottomCenter)) {
-                Surface(shape = RoundedCornerShape(50),
-                    color = t.text.copy(alpha = 0.85f),
-                    shadowElevation = 6.dp) {
-                    Text("Copied to clipboard", color = t.bg, fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp))
-                }
-            }
-        }
-    }
-
-    LaunchedEffect(showCopied) {
-        if (showCopied) { delay(2000); showCopied = false }
     }
 }
 
