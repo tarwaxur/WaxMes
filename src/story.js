@@ -263,8 +263,8 @@ function makeStoryRingSvg(total, viewed, isOwn) {
   var hasBlue = blueParts.length > 0;
   return '<svg class="story-ring" viewBox="0 0 ' + size + ' ' + size + '">' +
     '<g transform="rotate(-90 ' + cx + ' ' + cy + ')">' +
-    '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#6b7280" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + allSegs.join(' ') + '" />' +
-    (hasBlue ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#3b82f6" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + blueParts.join(' ') + '" />' : '') +
+    '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#6b7280" stroke-width="' + sw + '" stroke-dasharray="' + allSegs.join(' ') + '" />' +
+    (hasBlue ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#3b82f6" stroke-width="' + sw + '" stroke-dasharray="' + blueParts.join(' ') + '" />' : '') +
     '</g></svg>';
 }
 
@@ -304,7 +304,7 @@ function renderStoryBar() {
       var e = others[j];
       var viewedCount = e.items.filter(function(it){return store.storyViewed[it.id]}).length;
       var hasUnseen = e.items.some(function(it){return !store.storyViewed[it.id]});
-      console.log('[storybar]',e.authorName,'viewed:',viewedCount,'/',e.items.length);
+      if(!store._sbLog){store._sbLog={};console.log('[sb] bar rendering',e.authorName,'vc:',viewedCount,'/',e.items.length)}
       html += '<div class="story-item" data-action="open-story" data-author-id="' + esc(e.authorId) + '">';
       html += '<div class="story-avatar-wrap ' + (hasUnseen ? 'unseen' : 'seen') + '">';
       html += makeStoryRingSvg(e.items.length, viewedCount, false);
@@ -315,6 +315,7 @@ function renderStoryBar() {
     }
   }
   el.innerHTML = html;
+  if(store._sbShowLog<3){store._sbShowLog=(store._sbShowLog||0)+1;console.log('[sb] rendered',others.length,'users, viewed stories:',others.map(function(e){return e.items.filter(function(it){return store.storyViewed[it.id]}).length+'/'+e.items.length}).join(', '))}
 }
 
 function renderStoryAvatar(entry, itemIdx) {
