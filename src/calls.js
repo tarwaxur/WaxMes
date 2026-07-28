@@ -502,22 +502,64 @@ async function captureScreenById(sourceId,videoEl,container){
 function showScreenPicker(sources,callback){
   var existing=document.getElementById('screen-picker-overlay');
   if(existing)existing.remove();
+  var screens=sources.filter(function(s){return s.isScreen});
+  var windows=sources.filter(function(s){return !s.isScreen});
+  var activeTab='screens';
+
   var overlay=document.createElement('div');
   overlay.id='screen-picker-overlay';
-  overlay.style.cssText='position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;-webkit-app-region:no-drag';
-  overlay.innerHTML='<div style="color:#fff;font-size:18px;font-weight:600;margin-bottom:20px">Ekran veya Pencere Seç</div><div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:800px" id="screen-picker-list"></div><button style="margin-top:20px;padding:8px 24px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:13px" onclick="this.closest(\'#screen-picker-overlay\').remove()">İptal</button>';
-  document.body.appendChild(overlay);
-  var list=document.getElementById('screen-picker-list');
-  sources.forEach(function(s){
-    var item=document.createElement('div');
-    item.style.cssText='width:180px;cursor:pointer;border:2px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;transition:all .15s;background:rgba(255,255,255,.03)';
-    item.onmouseenter=function(){this.style.borderColor='var(--accent)'};
-    item.onmouseleave=function(){this.style.borderColor='rgba(255,255,255,.1)'};
-    item.innerHTML='<img src="'+s.thumbnail+'" style="width:100%;height:100px;object-fit:cover;display:block">'+
-      '<div style="padding:8px;font-size:11px;color:#fff;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.name)+'</div>';
-    item.onclick=function(){overlay.remove();callback(s.id)};
-    list.appendChild(item)
-  })
+  overlay.style.cssText='position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease;-webkit-app-region:no-drag';
+
+  var card=document.createElement('div');
+  card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:600px;max-width:92vw;max-height:80vh;overflow:hidden;box-shadow:0 16px 64px rgba(0,0,0,.5);display:flex;flex-direction:column';
+  overlay.appendChild(card);
+
+  // Header
+  var header=document.createElement('div');
+  header.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)';
+  header.innerHTML='<span style="font-size:16px;font-weight:700;color:var(--text)">Ekran Paylaş</span>'+
+    '<button style="width:30px;height:30px;border:none;border-radius:7px;background:transparent;cursor:pointer;color:var(--text4);font-size:18px;display:flex;align-items:center;justify-content:center" onclick="this.closest(\'#screen-picker-overlay\').remove()">✕</button>';
+  card.appendChild(header);
+
+  // Tabs
+  var tabs=document.createElement('div');
+  tabs.style.cssText='display:flex;gap:4px;padding:12px 20px;background:var(--bg3)';
+  tabs.innerHTML=
+    '<button class="sc-pick-tab" data-tab="screens" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;background:var(--accent);color:#fff">Ekranlar ('+screens.length+')</button>'+
+    '<button class="sc-pick-tab" data-tab="windows" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;background:transparent;color:var(--text3)">Pencereler ('+windows.length+')</button>';
+  tabs.querySelectorAll('.sc-pick-tab').forEach(function(b){
+    b.onclick=function(){
+      tabs.querySelectorAll('.sc-pick-tab').forEach(function(x){x.style.background='transparent';x.style.color='var(--text3)'});
+      b.style.background='var(--accent)';b.style.color='#fff';
+      activeTab=b.dataset.tab;
+      renderList(activeTab)
+    }
+  });
+  card.appendChild(tabs);
+
+  // List container
+  var listContainer=document.createElement('div');
+  listContainer.style.cssText='flex:1;overflow-y:auto;padding:16px;min-height:120px';
+  card.appendChild(listContainer);
+
+  function renderList(tab){
+    var items=tab==='screens'?screens:windows;
+    if(items.length===0){listContainer.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--text4);font-size:13px">'+tab.charAt(0).toUpperCase()+tab.slice(1)+' bulunamadı</div>';return}
+    var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">';
+    items.forEach(function(s){
+      html+='<div class="sc-pick-item" data-id="'+escJs(s.id)+'" style="border:2px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .15s;background:var(--bg3)">'+
+        '<img src="'+escJs(s.thumbnail)+'" style="width:100%;height:90px;object-fit:cover;display:block">'+
+        '<div style="padding:7px 8px;font-size:10px;color:var(--text3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.name)+'</div></div>'
+    });
+    html+='</div>';
+    listContainer.innerHTML=html;
+    listContainer.querySelectorAll('.sc-pick-item').forEach(function(item){
+      item.onmouseenter=function(){this.style.borderColor='var(--accent)'};
+      item.onmouseleave=function(){this.style.borderColor='var(--border)'};
+      item.onclick=function(){overlay.remove();callback(this.dataset.id)}
+    })
+  }
+  renderList('screens');
 }
 
 function toggleCallSpeaker(){
