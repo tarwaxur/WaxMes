@@ -148,8 +148,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                         if (!conv.isGroup) {
                             SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
                                 modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                                error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
-                                loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) })
+                                error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) } },
+                                loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) } })
                         } else {
                             Text("G", color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         }
@@ -260,11 +260,11 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             }
             items(filteredConvs) { conv ->
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onChatClick(conv.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Color(conv.color)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Color(conv.color))) {
                         SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
                             modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                            error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-                            loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 16.sp) })
+                            error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 16.sp) } },
+                            loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 16.sp) } })
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -314,12 +314,13 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)) {
                     Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(if (conv.isGroup) 0xFF6366f1 else conv.color)), contentAlignment = Alignment.Center) {
                         if (!conv.isGroup) {
-                            SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                                error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
-                                loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 20.sp) })
-                        } else {
-                            Text("G", color = t.text, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                    SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
+                                        error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) } },
+                                        loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) } })
+                                }
+                                Text(conv.name, color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp).width(60.dp))
+                            }
                         }
                     }
                     Spacer(Modifier.width(14.dp))
@@ -366,9 +367,6 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 }
             }
         }
-    }
-}
-
 @Composable
 private fun ContextMenuItem(icon: ImageVector, label: String, desc: String, tint: Color, onClick: () -> Unit) {
     val ct = LocalTheme.current
