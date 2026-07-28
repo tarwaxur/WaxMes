@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, nativeImage, Notification, Tray, Menu, safeStorage, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeImage, Notification, Tray, Menu, safeStorage, dialog, desktopCapturer } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -230,6 +230,19 @@ ipcMain.handle('safe-decrypt', (_e, encryptedB64) => {
 });
 
 ipcMain.handle('get-app-version', () => app.getVersion());
+ipcMain.handle('get-screen-stream', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
+    if (!sources || sources.length === 0) return { error: 'No sources found' };
+    return { sources: sources.map(s => ({ id: s.id, name: s.name, thumbnail: s.thumbnail.toDataURL() })) };
+  } catch (e) { return { error: e.message }; }
+});
+ipcMain.handle('get-camera-stream', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({ types: ['window'] });
+    return { ok: true };
+  } catch (e) { return { error: e.message }; }
+});
 
 ipcMain.handle('check-for-updates', async () => {
   try {

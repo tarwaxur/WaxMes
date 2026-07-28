@@ -464,15 +464,35 @@ async function toggleCallScreen(){
     return
   }
   try{
-    if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){console.log('[screen] getDisplayMedia not available');return}
-    var stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
-    store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
-    videoEl.play().catch(console.error);
-    $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
-    stream.getVideoTracks()[0].onended=function(){
-      store.callScreenStream=null;videoEl.srcObject=null;container.style.display='none';
-      $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)'
+    // Try standard getDisplayMedia first
+    if(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia){
+      try{
+        var stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
+        store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
+        videoEl.play().catch(console.error);
+        $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
+        stream.getVideoTracks()[0].onended=function(){
+          store.callScreenStream=null;videoEl.srcObject=null;container.style.display='none';
+          $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)'
+        };
+        return
+      }catch(e){console.log('[screen] std failed, trying electron desktopCapturer')}
     }
+    // Fallback: Electron desktopCapturer via IPC
+    if(window.electronAPI&&window.electronAPI.getScreenStream){
+      var result=await window.electronAPI.getScreenStream();
+      if(result&&result.sources&&result.sources.length>0){
+        var source=result.sources[0];
+        try{
+          var stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:source.id}}});
+          store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
+          videoEl.play().catch(console.error);
+          $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
+          return
+        }catch(e2){console.log('[screen] desktopCapturer stream failed',e2.message)}
+      }
+    }
+    console.log('[screen] all methods failed')
   }catch(e){console.error('[screen] error:',e.name,e.message,e.code)}
 }
 

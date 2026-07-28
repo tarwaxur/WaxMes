@@ -25,4 +25,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateProgress: (cb) => { ipcRenderer.on('update-progress', (_e, p) => cb(p)) },
   onUpdateDownloaded: (cb) => { ipcRenderer.on('update-downloaded', () => cb()) },
   onUpdateError: (cb) => { ipcRenderer.on('update-error', (_e, msg) => cb(msg)) },
+  getScreenStream: () => ipcRenderer.invoke('get-screen-stream'),
+  getCameraStream: () => ipcRenderer.invoke('get-camera-stream'),
 });
