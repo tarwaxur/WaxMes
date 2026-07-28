@@ -942,15 +942,16 @@ document.addEventListener('keydown', function(e) {
     // Clear console button
     var clearBtn = $('dev-clear-console');
     if (clearBtn) clearBtn.onclick = function() {
-      if (!_devLogs || _devLogs.length === 0) {
+      if (!_devLogCounts || Object.keys(_devLogCounts).length === 0) {
         showDevConfirm('ALREADY CLEAR', 'Console is already empty.', 'OK', '#00ff41', function() {});
         return;
       }
       showDevConfirm('CLEAR CONSOLE', 'All logs will be permanently deleted. Proceed?', 'CLEAR', '#ff3355', function() {
-        _devLogs = [];
+        for(var _k in _devLogCounts){delete _devLogCounts[_k]}
+        _devLogOrder = [];
         var el = $('dev-console-area');
         if (el) { renderDevConsole(el); }
-        showDevToast('CONSOLE CLEARED', _devLogs.length + ' logs remaining', '#00ff41');
+        showDevToast('CONSOLE CLEARED', '0 logs remaining', '#00ff41');
       });
     };
   }
@@ -1057,4 +1058,6 @@ function closeDevtools() {
     setTimeout(function() { if (ov.parentNode) ov.remove(); }, 250);
   }
   document.body.classList.remove('devtools-mode');
+}
+
 }
