@@ -119,7 +119,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 Row(modifier = Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                     Surface(shape = RoundedCornerShape(20.dp), color = if (selectedTab == "chats") t.accent.copy(alpha = 0.15f) else Color.Transparent,
                         modifier = Modifier.weight(1f)) {
-                        Row(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)).clickable { selectedTab = "chats" }.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable { selectedTab = "chats" }.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.ChatBubble, contentDescription = null, tint = if (selectedTab == "chats") t.accent else t.text3, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Chats", color = if (selectedTab == "chats") t.accent else t.text3, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
@@ -127,7 +127,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     }
                     Surface(shape = RoundedCornerShape(20.dp), color = if (selectedTab == "new") t.accent.copy(alpha = 0.15f) else Color.Transparent,
                         modifier = Modifier.weight(1f)) {
-                        Row(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)).clickable { selectedTab = "new" }.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable { selectedTab = "new" }.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Add, contentDescription = null, tint = if (selectedTab == "new") t.accent else t.text3, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("New", color = if (selectedTab == "new") t.accent else t.text3, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
