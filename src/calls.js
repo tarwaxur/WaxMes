@@ -505,6 +505,7 @@ async function captureScreenById(sourceId,videoEl,container){
   }catch(e){console.log('[screen] capture failed',e.name,e.message)}
 }
 function showScreenPicker(sources,callback){
+  console.log('[picker] creating overlay with',sources.length,'sources');
   var existing=document.getElementById('screen-picker-overlay');
   if(existing)existing.remove();
   var screens=sources.filter(function(s){return s.isScreen});
@@ -513,7 +514,7 @@ function showScreenPicker(sources,callback){
 
   var overlay=document.createElement('div');
   overlay.id='screen-picker-overlay';
-  overlay.style.cssText='position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease;-webkit-app-region:no-drag';
+  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;-webkit-app-region:no-drag';
 
   var card=document.createElement('div');
   card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:600px;max-width:92vw;max-height:80vh;overflow:hidden;box-shadow:0 16px 64px rgba(0,0,0,.5);display:flex;flex-direction:column';
@@ -565,6 +566,7 @@ function showScreenPicker(sources,callback){
     })
   }
   renderList('screens');
+  console.log('[picker] overlay created, waiting for selection');
 }
 
 function toggleCallSpeaker(){
