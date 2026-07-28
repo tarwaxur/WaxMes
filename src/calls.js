@@ -473,9 +473,12 @@ async function toggleCallScreen(){
     }
     // Fallback: Electron desktopCapturer via IPC — show picker
     if(window.electronAPI&&window.electronAPI.getScreenStream){
+      console.log('[screen] fetching sources via desktopCapturer');
       var result=await window.electronAPI.getScreenStream();
+      console.log('[screen] got',result&&result.sources?result.sources.length:'0','sources, error:',result&&result.error);
       if(result&&result.sources&&result.sources.length>0){
         showScreenPicker(result.sources,function(sourceId){
+          console.log('[screen] user selected source',sourceId);
           captureScreenById(sourceId,videoEl,container)
         });return
       }
@@ -495,9 +498,11 @@ function applyScreenStream(stream){
 }
 async function captureScreenById(sourceId,videoEl,container){
   try{
+    console.log('[screen] capturing source',sourceId);
     var stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:sourceId}}});
+    console.log('[screen] capture OK, applying stream');
     applyScreenStream(stream)
-  }catch(e){console.log('[screen] capture failed',e.message)}
+  }catch(e){console.log('[screen] capture failed',e.name,e.message)}
 }
 function showScreenPicker(sources,callback){
   var existing=document.getElementById('screen-picker-overlay');
