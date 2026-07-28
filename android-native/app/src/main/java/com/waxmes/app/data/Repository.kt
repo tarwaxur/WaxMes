@@ -91,7 +91,13 @@ class Repository {
 
     fun login(email: String, password: String, onResult: (Boolean) -> Unit) {
         appLog("Login attempt: $email")
-        auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { appLog("Login result: ${if (it.isSuccessful) "OK" else "FAIL"}"); onResult(it.isSuccessful) }
+        auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
+            appLog("Login result: ${if (task.isSuccessful) "OK" else "FAIL"}")
+            if (task.isSuccessful && uid.isNotEmpty()) {
+                db.collection("users").document(uid).update("online", true)
+            }
+            onResult(task.isSuccessful)
+        }
     }
 
     fun register(email: String, password: String, name: String, onResult: (Boolean) -> Unit) {
@@ -104,7 +110,10 @@ class Repository {
         }
     }
 
-    fun logout() = auth.signOut()
+    fun logout() {
+        if (uid.isNotEmpty()) db.collection("users").document(uid).update("online", false)
+        auth.signOut()
+    }
 
     fun dedup(convs: List<Conversation>): List<Conversation> {
         val seen = mutableMapOf<String, Conversation>()
