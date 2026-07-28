@@ -515,6 +515,7 @@ function showScreenPicker(sources,callback){
   var overlay=document.createElement('div');
   overlay.id='screen-picker-overlay';
   overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;-webkit-app-region:no-drag';
+  document.body.appendChild(overlay);
 
   var card=document.createElement('div');
   card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:600px;max-width:92vw;max-height:80vh;overflow:hidden;box-shadow:0 16px 64px rgba(0,0,0,.5);display:flex;flex-direction:column';
