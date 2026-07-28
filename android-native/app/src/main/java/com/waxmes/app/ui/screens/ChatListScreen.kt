@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import com.waxmes.app.data.Conversation
 import com.waxmes.app.data.Repository
+import com.waxmes.app.data.Story
 import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -45,6 +46,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     var searchQuery by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
     var contextConv by remember { mutableStateOf<Conversation?>(null) }
+    var storiesList by remember { mutableStateOf<List<Story>>(emptyList()) }
 
     var selectedTab by remember { mutableStateOf("chats") }
     var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
@@ -67,6 +69,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     isArchived = prefs.getBoolean("arch_${c.id}", false))
             }
         }
+        repo.listenStories { storiesList = it }
     }
 
     val displayConvs = if (searchQuery.isBlank()) {
@@ -201,8 +204,9 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         var newSearchQuery by remember { mutableStateOf("") }
         val filteredConvs = if (newSearchQuery.isBlank()) convs.filter { !it.isGroup && !it.isArchived }.sortedByDescending { it.online }
             else convs.filter { !it.isGroup && !it.isArchived && it.name.contains(newSearchQuery, ignoreCase = true) }.sortedByDescending { it.online }
-        val filteredStories = if (newSearchQuery.isBlank()) convs.filter { it.online && !it.isGroup }.take(7)
-            else convs.filter { !it.isGroup && it.name.contains(newSearchQuery, ignoreCase = true) }.take(7)
+        val storyAuthorIds = storiesList.filter { it.authorId != repo.uid }.map { it.authorId }.toSet()
+        val filteredStories = if (newSearchQuery.isBlank()) convs.filter { it.otherId in storyAuthorIds && !it.isGroup }
+            else convs.filter { !it.isGroup && it.name.contains(newSearchQuery, ignoreCase = true) && it.otherId in storyAuthorIds }
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding()) {
             item {
                 OutlinedTextField(value = newSearchQuery, onValueChange = { newSearchQuery = it },
