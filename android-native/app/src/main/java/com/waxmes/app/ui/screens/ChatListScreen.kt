@@ -198,10 +198,20 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             }
         }
         } else {
+        var newSearchQuery by remember { mutableStateOf("") }
+        val filteredConvs = if (newSearchQuery.isBlank()) convs.filter { !it.isGroup && !it.isArchived }.sortedByDescending { it.online }
+            else convs.filter { !it.isGroup && !it.isArchived && it.name.contains(newSearchQuery, ignoreCase = true) }.sortedByDescending { it.online }
+        val filteredStories = if (newSearchQuery.isBlank()) convs.filter { it.online && !it.isGroup }.take(7)
+            else convs.filter { !it.isGroup && it.name.contains(newSearchQuery, ignoreCase = true) }.take(7)
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding()) {
             item {
-                // Stories row
-                Text("Stories", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp))
+                OutlinedTextField(value = newSearchQuery, onValueChange = { newSearchQuery = it },
+                    placeholder = { Text("Search friends...", color = t.text4) }, singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = t.accent.copy(alpha = 0.5f), unfocusedBorderColor = t.border2.copy(alpha = 0.3f), cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text, focusedContainerColor = t.bg2.copy(alpha = 0.5f), unfocusedContainerColor = t.bg2.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(24.dp))
+            }
+            item {
+                Text("Stories", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp))
                 Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         item {
@@ -220,7 +230,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 }
                             }
                         }
-                        items(convs.filter { it.online && !it.isGroup }.take(7)) { conv ->
+                        items(filteredStories) { conv ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onChatClick(conv.id) }) {
                                 Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(conv.color)).padding(2.dp)) {
                                     SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
@@ -248,7 +258,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 Spacer(Modifier.height(12.dp))
                 Text("Friends", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, bottom = 8.dp))
             }
-            items(convs.filter { !it.isGroup && !it.isArchived }.sortedByDescending { it.online }) { conv ->
+            items(filteredConvs) { conv ->
                 Row(modifier = Modifier.fillMaxWidth().clickable { onChatClick(conv.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Color(conv.color)), contentAlignment = Alignment.Center) {
                         SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
