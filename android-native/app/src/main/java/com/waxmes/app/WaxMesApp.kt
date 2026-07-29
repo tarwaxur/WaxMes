@@ -5,12 +5,15 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.waxmes.app.data.LocalTranslationManager
 import com.waxmes.app.data.Repository
+import com.waxmes.app.data.TranslationManager
 import com.waxmes.app.ui.screens.ChatListScreen
 import com.waxmes.app.ui.screens.ChatScreen
 import com.waxmes.app.ui.screens.LoginScreen
@@ -26,6 +29,10 @@ fun WaxMesApp() {
     val prefs = ctx.getSharedPreferences("waxmes", Context.MODE_PRIVATE)
     var isLoggedIn by remember { mutableStateOf(repo.auth.currentUser != null) }
     var currentTheme by remember { mutableStateOf(prefs.getString("theme", "default") ?: "default") }
+    var currentLang by remember { mutableStateOf(prefs.getString("app_language", "tr") ?: "tr") }
+    val translationManager = remember { TranslationManager(currentLang) }
+
+    LaunchedEffect(currentLang) { translationManager.setLanguage(currentLang); prefs.edit().putString("app_language", currentLang).apply() }
 
     LaunchedEffect(Unit) { repo.setContentResolver(ctx.contentResolver) }
 
@@ -33,6 +40,7 @@ fun WaxMesApp() {
         navController.popBackStack()
     }
 
+    CompositionLocalProvider(LocalTranslationManager provides translationManager) {
     WaxMesTheme(themeName = currentTheme) {
         val t = LocalTheme.current
         Surface(modifier = Modifier.fillMaxSize(), color = t.bg) {
@@ -48,5 +56,6 @@ fun WaxMesApp() {
                 }
             }
         }
+    }
     }
 }

@@ -41,9 +41,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.waxmes.app.data.Lang
+import com.waxmes.app.data.LocalTranslationManager
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.appLog
 import com.waxmes.app.data.appLogs
+import com.waxmes.app.data.getLanguages
 import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +70,7 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
                 Text("Menu", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
                 DrawerItem(icon = Icons.Default.Person, label = "Profile", selected = selectedCategory == "profile", t = t) { scope.launch { drawerState.close() }; selectedCategory = "profile"; themeView = null }
                 DrawerItem(icon = Icons.Default.Palette, label = "Themes", selected = selectedCategory == "themes", t = t) { scope.launch { drawerState.close() }; selectedCategory = "themes"; themeView = null }
+                DrawerItem(icon = Icons.Default.Language, label = "Language", selected = selectedCategory == "language", t = t) { scope.launch { drawerState.close() }; selectedCategory = "language"; themeView = null }
                 DrawerItem(icon = Icons.Default.BugReport, label = "Debug", selected = selectedCategory == "debug", t = t) { scope.launch { drawerState.close() }; selectedCategory = "debug"; themeView = null }
                 DrawerItem(icon = Icons.Default.Info, label = "About", selected = selectedCategory == "about", t = t) { scope.launch { drawerState.close() }; selectedCategory = "about"; themeView = null }
                 Spacer(Modifier.weight(1f))
@@ -97,6 +101,7 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
                     themeView != null -> ThemePreview(themeView!!, currentTheme, onThemeChange)
                     selectedCategory == "profile" -> ProfileSection(t, repo)
                     selectedCategory == "themes" -> ThemesPage(t, currentTheme, onThemeChange, onSelectCategory = { themeView = it })
+                    selectedCategory == "language" -> LanguageSection(t, onThemeChange)
                     selectedCategory == "debug" -> DebugSection(t)
                     selectedCategory == "about" -> AboutSection(t, onLogout)
                 }
@@ -373,6 +378,48 @@ fun ThemePreview(category: String, currentTheme: String, onThemeChange: (String)
                             Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(theme.accent))
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LanguageSection(t: ThemeColors, onThemeChange: (String) -> Unit) {
+    val tm = LocalTranslationManager.current
+    var langCode by remember { mutableStateOf(tm.getCode()) }
+    Column(modifier = Modifier.fillMaxSize().padding(24.dp).navigationBarsPadding()) {
+        Text("Language", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = t.text)
+        Spacer(Modifier.height(6.dp))
+        Text("Select your preferred language", color = t.text3, fontSize = 13.sp)
+        Spacer(Modifier.height(24.dp))
+        Surface(shape = RoundedCornerShape(16.dp), color = t.bg3, modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(tm.getLang().flag, fontSize = 28.sp)
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Current Language", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text(tm.getLang().name, color = t.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Text(tm.getCode().uppercase(), color = t.text3, fontSize = 13.sp)
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Text("Available Languages", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 10.dp))
+        getLanguages().forEach { lang ->
+            val selected = lang.code == tm.getCode()
+            Surface(shape = RoundedCornerShape(16.dp), color = if (selected) t.accent.copy(alpha = 0.12f) else t.bg3,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable {
+                    tm.setLanguage(lang.code); langCode = lang.code; onThemeChange("default")
+                }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(lang.flag, fontSize = 32.sp)
+                    Spacer(Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(lang.name, color = t.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(lang.code.uppercase(), color = t.text3, fontSize = 12.sp)
+                    }
+                    if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                 }
             }
         }
