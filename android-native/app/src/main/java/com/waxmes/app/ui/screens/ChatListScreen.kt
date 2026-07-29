@@ -33,12 +33,14 @@ import coil.compose.SubcomposeAsyncImage
 import com.waxmes.app.data.Conversation
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.Story
+import com.waxmes.app.data.LocalTranslations
 import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsClick: () -> Unit) {
     val t = LocalTheme.current
+    val tr = LocalTranslations.current
     val ctx = LocalContext.current
     val prefs = ctx.getSharedPreferences("waxmes", Context.MODE_PRIVATE)
     var convs by remember { mutableStateOf<List<Conversation>>(emptyList()) }
@@ -83,11 +85,11 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         topBar = {
             TopAppBar(title = {
                 if (isSearching) {
-                    OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Search...", color = t.text4) }, singleLine = true,
+                    OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text(tr["search"] ?: "Search...", color = t.text4) }, singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = t.accent.copy(alpha = 0.5f), unfocusedBorderColor = t.border.copy(alpha = 0.3f), cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text, focusedContainerColor = t.bg2.copy(alpha = 0.5f), unfocusedContainerColor = t.bg2.copy(alpha = 0.5f)),
                         modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp))
                 } else {
-                    Text("WaxMes", fontWeight = FontWeight.Bold, color = t.text)
+                    Text(tr["waxmes"] ?: "WaxMes", fontWeight = FontWeight.Bold, color = t.text)
                 }
             }, actions = {
                 if (isSearching) {
@@ -106,8 +108,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     Box {
                         IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = null, tint = t.text3) }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(20.dp), offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {
-                            DropdownMenuItem(text = { Text("Settings", color = t.text) }, onClick = { showMenu = false; onSettingsClick() }, leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = t.text3) })
-                            DropdownMenuItem(text = { Text("Logout", color = Color(0xFFef4444)) }, onClick = {
+                            DropdownMenuItem(text = { Text(tr["settings"] ?: "Settings", color = t.text) }, onClick = { showMenu = false; onSettingsClick() }, leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = t.text3) })
+                            DropdownMenuItem(text = { Text(tr["logout"] ?: "Logout", color = Color(0xFFef4444)) }, onClick = {
                                 showMenu = false; repo.logout(); prefs.edit().clear().apply()
                                 (ctx as? android.app.Activity)?.recreate()
                             }, leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFef4444)) })
@@ -125,7 +127,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                         Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable { selectedTab = "chats" }.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.ChatBubble, contentDescription = null, tint = if (selectedTab == "chats") t.accent else t.text3, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Chats", color = if (selectedTab == "chats") t.accent else t.text3, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(tr["chats"] ?: "Chats", color = if (selectedTab == "chats") t.accent else t.text3, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                     Surface(shape = RoundedCornerShape(20.dp), color = if (selectedTab == "new") t.accent.copy(alpha = 0.15f) else Color.Transparent,
@@ -133,7 +135,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                         Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).clickable { selectedTab = "new" }.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Add, contentDescription = null, tint = if (selectedTab == "new") t.accent else t.text3, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("New", color = if (selectedTab == "new") t.accent else t.text3, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(tr["new"] ?: "New", color = if (selectedTab == "new") t.accent else t.text3, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -154,7 +156,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) } },
                                 loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) } })
                         } else {
-                            Text("G", color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(tr["g"] ?: "G", color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         }
                     }
                     Spacer(Modifier.width(14.dp))
@@ -178,12 +180,12 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if (conv.online) Color(0xFF22c55e) else t.text4))
                                     Spacer(Modifier.width(4.dp))
-                                    Text(if (conv.online) "Online" else "", color = t.text4, fontSize = 10.sp)
+                                    Text(if (conv.online) (tr["online"] ?: "Online") else "", color = t.text4, fontSize = 10.sp)
                                 }
                             }
                         }
                         Spacer(Modifier.height(2.dp))
-                        Text(conv.lastMsg.ifEmpty { "No messages yet" }, color = t.text3, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(conv.lastMsg.ifEmpty { tr["no_messages"] ?: "No messages yet" }, color = t.text3, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (conv.unread > 0) {
                         Spacer(Modifier.width(8.dp))
@@ -194,10 +196,10 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 }
             }
             if (displayConvs.isEmpty() && convs.isNotEmpty()) {
-                item { Text("No conversations match", color = t.text4, modifier = Modifier.padding(20.dp).fillMaxWidth(), fontSize = 13.sp) }
+                item { Text(tr["no_match"] ?: "No conversations match", color = t.text4, modifier = Modifier.padding(20.dp).fillMaxWidth(), fontSize = 13.sp) }
             }
             if (convs.isEmpty()) {
-                item { Text("No conversations yet", color = t.text4, modifier = Modifier.padding(40.dp).fillMaxWidth(), fontSize = 13.sp) }
+                item { Text(tr["no_conversations"] ?: "No conversations yet", color = t.text4, modifier = Modifier.padding(40.dp).fillMaxWidth(), fontSize = 13.sp) }
             }
         }
         } else {
@@ -210,12 +212,12 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding()) {
             item {
                 OutlinedTextField(value = newSearchQuery, onValueChange = { newSearchQuery = it },
-                    placeholder = { Text("Search friends...", color = t.text4) }, singleLine = true,
+                    placeholder = { Text(tr["search_friends"] ?: "Search friends...", color = t.text4) }, singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = t.accent.copy(alpha = 0.5f), unfocusedBorderColor = t.border2.copy(alpha = 0.3f), cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text, focusedContainerColor = t.bg2.copy(alpha = 0.5f), unfocusedContainerColor = t.bg2.copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(24.dp))
             }
             item {
-                Text("Stories", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp))
+                Text(tr["stories"] ?: "Stories", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp))
                 Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         item {
@@ -230,7 +232,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                             Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                                         }
                                     }
-                                    Text(if (hasStory) "My Story" else "Add Story", color = t.text3, fontSize = 10.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                                    Text(if (hasStory) (tr["my_story"] ?: "My Story") else (tr["add_story"] ?: "Add Story"), color = t.text3, fontSize = 10.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
                                 }
                             }
                         }
@@ -255,12 +257,12 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { showAddFriend = true }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.PersonAdd, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text("Add Friend", color = t.accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        Text(tr["add_friend"] ?: "Add Friend", color = t.accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = t.accent.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("Friends", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, bottom = 8.dp))
+                Text(tr["friends"] ?: "Friends", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, bottom = 8.dp))
             }
             items(filteredConvs) { conv ->
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onChatClick(conv.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -273,7 +275,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(conv.name, color = t.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Text(if (conv.online) "Online" else "Offline", color = t.text3, fontSize = 11.sp)
+                        Text(if (conv.online) (tr["online"] ?: "Online") else (tr["offline"] ?: "Offline"), color = t.text3, fontSize = 11.sp)
                     }
                     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = t.text4, modifier = Modifier.size(18.dp))
                 }
@@ -290,17 +292,17 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     IconButton(onClick = { hasStory = false; showStoryViewer = false }) { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFef4444)) }
                     Spacer(Modifier.weight(1f))
-                    Text("My Story", color = t.text, fontWeight = FontWeight.Bold)
+                    Text(tr["my_story"] ?: "My Story", color = t.text, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { /* add another story */ }) { Icon(Icons.Default.Add, contentDescription = null, tint = t.accent) }
                 }
             },
             text = {
                 Box(modifier = Modifier.fillMaxWidth().height(300.dp).background(t.bg2, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                    Text("Your story will appear here", color = t.text3, fontSize = 14.sp)
+                    Text(tr["your_story_here"] ?: "Your story will appear here", color = t.text3, fontSize = 14.sp)
                 }
             },
-            confirmButton = { TextButton(onClick = { showStoryViewer = false }) { Text("Close", color = t.accent) } })
+            confirmButton = { TextButton(onClick = { showStoryViewer = false }) { Text(tr["close"] ?: "Close", color = t.accent) } })
     }
 
     if (showAddFriend) {
@@ -334,46 +336,47 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(if (conv.online) Color(0xFF22c55e) else t.text4))
                                 Spacer(Modifier.width(5.dp))
-                                Text(if (conv.online) "Online" else "Offline", color = t.text3, fontSize = 12.sp)
+                                Text(if (conv.online) (tr["online"] ?: "Online") else (tr["offline"] ?: "Offline"), color = t.text3, fontSize = 12.sp)
                             }
                         } else {
-                            Text("Group", color = t.text3, fontSize = 12.sp)
+                            Text(tr["group"] ?: "Group", color = t.text3, fontSize = 12.sp)
                         }
                     }
                 }
-                Text("Conversation Actions", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+                Text(tr["conversation_actions"] ?: "Conversation Actions", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
                 ContextMenuItem(icon = if (conv.isMuted) Icons.Default.Notifications else Icons.Default.VolumeOff,
-                    label = if (conv.isMuted) "Unmute" else "Mute", desc = if (conv.isMuted) "Receive notifications" else "Silence notifications",
+                    label = if (conv.isMuted) (tr["unmute"] ?: "Unmute") else (tr["mute"] ?: "Mute"), desc = if (conv.isMuted) (tr["receive_notif"] ?: "Receive notifications") else (tr["silence_notif"] ?: "Silence notifications"),
                     tint = t.text, onClick = {
                         val muted = !conv.isMuted; prefs.edit().putBoolean("mute_${conv.id}", muted).apply()
                         convs = convs.toMutableList().also { it.find { it.id == conv.id }?.isMuted = muted }; contextConv = null
                     })
                 ContextMenuItem(icon = Icons.Default.PushPin,
-                    label = if (conv.isPinned) "Unpin" else "Pin", desc = if (conv.isPinned) "Remove from top" else "Keep at top",
+                    label = if (conv.isPinned) (tr["unpin"] ?: "Unpin") else (tr["pin"] ?: "Pin"), desc = if (conv.isPinned) (tr["remove_top"] ?: "Remove from top") else (tr["keep_top"] ?: "Keep at top"),
                     tint = t.text, onClick = {
                         val pinned = !conv.isPinned; prefs.edit().putBoolean("pin_${conv.id}", pinned).apply()
                         convs = convs.toMutableList().also { it.find { it.id == conv.id }?.isPinned = pinned }; contextConv = null
                     })
                 ContextMenuItem(icon = if (conv.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
-                    label = if (conv.isArchived) "Unarchive" else "Archive", desc = if (conv.isArchived) "Show in chat list" else "Hide from chat list",
+                    label = if (conv.isArchived) (tr["unarchive"] ?: "Unarchive") else (tr["archive"] ?: "Archive"), desc = if (conv.isArchived) (tr["show_list"] ?: "Show in chat list") else (tr["hide_list"] ?: "Hide from chat list"),
                     tint = t.text, onClick = {
                         val archived = !conv.isArchived; prefs.edit().putBoolean("arch_${conv.id}", archived).apply()
                         convs = convs.toMutableList().also { it.find { it.id == conv.id }?.isArchived = archived }; contextConv = null
                     })
-                ContextMenuItem(icon = Icons.Default.Delete, label = "Clear Chat", desc = "Delete all messages",
+                ContextMenuItem(icon = Icons.Default.Delete, label = tr["clear_chat"] ?: "Clear Chat", desc = tr["delete_all"] ?: "Delete all messages",
                     tint = Color(0xFFef4444), onClick = {
                         repo.clearMessages(conv.id)
                         convs = convs.toMutableList().also { it.removeAll { c -> c.id == conv.id } }; contextConv = null
                     })
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = { contextConv = null }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Cancel", color = t.accent, fontWeight = FontWeight.SemiBold)
+                    Text(tr["cancel"] ?: "Cancel", color = t.accent, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 @Composable
 private fun ContextMenuItem(icon: ImageVector, label: String, desc: String, tint: Color, onClick: () -> Unit) {
     val ct = LocalTheme.current
+    val tr = LocalTranslations.current
     Surface(shape = RoundedCornerShape(12.dp), color = ct.bg3,
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
         Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -390,39 +393,40 @@ private fun ContextMenuItem(icon: ImageVector, label: String, desc: String, tint
 
 @Composable
 private fun AddFriendScreen(t: ThemeColors, onBack: () -> Unit) {
+    val tr = LocalTranslations.current
     var page by remember { mutableStateOf("add") }
     Box(modifier = Modifier.fillMaxSize().background(t.bg).clickable { /* consume clicks */ }) {
         Column(modifier = Modifier.fillMaxSize().padding(24.dp).navigationBarsPadding()) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = t.text) }
                 Spacer(Modifier.width(8.dp))
-                Text("Add Friend", color = t.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(tr["add_friend"] ?: "Add Friend", color = t.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Surface(shape = RoundedCornerShape(12.dp), color = if (page == "add") t.accent.copy(alpha = 0.15f) else t.bg3,
                     modifier = Modifier.weight(1f)) {
                     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { page = "add" }) {
-                        Text("Add Friend", color = if (page == "add") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
+                        Text(tr["add_friend"] ?: "Add Friend", color = if (page == "add") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(12.dp), fontSize = 13.sp)
                     }
                 }
                 Surface(shape = RoundedCornerShape(12.dp), color = if (page == "pending") t.accent.copy(alpha = 0.15f) else t.bg3,
                     modifier = Modifier.weight(1f)) {
                     Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { page = "pending" }) {
-                        Text("Pending", color = if (page == "pending") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
+                        Text(tr["pending"] ?: "Pending", color = if (page == "pending") t.accent else t.text3, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(12.dp), fontSize = 13.sp)
                     }
                 }
             }
             Spacer(Modifier.height(20.dp))
             if (page == "add") {
-                OutlinedTextField(value = "", onValueChange = {}, placeholder = { Text("Search by username...", color = t.text4) },
+                OutlinedTextField(value = "", onValueChange = {}, placeholder = { Text(tr["search_by_username"] ?: "Search by username...", color = t.text4) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = t.accent.copy(alpha = 0.5f), unfocusedBorderColor = t.border2.copy(alpha = 0.3f), cursorColor = t.accent, focusedTextColor = t.text, unfocusedTextColor = t.text, focusedContainerColor = t.bg2.copy(alpha = 0.5f), unfocusedContainerColor = t.bg2.copy(alpha = 0.5f)))
                 Spacer(Modifier.height(16.dp))
-                Text("Search for users by their username to send a friend request.", color = t.text4, fontSize = 13.sp)
+                Text(tr["search_info"] ?: "Search for users by their username to send a friend request.", color = t.text4, fontSize = 13.sp)
             } else {
-                Text("No pending requests", color = t.text4, fontSize = 14.sp)
+                Text(tr["no_pending"] ?: "No pending requests", color = t.text4, fontSize = 14.sp)
             }
         }
     }

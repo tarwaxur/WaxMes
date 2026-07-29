@@ -49,6 +49,7 @@ import com.waxmes.app.ui.theme.*
 @Composable
 fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
     val t = LocalTheme.current
+    val tr = LocalTranslations.current
     var msgs by remember { mutableStateOf<List<Message>>(emptyList()) }
     var text by remember { mutableStateOf("") }
     var convName by remember { mutableStateOf("") }
@@ -118,15 +119,15 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                             loading = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2.copy(alpha = 0.5f), fontSize = 30.sp, fontWeight = FontWeight.Bold) })
                     }
                 Spacer(Modifier.height(14.dp))
-                Text(convName.ifEmpty { "Unknown" }, color = t.text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(convName.ifEmpty { tr["unknown"] ?: "Unknown" }, color = t.text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(if (convOnline) Color(0xFF22c55e) else t.text4))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (convOnline) "Online" else "Offline", color = t.text3, fontSize = 14.sp)
+                    Text(if (convOnline) tr["online"] ?: "Online" else tr["offline"] ?: "Offline", color = t.text3, fontSize = 14.sp)
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("ID: ${repo.uid.take(12)}...", color = t.text4, fontSize = 11.sp)
+                Text("${tr["id_label"] ?: "ID: "}${repo.uid.take(12)}...", color = t.text4, fontSize = 11.sp)
                 Spacer(Modifier.height(24.dp))
             }
         }
@@ -140,8 +141,8 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                     Box(modifier = Modifier.width(3.dp).height(32.dp).background(t.accent, RoundedCornerShape(2.dp)))
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Replying", color = t.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text(replyMsg.text.ifEmpty { "📷 Image" }, color = t.text3, fontSize = 12.sp, maxLines = 1)
+                        Text(tr["replying"] ?: "Replying", color = t.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(replyMsg.text.ifEmpty { tr["image"] ?: "📷 Image" }, color = t.text3, fontSize = 12.sp, maxLines = 1)
                     }
                     IconButton(onClick = { replyToMsg = null }) {
                         Icon(Icons.Default.Close, contentDescription = null, tint = t.text4, modifier = Modifier.size(18.dp))
@@ -155,26 +156,26 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
         val msg = contextMsg!!
         AlertDialog(onDismissRequest = { contextMsg = null },
             containerColor = t.bg2, shape = RoundedCornerShape(20.dp),
-            title = { Text("Message Actions", color = t.text, fontWeight = FontWeight.Bold) },
+            title = { Text(tr["message_actions"] ?: "Message Actions", color = t.text, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     Surface(shape = RoundedCornerShape(10.dp), color = t.bg3, modifier = Modifier.fillMaxWidth()) {
-                        Text((if (msg.text.isNotEmpty()) msg.text else "📷 Image").take(50) + if (msg.text.length > 50) "..." else "",
+                        Text((if (msg.text.isNotEmpty()) msg.text else tr["image"] ?: "📷 Image").take(50) + if (msg.text.length > 50) "..." else "",
                             modifier = Modifier.padding(12.dp), color = t.text3, fontSize = 12.sp, maxLines = 2)
                     }
                     Spacer(Modifier.height(8.dp))
-                    MsgActionItem(Icons.Default.ContentCopy, "Copy Text", t, t.text) {
-                        clipboard.setText(AnnotatedString(if (msg.text.isNotEmpty()) msg.text else "📷 Image")); contextMsg = null
+                    MsgActionItem(Icons.Default.ContentCopy, tr["copy_text"] ?: "Copy Text", t, t.text) {
+                        clipboard.setText(AnnotatedString(if (msg.text.isNotEmpty()) msg.text else tr["image"] ?: "📷 Image")); contextMsg = null
                         appLog("Text copied to clipboard")
                     }
-                    MsgActionItem(Icons.Default.Reply, "Reply", t, t.text) { replyToMsg = msg; contextMsg = null }
-                    MsgActionItem(Icons.Default.PushPin, "Pin Message", t, t.text) { appLog("Pin - coming soon"); contextMsg = null }
-                    MsgActionItem(Icons.Default.Forward, "Forward", t, t.text) { repo.forwardMessage(convId, if (msg.text.isNotEmpty()) msg.text else "📷 Image", msg.id); contextMsg = null; appLog("Message forwarded") }
-                    MsgActionItem(Icons.Default.Edit, "Edit", t, t.text) { appLog("Edit - coming soon"); contextMsg = null }
-                    MsgActionItem(Icons.Default.Delete, "Delete", t, Color(0xFFef4444)) { repo.deleteMessage(convId, msg.id); contextMsg = null; appLog("Message deleted") }
+                    MsgActionItem(Icons.Default.Reply, tr["reply"] ?: "Reply", t, t.text) { replyToMsg = msg; contextMsg = null }
+                    MsgActionItem(Icons.Default.PushPin, tr["pin_message"] ?: "Pin Message", t, t.text) { appLog("Pin - coming soon"); contextMsg = null }
+                    MsgActionItem(Icons.Default.Forward, tr["forward"] ?: "Forward", t, t.text) { repo.forwardMessage(convId, if (msg.text.isNotEmpty()) msg.text else tr["image"] ?: "📷 Image", msg.id); contextMsg = null; appLog("Message forwarded") }
+                    MsgActionItem(Icons.Default.Edit, tr["edit"] ?: "Edit", t, t.text) { appLog("Edit - coming soon"); contextMsg = null }
+                    MsgActionItem(Icons.Default.Delete, tr["delete"] ?: "Delete", t, Color(0xFFef4444)) { repo.deleteMessage(convId, msg.id); contextMsg = null; appLog("Message deleted") }
                 }
             },
-            confirmButton = { TextButton(onClick = { contextMsg = null }) { Text("Cancel", color = t.accent) } })
+            confirmButton = { TextButton(onClick = { contextMsg = null }) { Text(tr["cancel"] ?: "Cancel", color = t.accent) } })
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -192,11 +193,11 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Spacer(Modifier.height(2.dp))
-                            Text(convName.ifEmpty { "Loading..." }, color = t.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                            Text(convName.ifEmpty { tr["loading"] ?: "Loading..." }, color = t.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(if (convOnline) Color(0xFF22c55e) else t.text4))
                                 Spacer(Modifier.width(5.dp))
-                                Text(if (convOnline) "Online" else "Offline", color = t.text3, fontSize = 11.sp)
+                                Text(if (convOnline) tr["online"] ?: "Online" else tr["offline"] ?: "Offline", color = t.text3, fontSize = 11.sp)
                             }
                         }
                     }
@@ -212,16 +213,16 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                         DropdownMenu(expanded = showChatMenu, onDismissRequest = { showChatMenu = false },
                             shape = RoundedCornerShape(20.dp),
                             offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {
-                            DropdownMenuItem(text = { Text("Pinned Messages", color = t.text) },
+                            DropdownMenuItem(text = { Text(tr["pinned"] ?: "Pinned Messages", color = t.text) },
                                 onClick = { showChatMenu = false; appLog("Pinned messages - coming soon") },
                                 leadingIcon = { Icon(Icons.Default.PushPin, contentDescription = null, tint = t.text3) })
-                            DropdownMenuItem(text = { Text("Media Gallery", color = t.text) },
+                            DropdownMenuItem(text = { Text(tr["media"] ?: "Media Gallery", color = t.text) },
                                 onClick = { showChatMenu = false; appLog("Media gallery - coming soon") },
                                 leadingIcon = { Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = t.text3) })
-                            DropdownMenuItem(text = { Text("Search", color = t.text) },
+                            DropdownMenuItem(text = { Text(tr["search"] ?: "Search", color = t.text) },
                                 onClick = { showChatMenu = false; appLog("Search - coming soon") },
                                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) })
-                            DropdownMenuItem(text = { Text("Voice Call (Beta)", color = t.text) },
+                            DropdownMenuItem(text = { Text(tr["voice_call"] ?: "Voice Call (Beta)", color = t.text) },
                                 onClick = { showChatMenu = false; appLog("Voice call - coming soon") },
                                 leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = t.text3) })
                         }
@@ -244,7 +245,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                         }
                         Spacer(Modifier.width(2.dp))
                         OutlinedTextField(value = text, onValueChange = { text = it },
-                            placeholder = { Text(if (replyToMsg != null) "Reply..." else "Message...", color = t.text4) },
+                            placeholder = { Text(if (replyToMsg != null) tr["reply_text"] ?: "Reply..." else tr["message_text"] ?: "Message...", color = t.text4) },
                             modifier = Modifier.weight(1f), singleLine = true,
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Sentences, autoCorrectEnabled = true,
@@ -254,7 +255,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                 onSend = {
                                     if (text.isNotBlank()) {
                                         if (replyToMsg != null) {
-                                            val replyText = if (replyToMsg!!.text.isNotEmpty()) replyToMsg!!.text else "📷 Image"
+                                            val replyText = if (replyToMsg!!.text.isNotEmpty()) replyToMsg!!.text else tr["image"] ?: "📷 Image"
                                             repo.sendMessage(convId, text, replyToId = replyToMsg!!.id, replyToText = replyText)
                                         } else {
                                             repo.sendMessage(convId, text)
@@ -275,7 +276,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                             IconButton(onClick = {
                                 if (text.isNotBlank()) {
                                     if (replyToMsg != null) {
-                                        val replyText = if (replyToMsg!!.text.isNotEmpty()) replyToMsg!!.text else "📷 Image"
+                                        val replyText = if (replyToMsg!!.text.isNotEmpty()) replyToMsg!!.text else tr["image"] ?: "📷 Image"
                                         repo.sendMessage(convId, text, replyToId = replyToMsg!!.id, replyToText = replyText)
                                     } else {
                                         repo.sendMessage(convId, text)
@@ -301,7 +302,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                     onLongClick = { if (!msg.deleted) contextMsg = msg }
                                 )) {
                             if (msg.deleted) {
-                                Text(if (isMine) "Bu mesajı sildiniz" else "Bu mesaj silindi",
+                                Text(if (isMine) tr["deleted_by_you"] ?: "Bu mesajı sildiniz" else tr["deleted_msg"] ?: "Bu mesaj silindi",
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                                     color = t.text4, fontSize = 13.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
                             } else {
@@ -310,7 +311,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                     Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Box(modifier = Modifier.width(3.dp).height(28.dp).background(t.accent.copy(alpha = 0.6f), RoundedCornerShape(2.dp)))
                                         Spacer(Modifier.width(8.dp))
-                                        Text(msg.replyText.ifEmpty { "📷 Image" }, color = t.text4, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                        Text(msg.replyText.ifEmpty { tr["image"] ?: "📷 Image" }, color = t.text4, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                                     }
                                 }
                                 if (msg.image.isNotEmpty()) {
