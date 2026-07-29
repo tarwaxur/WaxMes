@@ -297,8 +297,13 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                             modifier = Modifier.clip(RoundedCornerShape(18.dp, if (isMine) 18.dp else 4.dp, if (isMine) 4.dp else 18.dp, 18.dp))
                                 .combinedClickable(
                                     onClick = {},
-                                    onLongClick = { contextMsg = msg }
+                                    onLongClick = { if (!msg.deleted) contextMsg = msg }
                                 )) {
+                            if (msg.deleted) {
+                                Text(if (isMine) "Bu mesajı sildiniz" else "Bu mesaj silindi",
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    color = t.text4, fontSize = 13.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                            } else {
                             Column {
                                 if (msg.replyTo.isNotEmpty()) {
                                     Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -314,6 +319,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                     if (msg.text.isNotEmpty()) Text(msg.text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp), color = t.text3, fontSize = 12.sp)
                                 } else if (msg.text.isNotEmpty()) {
                                     Text(msg.text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), color = t.text, fontSize = 15.sp, maxLines = 10)
+                                }
                                 }
                             }
                         }

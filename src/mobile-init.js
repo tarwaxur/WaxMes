@@ -14,20 +14,13 @@
 
   if (!shouldUseMobileShell()) return;
 
-  document.body.classList.add('is-mobile', 'show-chats');
+  document.body.classList.add('is-mobile');
   if (window.innerWidth <= 380) document.body.classList.add('is-compact');
 
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('.mobile-nav-item'));
   var backBtn = $('chat-back-btn');
   var appChat = $('app-chat');
   var settingsPage = $('settings-page');
   var chatInput = $('chat-input');
-
-  function setActiveTab(name) {
-    tabs.forEach(function(tab) {
-      tab.classList.toggle('active', tab.dataset.mtab === name);
-    });
-  }
 
   function closeChatPanel() {
     document.body.classList.remove('mobile-chat-open');
@@ -41,49 +34,13 @@
     if (settingsPage) settingsPage.classList.remove('active');
     if (appChat) appChat.classList.add('open');
     if (backBtn) backBtn.style.display = 'flex';
-    setActiveTab('chats');
   }
-
-  function showChatsTab() {
-    document.body.classList.remove('show-status', 'show-settings');
-    document.body.classList.add('show-chats');
-    if (settingsPage) settingsPage.classList.remove('active');
-    closeChatPanel();
-    setActiveTab('chats');
-  }
-
-  function showStatusTab() {
-    document.body.classList.remove('show-chats', 'show-settings');
-    document.body.classList.add('show-status');
-    if (settingsPage) settingsPage.classList.remove('active');
-    closeChatPanel();
-    if (typeof renderStoryBar === 'function') renderStoryBar();
-    setActiveTab('status');
-  }
-
-  function showSettingsTab() {
-    closeChatPanel();
-    document.body.classList.remove('show-chats', 'show-status');
-    document.body.classList.add('show-settings');
-    setActiveTab('settings');
-    if (typeof showSettings === 'function') showSettings();
-  }
-
-  tabs.forEach(function(tab) {
-    tab.addEventListener('click', function() {
-      var mtab = tab.dataset.mtab;
-      if (mtab === 'chats') showChatsTab();
-      else if (mtab === 'status') showStatusTab();
-      else if (mtab === 'settings') showSettingsTab();
-    });
-  });
 
   if (backBtn) {
     backBtn.addEventListener('click', function(e) {
       e.preventDefault();
       if (typeof goToHome === 'function') goToHome();
       closeChatPanel();
-      setActiveTab('chats');
     });
   }
 
@@ -100,7 +57,6 @@
 
   wrapGlobal('goToHome', function() {
     closeChatPanel();
-    setActiveTab('chats');
   });
 
   wrapGlobal('selectConversation', function() {
@@ -112,7 +68,6 @@
     if (!document.body.classList.contains('mobile-chat-open')) {
       document.body.classList.remove('show-chats', 'show-status');
       document.body.classList.add('show-settings');
-      setActiveTab('settings');
     }
   });
 
@@ -120,36 +75,8 @@
     if (!document.body.classList.contains('mobile-chat-open')) {
       document.body.classList.remove('show-settings');
       document.body.classList.add('show-chats');
-      setActiveTab('chats');
     }
   });
-
-  function updateUnreadBadge() {
-    var total = 0;
-    if (window.store && store.conversations) {
-      for (var i = 0; i < store.conversations.length; i++) {
-        total += store.conversations[i].unread || 0;
-      }
-    }
-    var wrap = document.querySelector('.mobile-nav-item[data-mtab="chats"] .mobile-nav-item-wrap');
-    var badge = wrap ? wrap.querySelector('.badge') : null;
-    if (total > 0) {
-      if (!badge && wrap) {
-        badge = document.createElement('span');
-        badge.className = 'badge';
-        wrap.appendChild(badge);
-      }
-      if (badge) {
-        badge.textContent = total > 99 ? '99+' : total;
-        badge.style.display = 'flex';
-      }
-    } else if (badge) {
-      badge.style.display = 'none';
-    }
-  }
-
-  wrapGlobal('renderConversations', updateUnreadBadge);
-  updateUnreadBadge();
 
   function updateKeyboardState() {
     if (!window.visualViewport) return;

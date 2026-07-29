@@ -41,12 +41,15 @@ fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<
 
 fun docToMessage(doc: DocumentSnapshot, uid: String): Message {
     val d = doc.data ?: return Message(id = doc.id)
-    appLog("docToMessage: id=${doc.id} text=${(d["text"] as? String ?: "").take(30)} replyTo=${d["replyTo"] ?: "null"}")
-    return Message(id = doc.id, text = d["text"] as? String ?: "",
+    val deleted = d["deleted"] as? Boolean ?: false
+    val deletedByMe = d["deletedByMe"] as? Boolean ?: false
+    appLog("docToMessage: id=${doc.id} deleted=$deleted text=${(d["text"] as? String ?: "").take(30)} replyTo=${d["replyTo"] ?: "null"}")
+    return Message(id = doc.id, text = if (deleted) "" else (d["text"] as? String ?: ""),
         time = d["time"] as? String ?: "", senderId = d["senderId"] as? String ?: "",
         type = if ((d["senderId"] as? String) == uid) "sent" else "received",
-        image = d["image"] as? String ?: "", replyTo = d["replyTo"] as? String ?: "",
-        replyText = d["replyText"] as? String ?: "")
+        image = if (deleted) "" else (d["image"] as? String ?: ""),
+        replyTo = d["replyTo"] as? String ?: "", replyText = d["replyText"] as? String ?: "",
+        deleted = deleted, deletedByMe = deletedByMe)
 }
 
 class Repository {
@@ -324,7 +327,7 @@ class Repository {
     fun deleteMessage(convId: String, msgId: String) {
         appLog("Deleting message $msgId from $convId")
         db.collection("conversations").document(convId).collection("messages").document(msgId)
-            .update("deleted", true, "text", "[deleted]")
+            .update("deleted", true, "deletedByMe", true, "text", "", "image", "", "audio", "", "video", "")
             .addOnSuccessListener { appLog("Message deleted") }
             .addOnFailureListener { e -> appLog("Delete fail: ${e.message}") }
     }

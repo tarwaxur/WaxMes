@@ -23,10 +23,4 @@
 .is-mobile .story-bar-wrap{border-bottom:none!important}
 .is-mobile .sidebar-search{display:none!important}
 
-.is-mobile .mobile-nav{display:flex!important}
-.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--surface);border-top:1px solid var(--border);z-index:100;align-items:center;justify-content:space-around;padding:0 4px}
-.mobile-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:none;background:none;color:var(--text4);font-size:10px;cursor:pointer;transition:color .15s;border-radius:8px;font-family:inherit;min-width:60px}
-.mobile-nav-item.active{color:var(--accent)}
-.mobile-nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5}
-.mobile-nav-item .badge{position:absolute;top:2px;right:2px;background:#ef4444;color:#fff;font-size:8px;font-weight:700;min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center}
-.mobile-nav-item-wrap{position:relative;display:flex;align-items:center;justify-content:center}
+

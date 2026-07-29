@@ -245,27 +245,27 @@ function validateLogin(){var e=$('login-email').value.trim().toLowerCase(),p=$('
 async function doLogin(){
   var e=$('login-email').value.trim().toLowerCase(),p=$('login-pass').value;
   if(!e||!p||!window.auth)return;
+  store._explicitLogin=true;store._pendingLoginPassword=p;
   try {
     var cred=await auth.signInWithEmailAndPassword(e,p);
-    var user=cred.user;store._explicitLogin=true;store._pendingLoginPassword=p;
+    var user=cred.user;
     var accs=getAccounts(),acc=null;
     for(var ai=0;ai<accs.length;ai++){if(accs[ai].email&&accs[ai].email.toLowerCase()===e){acc=accs[ai];break}}
     doLoginWithUsername(user);
     if(acc)rememberAccountPassword(acc,p)
   }catch(err){
-    var tb='accounts.js:246';
     if(err.code==='auth/user-not-found'||err.code==='auth/wrong-password'||err.code==='auth/invalid-credential'){
-      showError('E-posta veya şifre hatalı.', tb+' — Firebase kimlik doğrulama başarısız')
+      showAlert('E-posta veya şifre hatalı.')
     }else if(err.code==='auth/too-many-requests'){
-      showError('Çok fazla hatalı giriş. Hesabın geçici olarak kilitlendi.', tb+' — too-many-requests')
+      showAlert('Çok fazla hatalı giriş. Hesabın geçici olarak kilitlendi.')
     }else if(err.code==='auth/invalid-email'){
-      showError('Geçersiz e-posta formatı.', tb+' — invalid-email')
+      showAlert('Geçersiz e-posta formatı.')
     }else if(err.code==='auth/user-disabled'){
-      showError('Bu hesap devre dışı bırakılmış.', tb+' — user-disabled')
+      showAlert('Bu hesap devre dışı bırakılmış.')
     }else if(err.code==='auth/network-request-failed'){
-      showError('Ağ bağlantısı yok. İnternetini kontrol et.', tb+' — network-request-failed')
+      showAlert('Ağ bağlantısı yok. İnternetini kontrol et.')
     }else{
-      showError('Giriş yapılamadı: '+(err.message||'Bilinmeyen hata'), tb)
+      showAlert('Giriş yapılamadı: '+(err.message||'Bilinmeyen hata'))
     }
   }
 }

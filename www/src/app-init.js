@@ -172,7 +172,7 @@ loadFirebase(function(){
       var authSeq=++store._authStateSeq;
       function staleAuthEvent(){return authSeq!==store._authStateSeq||!auth.currentUser||auth.currentUser.uid!==user.uid}
       if(user){
-        if(store._explicitLogin){store._explicitLogin=false;return}
+        if(store._explicitLogin||store._authTransitioning){store._explicitLogin=false;return}
         var accs=getAccounts(),acc=null;
         var loginEmail=(user.email||'').toLowerCase();for(var ai=0;ai<accs.length;ai++){if(accs[ai].email&&accs[ai].email.toLowerCase()===loginEmail){acc=accs[ai];break}}
         var pendingPassword=store._pendingLoginPassword;
