@@ -42,6 +42,7 @@ import com.waxmes.app.data.Repository
 import com.waxmes.app.data.appLog
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.launch
+import com.waxmes.app.data.LocalTranslations
 import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)

@@ -46,6 +46,7 @@ import com.waxmes.app.data.LocalTranslations
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.appLog
 import com.waxmes.app.data.appLogs
+import com.waxmes.app.data.detectSystemLanguage
 import com.waxmes.app.data.getLangByCode
 import com.waxmes.app.data.getLanguages
 import com.waxmes.app.ui.theme.*
@@ -389,6 +390,9 @@ fun ThemePreview(category: String, currentTheme: String, onThemeChange: (String)
 fun LanguageSection(t: ThemeColors, onLanguageChange: (String) -> Unit, onUseDeviceLang: () -> Unit) {
     val currentCode = LocalLangCode.current
     val tr = LocalTranslations.current
+    val ctx = LocalContext.current
+    val deviceLangCode = detectSystemLanguage(ctx)
+    val deviceLangName = getLangByCode(deviceLangCode).name
     Column(modifier = Modifier.fillMaxSize().padding(24.dp).navigationBarsPadding()) {
         Text(tr["select_language"] ?: "Language", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = t.text)
         Spacer(Modifier.height(6.dp))
@@ -401,7 +405,7 @@ fun LanguageSection(t: ThemeColors, onLanguageChange: (String) -> Unit, onUseDev
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(tr["use_device_lang"] ?: "Use Device Language", color = t.accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text("(${getLangByCode(currentCode).name})", color = t.text3, fontSize = 12.sp)
+                    Text(deviceLangName, color = t.text3, fontSize = 12.sp)
                 }
                 Icon(Icons.Default.ChevronRight, contentDescription = null, tint = t.accent.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
             }
