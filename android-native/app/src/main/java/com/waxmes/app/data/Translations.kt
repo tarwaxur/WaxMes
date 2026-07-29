@@ -2,7 +2,7 @@ package com.waxmes.app.data
 
 import android.content.Context
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.staticCompositionLocalOf
+import java.util.*
 
 data class Lang(val code: String, val name: String, val flag: String, val translations: Map<String, String>)
 
@@ -13,9 +13,8 @@ fun getLanguages(): List<Lang> = listOf(
         "debug" to "Hata Ayıklama", "about" to "Hakkında",
         "search_friends" to "Arkadaş ara...", "stories" to "Durumlar",
         "my_story" to "Durumum", "add_story" to "Durum Ekle",
-        "add_friend" to "Arkadaş Ekle", "friends" to "Arkadaşlar",
-        "no_messages" to "Henüz mesaj yok",
-        "no_conversations" to "Henüz sohbet yok",
+        "add_friend" to "Arkadaş Ekle", "friends_header" to "Arkadaşlar",
+        "no_messages" to "Henüz mesaj yok", "no_conversations" to "Henüz sohbet yok",
         "console" to "Konsol", "copy" to "Kopyala", "clear" to "Temizle",
         "no_logs" to "Henüz log yok", "copied" to "Panoya kopyalandı",
         "check_updates" to "Güncellemeleri Kontrol Et",
@@ -31,7 +30,8 @@ fun getLanguages(): List<Lang> = listOf(
         "select_language" to "Dil Seçin", "cancel" to "İptal",
         "logout" to "Çıkış Yap", "account_info" to "Hesap Bilgileri",
         "message_text" to "Mesaj...", "reply_text" to "Yanıtla...",
-        "friends_header" to "Arkadaşlar"
+        "current_language" to "Mevcut Dil", "available_languages" to "Kullanılabilir Diller",
+        "use_device_lang" to "Cihaz Dilini Kullan"
     )),
     Lang("en", "English", "🇬🇧", mapOf(
         "chats" to "Chats", "new" to "New", "settings" to "Settings",
@@ -39,9 +39,8 @@ fun getLanguages(): List<Lang> = listOf(
         "debug" to "Debug", "about" to "About",
         "search_friends" to "Search friends...", "stories" to "Stories",
         "my_story" to "My Story", "add_story" to "Add Story",
-        "add_friend" to "Add Friend", "friends" to "Friends",
-        "no_messages" to "No messages yet",
-        "no_conversations" to "No conversations yet",
+        "add_friend" to "Add Friend", "friends_header" to "Friends",
+        "no_messages" to "No messages yet", "no_conversations" to "No conversations yet",
         "console" to "Console", "copy" to "Copy", "clear" to "Clear",
         "no_logs" to "No logs yet", "copied" to "Copied to clipboard",
         "check_updates" to "Check for Updates",
@@ -58,17 +57,16 @@ fun getLanguages(): List<Lang> = listOf(
         "select_language" to "Select Language", "cancel" to "Cancel",
         "logout" to "Logout", "account_info" to "Account Info",
         "message_text" to "Message...", "reply_text" to "Reply...",
-        "friends_header" to "Friends"
+        "current_language" to "Current Language", "available_languages" to "Available Languages",
+        "use_device_lang" to "Use Device Language"
     ))
 )
 
-class TranslationManager(var currentLangCode: String = "tr") {
-    private var currentLang = getLanguages().find { it.code == currentLangCode } ?: getLanguages()[0]
-
-    fun setLanguage(code: String) { currentLangCode = code; currentLang = getLanguages().find { it.code == code } ?: getLanguages()[0] }
-    fun get(key: String): String = currentLang.translations[key] ?: key
-    fun getLang(): Lang = currentLang
-    fun getCode(): String = currentLangCode
+fun getLangByCode(code: String): Lang = getLanguages().find { it.code == code } ?: getLanguages()[0]
+fun detectSystemLanguage(ctx: Context): String {
+    val sysLang = Locale.getDefault().language
+    return if (getLanguages().any { it.code == sysLang }) sysLang else "en"
 }
 
-val LocalTranslationManager = staticCompositionLocalOf { TranslationManager() }
+val LocalLangCode = compositionLocalOf { "tr" }
+val LocalTranslations = compositionLocalOf { emptyMap<String, String>() }

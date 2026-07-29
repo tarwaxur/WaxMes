@@ -41,17 +41,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.waxmes.app.data.Lang
-import com.waxmes.app.data.LocalTranslationManager
+import com.waxmes.app.data.LocalLangCode
+import com.waxmes.app.data.LocalTranslations
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.appLog
 import com.waxmes.app.data.appLogs
+import com.waxmes.app.data.getLangByCode
 import com.waxmes.app.data.getLanguages
 import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (String) -> Unit, onLogout: () -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (String) -> Unit, onLogout: () -> Unit, onBack: () -> Unit, onLanguageChange: (String) -> Unit = {}, onUseDeviceLang: () -> Unit = {}) {
     val t = LocalTheme.current
     var selectedCategory by remember { mutableStateOf("profile") }
     var themeView by remember { mutableStateOf<String?>(null) }
@@ -101,7 +102,7 @@ fun SettingsScreen(repo: Repository, currentTheme: String, onThemeChange: (Strin
                     themeView != null -> ThemePreview(themeView!!, currentTheme, onThemeChange)
                     selectedCategory == "profile" -> ProfileSection(t, repo)
                     selectedCategory == "themes" -> ThemesPage(t, currentTheme, onThemeChange, onSelectCategory = { themeView = it })
-                    selectedCategory == "language" -> LanguageSection(t, onThemeChange)
+                    selectedCategory == "language" -> LanguageSection(t, onLanguageChange, onUseDeviceLang)
                     selectedCategory == "debug" -> DebugSection(t)
                     selectedCategory == "about" -> AboutSection(t, onLogout)
                 }
@@ -385,33 +386,46 @@ fun ThemePreview(category: String, currentTheme: String, onThemeChange: (String)
 }
 
 @Composable
-fun LanguageSection(t: ThemeColors, onThemeChange: (String) -> Unit) {
-    val tm = LocalTranslationManager.current
-    var langCode by remember { mutableStateOf(tm.getCode()) }
+fun LanguageSection(t: ThemeColors, onLanguageChange: (String) -> Unit, onUseDeviceLang: () -> Unit) {
+    val currentCode = LocalLangCode.current
+    val tr = LocalTranslations.current
     Column(modifier = Modifier.fillMaxSize().padding(24.dp).navigationBarsPadding()) {
-        Text("Language", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = t.text)
+        Text(tr["select_language"] ?: "Language", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = t.text)
         Spacer(Modifier.height(6.dp))
-        Text("Select your preferred language", color = t.text3, fontSize = 13.sp)
+        Text(tr["available_languages"] ?: "Select your preferred language", color = t.text3, fontSize = 13.sp)
         Spacer(Modifier.height(24.dp))
-        Surface(shape = RoundedCornerShape(16.dp), color = t.bg3, modifier = Modifier.fillMaxWidth()) {
+        Surface(shape = RoundedCornerShape(16.dp), color = t.accent.copy(alpha = 0.12f),
+            modifier = Modifier.fillMaxWidth().clickable { onUseDeviceLang() }) {
             Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(tm.getLang().flag, fontSize = 28.sp)
+                Icon(Icons.Default.PhoneAndroid, contentDescription = null, tint = t.accent, modifier = Modifier.size(28.dp))
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Current Language", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                    Text(tm.getLang().name, color = t.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(tr["use_device_lang"] ?: "Use Device Language", color = t.accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text("(${getLangByCode(currentCode).name})", color = t.text3, fontSize = 12.sp)
                 }
-                Text(tm.getCode().uppercase(), color = t.text3, fontSize = 13.sp)
+                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = t.accent.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
             }
         }
         Spacer(Modifier.height(20.dp))
-        Text("Available Languages", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 10.dp))
+        Surface(shape = RoundedCornerShape(16.dp), color = t.bg3, modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(getLangByCode(currentCode).flag, fontSize = 28.sp)
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(tr["current_language"] ?: "Current Language", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text(getLangByCode(currentCode).name, color = t.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Text(currentCode.uppercase(), color = t.text3, fontSize = 13.sp)
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(tr["available_languages"] ?: "Available Languages", color = t.text4, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 10.dp))
         getLanguages().forEach { lang ->
-            val selected = lang.code == tm.getCode()
+            val selected = lang.code == currentCode
             Surface(shape = RoundedCornerShape(16.dp), color = if (selected) t.accent.copy(alpha = 0.12f) else t.bg3,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable {
-                    tm.setLanguage(lang.code); langCode = lang.code; onThemeChange("default")
+                    onLanguageChange(lang.code)
                 }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(lang.flag, fontSize = 32.sp)
                     Spacer(Modifier.width(16.dp))
