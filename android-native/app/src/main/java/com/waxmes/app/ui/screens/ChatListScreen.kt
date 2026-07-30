@@ -4,8 +4,13 @@ import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -35,6 +40,7 @@ import com.waxmes.app.data.Repository
 import com.waxmes.app.data.Story
 import com.waxmes.app.data.LocalTranslations
 import com.waxmes.app.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
@@ -312,52 +318,71 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     }
     }
 
-    if (showStoryViewer) {
-        val story = selectedStory
+    // Full-screen story viewer
+    AnimatedVisibility(visible = showStoryViewer, enter = fadeIn(animationSpec = tween(300)), exit = fadeOut(animationSpec = tween(300))) {
+        val allViewerStories = remember(storiesList, repo.ownStories) {
+            storiesList.filter { !it.viewers.contains(repo.uid) || it.authorId == repo.uid }
+                .sortedByDescending { it.createdAt }
+        }
+        var currentIdx by remember { mutableIntStateOf(0) }
+        val story = if (allViewerStories.isNotEmpty() && currentIdx < allViewerStories.size) allViewerStories[currentIdx] else null
+
         if (story != null) {
             val bg = try { Color(android.graphics.Color.parseColor(story.bgColor)) } catch (e: Exception) { Color(0xFF818cf8) }
-            AlertDialog(onDismissRequest = { showStoryViewer = false; selectedStory = null },
-                containerColor = bg, shape = RoundedCornerShape(24.dp),
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        if (story.authorId == repo.uid) {
-                            IconButton(onClick = { repo.deleteStory(story.id); showStoryViewer = false; selectedStory = null }) {
-                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White.copy(alpha = 0.7f))
-                            }
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Text(story.authorName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Spacer(Modifier.weight(1f))
-                        IconButton(onClick = { repo.viewStory(story.id); showStoryViewer = false; selectedStory = null }) {
-                            Icon(Icons.Default.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.7f))
+            Box(modifier = Modifier.fillMaxSize().background(bg)) {
+                // Progress bars
+                Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 40.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    storiesList.filter { it.authorId == story.authorId }.forEachIndexed { idx, s ->
+                        Box(modifier = Modifier.weight(1f).height(3.dp).background(
+                            if (s.id == story.id) Color.White else Color.White.copy(alpha = 0.3f),
+                            RoundedCornerShape(2.dp)))
+                    }
+                }
+                // Header
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 52.dp).navigationBarsPadding()) {
+                    SubcomposeAsyncImage(model = story.authorAvatar, contentDescription = null,
+                        modifier = Modifier.size(32.dp).clip(CircleShape),
+                        error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(story.authorName.first().uppercase(), color = Color.White, fontWeight = FontWeight.Bold) } })
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(story.authorName, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    }
+                    if (story.authorId == repo.uid) {
+                        IconButton(onClick = { repo.deleteStory(story.id); showStoryViewer = false; selectedStory = null }) {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
                         }
                     }
-                },
-                text = {
-                    Box(modifier = Modifier.fillMaxWidth().height(350.dp), contentAlignment = Alignment.Center) {
-                        if (story.mediaUrl.isNotEmpty()) {
-                            SubcomposeAsyncImage(model = story.mediaUrl, contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Fit,
-                                error = { Text(story.text.ifEmpty { story.caption }, color = Color.White, fontSize = 20.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
-                                loading = { Text(story.text.ifEmpty { story.caption }, color = Color.White.copy(alpha = 0.7f), fontSize = 20.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) })
-                        } else if (story.text.isNotEmpty()) {
-                            Text(story.text, color = Color.White, fontSize = 22.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                modifier = Modifier.padding(24.dp))
-                        }
+                    IconButton(onClick = { repo.viewStory(story.id); showStoryViewer = false; selectedStory = null }) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(22.dp))
                     }
-                },
-                confirmButton = { TextButton(onClick = { repo.viewStory(story.id); showStoryViewer = false; selectedStory = null }) {
-                    Text(tr["close"] ?: "Close", color = Color.White.copy(alpha = 0.7f))
-                } })
+                }
+                // Story content
+                Box(modifier = Modifier.fillMaxSize().padding(top = 90.dp, bottom = 40.dp), contentAlignment = Alignment.Center) {
+                    if (story.mediaUrl.isNotEmpty()) {
+                        SubcomposeAsyncImage(model = story.mediaUrl, contentDescription = null,
+                            modifier = Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit,
+                            error = { Text(story.text.ifEmpty { story.caption }, color = Color.White, fontSize = 22.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                            loading = { Text(if (story.text.isNotEmpty()) "" else "", color = Color.White.copy(alpha = 0.7f)) })
+                    } else if (story.text.isNotEmpty()) {
+                        Text(story.text, color = Color.White, fontSize = 24.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(32.dp))
+                    }
+                }
+                // Tap zones (left = prev, right = next)
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f).fillMaxSize().clickable {
+                        if (currentIdx > 0) { repo.viewStory(story.id); currentIdx-- }
+                    })
+                    Box(modifier = Modifier.weight(1f).fillMaxSize().clickable {
+                        repo.viewStory(story.id)
+                        if (currentIdx < allViewerStories.size - 1) { currentIdx++ }
+                        else { showStoryViewer = false; selectedStory = null }
+                    })
+                }
+            }
         } else {
-            AlertDialog(onDismissRequest = { showStoryViewer = false }, containerColor = t.bg, shape = RoundedCornerShape(24.dp),
-                title = { Text(tr["my_story"] ?: "My Story", color = t.text, fontWeight = FontWeight.Bold) },
-                text = {
-                    Box(modifier = Modifier.fillMaxWidth().height(300.dp).background(t.bg2, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                        Text(tr["your_story_here"] ?: "Your story will appear here", color = t.text3, fontSize = 14.sp)
-                    }
-                },
-                confirmButton = { TextButton(onClick = { showStoryViewer = false }) { Text(tr["close"] ?: "Close", color = t.accent) } })
+            // No more stories - animate close
+            LaunchedEffect(Unit) { delay(300); showStoryViewer = false; selectedStory = null }
         }
     }
 
