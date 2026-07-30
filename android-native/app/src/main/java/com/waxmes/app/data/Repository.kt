@@ -229,9 +229,8 @@ class Repository {
     var activeStories = mutableListOf<Story>()
 
     fun listenStories(onChange: (List<Story>) -> Unit) {
-        val now = System.currentTimeMillis()
-        db.collection("stories").whereGreaterThan("expiresAt", now)
-            .addSnapshotListener { snap, _ ->
+        db.collection("stories").addSnapshotListener { snap, error ->
+            if (error != null) { appLog("listenStories error: ${error.message}"); return@addSnapshotListener }
                 if (snap == null) return@addSnapshotListener
                 val all = snap.documents.mapNotNull { doc ->
                     val d = doc.data ?: return@mapNotNull null
@@ -249,8 +248,10 @@ class Repository {
                         expiresAt = (d["expiresAt"] as? com.google.firebase.Timestamp)?.toDate()?.time ?: 0,
                         viewers = (d["viewers"] as? List<String>) ?: emptyList())
                 }
-                ownStories = all.filter { it.authorId == uid }.toMutableList()
-                activeStories = all.filter { it.expiresAt > System.currentTimeMillis() && !it.viewers.contains(uid) }.toMutableList()
+                val now = System.currentTimeMillis()
+                ownStories = all.filter { it.authorId == uid && (it.expiresAt == 0L || it.expiresAt > now) }.toMutableList()
+                activeStories = all.filter { (it.expiresAt == 0L || it.expiresAt > now) && !it.viewers.contains(uid) }.toMutableList()
+                appLog("listenStories: ${all.size} total, ${ownStories.size} own, ${activeStories.size} active")
                 onChange(all)
             }
     }
