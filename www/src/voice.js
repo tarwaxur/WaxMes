@@ -3,7 +3,7 @@
 async function startVoice(){
   if(!store.activeConvId)return;
   if(store.mediaRecorder&&store.mediaRecorder.state==='recording'){stopVoice();return}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert(tr('voice_not_supported'));return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert('Ses kaydı desteklenmiyor.');return}
   try {
     var stream=await navigator.mediaDevices.getUserMedia({audio:true});
     store.audioChunks=[];store.voiceStart=Date.now();
@@ -44,7 +44,7 @@ async function startVoice(){
       var m=Math.floor(elapsed/60),s=elapsed%60;
       $('vr-time').textContent=m+':'+(s<10?'0':'')+s
     },200)
-  }catch(e){alert(tr('mic_required'))}
+  }catch(e){alert('Mikrofon erişimi reddedildi.')}
 }
 
 function stopVoice(){
@@ -73,7 +73,7 @@ function sendVoice(){
     store.messages[store.activeConvId].push(msg);;
     renderMessages(store.activeConvId);
     var conv=findConv(store.activeConvId);
-    if(conv){conv.lastMsg=tr('voice_message');conv.lastActivity=Date.now();conv.time=timeNow();renderConversations()}
+    if(conv){conv.lastMsg='🎤 Sesli mesaj';conv.lastActivity=Date.now();conv.time=timeNow();renderConversations()}
     saveMessages();
     // Upload to Firebase Storage and sync via Firestore
     if(window.storage&&dataUrl&&dataUrl.indexOf('data:')===0){
@@ -152,8 +152,8 @@ function startAudioProgress(msgId,msg){
   },100)
 }
 
-function seekAudio(e,msgId,seekEl){
-  var bar=seekEl||e.currentTarget;
+function seekAudio(e,msgId){
+  var bar=e.currentTarget;
   var rect=bar.getBoundingClientRect();
   var pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
   

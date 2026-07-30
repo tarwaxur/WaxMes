@@ -133,7 +133,7 @@
 
     installUpdate: function() {
       if (_updateDownloaded) {
-        alert(tr('apk_downloaded'));
+        alert('APK indirildi. Lütfen dosyaya tıklayarak manuel olarak kurun.');
       }
     },
 

@@ -55,13 +55,13 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
   var adStatus=document.querySelector('.ad-status');
   if(adStatus)adStatus.onclick=function(){cycleStatus()};
   document.querySelectorAll('.ad-item').forEach(function(el){
-    var action=el.dataset.action;
-    if(action==='online')el.onclick=function(){setStatus(STATUS.ONLINE);hideAvatarMenu()};
-    else if(action==='idle')el.onclick=function(){setStatus(STATUS.IDLE);hideAvatarMenu()};
-    else if(action==='dnd')el.onclick=function(){setStatus(STATUS.DND);hideAvatarMenu()};
-    else if(action==='new-group')el.onclick=function(){hideAvatarMenu();newGroup()};
-    else if(action==='settings')el.onclick=function(){hideAvatarMenu();showSettings()};
-    else if(action==='logout')el.onclick=function(){doLogout()}
+    var txt=el.textContent.trim();
+    if(txt.indexOf('Çevrimiçi')===0)el.onclick=function(){setStatus(STATUS.ONLINE);hideAvatarMenu()};
+    else if(txt.indexOf('Boşta')===0)el.onclick=function(){setStatus(STATUS.IDLE);hideAvatarMenu()};
+    else if(txt.indexOf('Rahatsız')===0)el.onclick=function(){setStatus(STATUS.DND);hideAvatarMenu()};
+    else if(txt.indexOf('Grup')===0)el.onclick=function(){hideAvatarMenu();newGroup()};
+    else if(txt.indexOf('Ayar')===0)el.onclick=function(){hideAvatarMenu();showSettings()};
+    else if(txt.indexOf('Çıkış')===0)el.onclick=function(){doLogout()}
   });
   var af=document.querySelector('.sidebar-actions');if(af){
     var hb=$('sidebar-home-btn');if(hb)hb.onclick=function(){if(typeof goToHome==='function')goToHome()};
@@ -417,7 +417,7 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
       e.stopPropagation();
       var storyId = target.dataset.id;
       if (storyId && typeof showConfirmModal === 'function') {
-        showConfirmModal(tr('delete'), tr('delete_story_confirm'), tr('delete'), '#ef4444', function() {
+        showConfirmModal('Durumu Kald\u0131r', 'Bu durum kal\u0131c\u0131 olarak silinsin mi?', 'Kald\u0131r', '#ef4444', function() {
           if (typeof fbDeleteStory === 'function') {
             fbDeleteStory(storyId).then(function(ok) {
               if (ok && typeof closeStoryViewer === 'function') closeStoryViewer();

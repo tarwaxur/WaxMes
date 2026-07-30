@@ -38,10 +38,10 @@
   <div class="screen welcome-screen" id="screen-welcome">
     <div class="welcome-logo"><svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 2.17.678 4.182 1.838 5.843L2.5 21.5l3.657-1.338A9.967 9.967 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg></div>
     <div class="welcome-title">Wax<span>Mes</span></div>
-    <div class="welcome-desc" data-i18n="welcome_desc">Hesabını seç veya yeni hesap oluştur</div>
+    <div class="welcome-desc">Hesabını seç veya yeni hesap oluştur</div>
     <div class="saved-accounts" id="saved-accounts"></div>
-    <button class="welcome-btn" data-i18n="login" style="margin-bottom:8px">Giriş Yap</button>
-    <div class="welcome-links"><a data-i18n="create_account">Hesap Oluştur</a><a data-i18n="terms_of_service">Kullanım Koşulları</a></div>
+    <button class="welcome-btn" style="margin-bottom:8px">Giriş Yap</button>
+    <div class="welcome-links"><a>Hesap Oluştur</a><a>Kullanım Koşulları</a></div>
     <div class="welcome-version" id="welcome-version">v0.1.0</div>
   </div>
 
@@ -49,13 +49,13 @@
   <div class="screen auth-screen" id="screen-login">
     <div class="auth-inner">
       <div class="auth-card">
-        <button class="login-back" data-i18n="close"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Geri</button>
-        <div class="auth-header"><h2 data-i18n="login_title">Giriş Yap</h2><p data-i18n="login_subtitle">WaxMes hesabına giriş yap</p></div>
-        <div class="field-group" id="fg-login-email"><label data-i18n="email_label">E-posta</label><input type="email" id="login-email" placeholder="ornek@email.com" data-i18n="login_email_placeholder"><div class="field-error" data-i18n="email_required">E-posta gerekli</div></div>
-        <div class="field-group" id="fg-login-pass"><label data-i18n="password">Şifre</label><input type="password" id="login-pass" placeholder="••••••••"><div class="field-error" data-i18n="password_required">Şifre gerekli</div></div>
+        <button class="login-back"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Geri</button>
+        <div class="auth-header"><h2>Giriş Yap</h2><p>WaxMes hesabına giriş yap</p></div>
+        <div class="field-group" id="fg-login-email"><label>E-posta</label><input type="email" id="login-email" placeholder="ornek@email.com"><div class="field-error">E-posta gerekli</div></div>
+        <div class="field-group" id="fg-login-pass"><label>Şifre</label><input type="password" id="login-pass" placeholder="••••••••"><div class="field-error">Şifre gerekli</div></div>
           <div id="login-error" class="login-error"></div>
-          <button class="login-btn" id="login-btn" data-i18n="login" disabled>Giriş Yap</button>
-          <div class="login-footer"><span data-i18n="no_account">Hesabın yok mu? </span><a data-i18n="create_account">Hesap Oluştur</a></div>
+          <button class="login-btn" id="login-btn" disabled>Giriş Yap</button>
+          <div class="login-footer">Hesabın yok mu? <a>Hesap Oluştur</a></div>
       </div>
     </div>
   </div>
@@ -64,33 +64,33 @@
   <div class="screen auth-screen" id="screen-register">
     <div class="auth-inner">
       <div class="auth-card">
-        <div class="flex-between mb-12"><button class="login-back" data-i18n="close" style="margin-bottom:0;display:none" id="reg-step-back"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Geri</button><button class="login-back" data-i18n="close" style="margin-bottom:0">Ana Menü <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button></div>
-        <div class="auth-header"><h2 data-i18n="register_title">Hesap Oluştur</h2><p data-i18n="register_subtitle">WaxMes'e katılmak için bilgilerini gir</p></div>
+        <div class="flex-between mb-12"><button class="login-back" style="margin-bottom:0;display:none" id="reg-step-back"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Geri</button><button class="login-back" style="margin-bottom:0">Ana Menü <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button></div>
+        <div class="auth-header"><h2>Hesap Oluştur</h2><p>WaxMes'e katılmak için bilgilerini gir</p></div>
         <div class="register-step-dots"><div class="register-dot active"></div><div class="register-dot"></div><div class="register-dot"></div></div>
         <div class="register-step active" data-step="0">
           <div class="field-group">
-            <label data-i18n="profile_picture">Profil Fotoğrafı</label>
+            <label>Profil Fotoğrafı</label>
             <div class="flex-items-center gap-12 mt-4">
               <div id="avatar-picker"><svg width="20" height="20" viewBox="0 0 24 24" stroke="rgba(129,140,248,.4)" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-              <div><div class="f-11 text-4" data-i18n="select_photo">Profil fotoğrafı seç</div><div style="font-size:10px;color:var(--text4);opacity:.6" data-i18n="photo_formats">PNG, JPG veya GIF</div></div>
+              <div><div class="f-11 text-4">Profil fotoğrafı seç</div><div style="font-size:10px;color:var(--text4);opacity:.6">PNG, JPG veya GIF</div></div>
             </div>
           </div>
-          <div class="field-group" id="fg-username"><label data-i18n="username">Kullanıcı Adı</label><input type="text" id="reg-username" placeholder="Örn: waxur" maxlength="20" data-i18n="username_placeholder"><div class="field-hint" data-i18n="username_length_hint">En az 3 karakter</div><div class="field-error" data-i18n="username_length">Lütfen en az 3 karakter gir</div></div>
-          <div class="field-group" id="fg-display"><label data-i18n="display_name_label">Görünen Ad</label><input type="text" id="reg-display" placeholder="Örn: Waxur" maxlength="30" data-i18n="display_placeholder"><div class="field-error" data-i18n="display_name_required">Lütfen görünen adını gir</div></div>
+          <div class="field-group" id="fg-username"><label>Kullanıcı Adı</label><input type="text" id="reg-username" placeholder="Örn: waxur" maxlength="20"><div class="field-hint">En az 3 karakter</div><div class="field-error">Lütfen en az 3 karakter gir</div></div>
+          <div class="field-group" id="fg-display"><label>Görünen Ad</label><input type="text" id="reg-display" placeholder="Örn: Waxur" maxlength="30"><div class="field-error">Lütfen görünen adını gir</div></div>
         </div>
         <div class="register-step" data-step="1">
-          <div class="field-group" id="fg-email"><label data-i18n="email_label">E-posta</label><input type="email" id="reg-email" placeholder="ornek@email.com" data-i18n="email_placeholder"><div class="field-error" data-i18n="invalid_email">Geçerli bir e-posta gir</div></div>
-          <div class="field-group" id="fg-phone"><label data-i18n="phone_label">Telefon (isteğe bağlı)</label><input type="tel" id="reg-phone" placeholder="+90 5XX XXX XX XX" data-i18n="phone_placeholder"></div>
+          <div class="field-group" id="fg-email"><label>E-posta</label><input type="email" id="reg-email" placeholder="ornek@email.com"><div class="field-error">Geçerli bir e-posta gir</div></div>
+          <div class="field-group" id="fg-phone"><label>Telefon (isteğe bağlı)</label><input type="tel" id="reg-phone" placeholder="+90 5XX XXX XX XX"></div>
         </div>
         <div class="register-step" data-step="2">
-          <div class="field-group" id="fg-pass"><label data-i18n="password">Şifre</label><input type="password" id="reg-pass" placeholder="••••••••"><div class="field-hint" data-i18n="password_hint">En az 6 karakter</div><div class="field-error" data-i18n="weak_password">Şifre en az 6 karakter olmalı</div></div>
-          <div class="field-group" id="fg-pass2"><label data-i18n="confirm_password">Şifreyi Onayla</label><input type="password" id="reg-pass2" placeholder="••••••••"><div class="field-error" data-i18n="passwords_not_match">Şifreler eşleşmiyor</div></div>
+          <div class="field-group" id="fg-pass"><label>Şifre</label><input type="password" id="reg-pass" placeholder="••••••••"><div class="field-hint">En az 6 karakter</div><div class="field-error">Şifre en az 6 karakter olmalı</div></div>
+          <div class="field-group" id="fg-pass2"><label>Şifreyi Onayla</label><input type="password" id="reg-pass2" placeholder="••••••••"><div class="field-error">Şifreler eşleşmiyor</div></div>
           <div style="margin-top:8px;padding:10px 12px;border-radius:8px;background:rgba(129,140,248,.04);border:1px solid rgba(129,140,248,.08)">
-            <label class="toggle"><input type="checkbox" id="reg-terms"><span class="toggle-track"></span><span class="toggle-label f-11 text-4" data-i18n="accept_terms">WaxMes <a style="color:var(--accent);text-decoration:none;cursor:pointer">Kullanım Koşulları</a>'nı kabul ediyorum</span></label>
+            <label class="toggle"><input type="checkbox" id="reg-terms"><span class="toggle-track"></span><span class="toggle-label f-11 text-4">WaxMes <a style="color:var(--accent);text-decoration:none;cursor:pointer">Kullanım Koşulları</a>'nı kabul ediyorum</span></label>
           </div>
         </div>
-        <div class="auth-actions"><button class="btn btn-next" id="reg-next" data-i18n="reg_next" disabled>İleri</button></div>
-        <div class="login-footer"><span data-i18n="have_account">Zaten hesabın var mı? </span><a data-i18n="login">Giriş Yap</a></div>
+        <div class="auth-actions"><button class="btn btn-next" id="reg-next" disabled>İleri</button></div>
+        <div class="login-footer">Zaten hesabın var mı? <a>Giriş Yap</a></div>
       </div>
     </div>
   </div>
@@ -105,24 +105,24 @@
           <div class="avatar-dropdown" id="avatar-dropdown">
             <div class="ad-status"><span class="sd-dot sd-online ad-dot" id="ad-dot"></span><span id="ad-status-text">Çevrimiçi</span></div>
             <div class="ad-sep"></div>
-            <div class="ad-item" data-action="online" data-i18n="online"><span class="sd-dot sd-online" style="width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0"></span> Çevrimiçi</div>
-            <div class="ad-item" data-action="idle" data-i18n="idle"><span class="sd-dot sd-idle" style="width:8px;height:8px;border-radius:50%;display:inline-block"></span> Boşta</div>
-            <div class="ad-item" data-action="dnd" data-i18n="dnd"><span class="sd-dot sd-dnd" style="width:8px;height:8px;border-radius:50%;display:inline-block"></span> Rahatsız Etme</div>
+            <div class="ad-item"><span class="sd-dot sd-online" style="width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0"></span> Çevrimiçi</div>
+            <div class="ad-item"><span class="sd-dot sd-idle" style="width:8px;height:8px;border-radius:50%;display:inline-block"></span> Boşta</div>
+            <div class="ad-item"><span class="sd-dot sd-dnd" style="width:8px;height:8px;border-radius:50%;display:inline-block"></span> Rahatsız Etme</div>
             <div class="ad-sep"></div>
-            <div class="ad-item" data-action="new-group" data-i18n="new_group"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Grup Oluştur</div>
-            <div class="ad-item" data-action="settings" data-i18n="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l-.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l-.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Ayarlar</div>
+            <div class="ad-item"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Grup Oluştur</div>
+            <div class="ad-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Ayarlar</div>
             <div class="ad-sep"></div>
-            <div class="ad-item danger" data-action="logout" data-i18n="logout"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Çıkış Yap</div>
+            <div class="ad-item danger"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Çıkış Yap</div>
           </div>
         </div>
-        <div class="sidebar-actions"><button class="sidebar-action-btn" title="Ana Sayfa" id="sidebar-home-btn" data-i18n="home" style="display:none"><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></button><button class="sidebar-action-btn" title="Arkadaş Ekle / Grup Oluştur" data-i18n="add_friend" style="position:relative"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span class="badge-pending" id="badge-pending-sidebar" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;line-height:16px;box-shadow:0 0 0 2px var(--bg1)"></span></button></div>
+        <div class="sidebar-actions"><button class="sidebar-action-btn" title="Ana Sayfa" id="sidebar-home-btn" style="display:none"><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></button><button class="sidebar-action-btn" title="Arkadaş Ekle / Grup Oluştur" style="position:relative"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span class="badge-pending" id="badge-pending-sidebar" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;line-height:16px;box-shadow:0 0 0 2px var(--bg1)"></span></button></div>
       </div>
-      <div class="sidebar-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Sohbet ara..." data-i18n="search"></div>
+      <div class="sidebar-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Sohbet ara..."></div>
       <div class="story-bar-wrap" id="story-bar-wrap">
-        <div class="story-bar-header"><span data-i18n="stories">Durumlar</span><button class="story-add-btn" data-action="open-create-story" title="Yeni durum" data-i18n-title="add_story">+</button></div>
+        <div class="story-bar-header"><span>Durumlar</span><button class="story-add-btn" data-action="open-create-story" title="Yeni durum">+</button></div>
         <div class="story-bar thin-scrollbar" id="story-bar"></div>
       </div>
-      <div id="archive-bar" class="flex-items-center gap-6 f-11 text-4" style="padding:6px 12px;margin:2px 6px;border-radius:8px;cursor:pointer;transition:all .15s"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg><span id="archive-label" data-i18n="archive">Arşiv</span><span id="archive-badge" style="display:none;background:var(--accent);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0"></span></div><div id="closed-bar" class="flex-items-center gap-6 f-11 text-4" style="display:none;padding:6px 12px;margin:2px 6px;border-radius:8px;cursor:pointer;transition:all .15s"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span id="closed-label" data-i18n="hide_list">Kapalı Sohbetler</span></div>
+      <div id="archive-bar" class="flex-items-center gap-6 f-11 text-4" style="padding:6px 12px;margin:2px 6px;border-radius:8px;cursor:pointer;transition:all .15s"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg><span id="archive-label">Arşiv</span><span id="archive-badge" style="display:none;background:var(--accent);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0"></span></div><div id="closed-bar" class="flex-items-center gap-6 f-11 text-4" style="display:none;padding:6px 12px;margin:2px 6px;border-radius:8px;cursor:pointer;transition:all .15s"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span id="closed-label">Kapalı Sohbetler</span></div>
       <div class="conversations thin-scrollbar" id="conv-list"></div>
     </div>
 
@@ -132,7 +132,7 @@
       <!-- Chat empty state -->
       <div class="chat-empty" id="chat-empty">
         <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        <h3 data-i18n="no_conversations">Sohbet Seç</h3><p data-i18n="app_description">Mesajlaşmaya başlamak için bir sohbet seç</p>
+        <h3>Sohbet Seç</h3><p>Mesajlaşmaya başlamak için bir sohbet seç</p>
       </div>
       <!-- Chat active area -->
       <div id="chat-active" style="display:none;flex-direction:column;flex:1;min-height:0;height:100%">
@@ -140,16 +140,16 @@
           <div class="chat-header-left">
             <button class="chat-back-btn" id="chat-back-btn" style="display:none;width:32px;height:32px;border:none;background:transparent;border-radius:7px;cursor:pointer;color:var(--text4);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:2px"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
             <div class="chat-header-avatar" id="chat-header-avatar">A</div>
-            <div class="min-w-0"><div class="chat-header-name" id="chat-header-name" data-i18n="friend">Arkadaş</div><div class="chat-header-status" id="chat-header-status" data-i18n="online">Çevrimiçi</div></div>
+            <div class="min-w-0"><div class="chat-header-name" id="chat-header-name">Arkadaş</div><div class="chat-header-status" id="chat-header-status">Çevrimiçi</div></div>
           </div>
           <div class="flex-items-center gap-4">
-            <button class="sidebar-action-btn" title="Sesli Arama (beta)" data-i18n="voice_call" style="width:32px;height:32px">
+            <button class="sidebar-action-btn" title="Sesli Arama (beta)" style="width:32px;height:32px">
               <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
             </button>
-            <button class="sidebar-action-btn" title="Ara" data-i18n="search" style="width:32px;height:32px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-            <button class="sidebar-action-btn" title="Medya Galerisi" data-i18n="media" style="width:32px;height:32px"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
-            <button class="sidebar-action-btn" title="Sabitlenmiş Mesajlar" data-i18n="pinned" style="width:32px;height:32px"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg></button>
-            <div class="e2e-badge" title="Uçtan uca şifreli" data-i18n="e2e_encryption"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> <span data-i18n="encrypted">Şifreli</span></div>
+            <button class="sidebar-action-btn" title="Ara" style="width:32px;height:32px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+            <button class="sidebar-action-btn" title="Medya Galerisi" style="width:32px;height:32px"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+            <button class="sidebar-action-btn" title="Sabitlenmiş Mesajlar" style="width:32px;height:32px"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg></button>
+            <div class="e2e-badge" title="Uçtan uca şifreli"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Şifreli</div>
           </div>
         </div>
         <!-- CALL BAR -->
@@ -159,17 +159,17 @@
               <div style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--grad);color:#fff;font-size:15px;font-weight:700;box-shadow:0 0 0 2px var(--accent)" id="call-bar-avatar">?</div>
             </div>
             <div class="flex-1 min-w-0">
-              <div id="call-bar-name" class="f-15 fw-7 text-ellipsis" style="color:var(--text)" data-i18n="calling">Arıyor...</div>
+              <div id="call-bar-name" class="f-15 fw-7 text-ellipsis" style="color:var(--text)">Arıyor...</div>
               <div class="flex-items-center gap-8" style="margin-top:2px">
-                <span id="call-bar-status" class="f-11 text-4" data-i18n="connecting">Bağlanıyor...</span>
+                <span id="call-bar-status" class="f-11 text-4">Bağlanıyor...</span>
                 <span id="call-bar-timer" class="f-12 fw-7" style="color:var(--accent);display:none">00:00</span>
               </div>
               <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:nowrap">
-                <button id="call-mic-btn" class="btn-circle" style="background:rgba(255,255,255,.04);color:var(--text3);width:38px;height:38px" title="Mikrofon" data-i18n="microphone"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg></button>
-                <button id="call-cam-btn" class="btn-circle" style="background:rgba(255,255,255,.04);color:var(--text3);width:38px;height:38px" title="Kamera" data-i18n="camera"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
-                <button id="call-screen-btn" class="btn-circle" style="background:rgba(255,255,255,.04);color:var(--text3);width:38px;height:38px" title="Ekran Paylaş" data-i18n="screen_share"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="17"/></svg></button>
-                <button id="call-speaker-btn" class="btn-circle" style="background:rgba(255,255,255,.04);color:var(--text3);width:38px;height:38px" title="Hoparlör" data-i18n="speaker"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg></button>
-                <button id="call-end-btn" class="btn-circle" style="width:44px;height:44px;background:#ef4444;color:#fff" title="Çağrıyı Sonlandır" data-i18n="end_call"><svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></button>
+                <button id="call-mic-btn" class="btn-circle" style="background:rgba(255,255,255,.04);color:var(--text3);width:38px;height:38px" title="Mikrofon"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg></button>
+                <button id="call-cam-btn" class="btn-circle" style="background:rgba(255,255,255,.04);color:var(--text3);width:38px;height:38px" title="Kamera"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
+                <button id="call-screen-btn" class="btn-circle" style="background:rgba(255,255,255,.04);color:var(--text3);width:38px;height:38px" title="Ekran Paylaş"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="17"/></svg></button>
+                <button id="call-speaker-btn" class="btn-circle" style="background:rgba(255,255,255,.04);color:var(--text3);width:38px;height:38px" title="Hoparlör"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg></button>
+                <button id="call-end-btn" class="btn-circle" style="width:44px;height:44px;background:#ef4444;color:#fff" title="Çağrıyı Sonlandır"><svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></button>
               </div>
             </div>
             <div id="call-local-video" style="width:100px;height:56px;border-radius:8px;background:#000;overflow:hidden;flex-shrink:0;display:none;border:1px solid rgba(255,255,255,.1);box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer">
@@ -182,28 +182,28 @@
         <div id="incoming-call" class="flex-items-center" style="display:none;gap:10px;padding:9px 14px;background:linear-gradient(to right,var(--bg2),var(--bg2));border-bottom:2px solid #22c55e;flex-shrink:0">
           <div class="flex-center" style="width:34px;height:34px;border-radius:50%;background:#22c55e;flex-shrink:0;box-shadow:0 0 0 2px rgba(34,197,94,.3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="#ef4444" stroke="none"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></div>
           <div class="flex-1 min-w-0">
-            <div id="incoming-caller-name" class="f-13 fw-6 text-2" data-i18n="calling">Arıyor...</div>
-            <div class="flex-items-center gap-4" style="font-size:10px;color:var(--text4)" data-i18n="incoming_call"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;animation:incomingPulse 1s infinite"></span> Gelen sesli arama</div>
+            <div id="incoming-caller-name" class="f-13 fw-6 text-2">Arıyor...</div>
+            <div class="flex-items-center gap-4" style="font-size:10px;color:var(--text4)"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;animation:incomingPulse 1s infinite"></span> Gelen sesli arama</div>
           </div>
           <div class="flex gap-8 flex-shrink-0">
-            <button class="btn-circle-sm" style="background:rgba(239,68,68,.15);color:#ef4444" title="Reddet" data-i18n="cancel">
+            <button class="btn-circle-sm" style="background:rgba(239,68,68,.15);color:#ef4444" title="Reddet">
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
-            <button class="btn-circle-sm" style="background:rgba(34,197,94,.15);color:#22c55e" title="Cevapla" data-i18n="accept">
+            <button class="btn-circle-sm" style="background:rgba(34,197,94,.15);color:#22c55e" title="Cevapla">
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
             </button>
           </div>
         </div>
         <div class="chat-messages thin-scrollbar thin-scrollbar--border2" id="chat-messages"></div>
         <div class="chat-input-area" id="chat-input-area">
-          <button class="chat-upload-btn" id="emoji-btn" title="Emoji" data-i18n-title="emoji" style="font-size:20px;line-height:1">😊</button>
-          <button class="chat-upload-btn" id="upload-btn" title="Ekle" data-i18n="new"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          <button class="chat-upload-btn" id="emoji-btn" title="Emoji" style="font-size:20px;line-height:1">😊</button>
+          <button class="chat-upload-btn" id="upload-btn" title="Ekle"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
           <div class="upload-menu" id="upload-menu">
-            <div class="um-item" data-i18n="image"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Görsel</div>
-            <div class="um-item" data-i18n="video"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Video</div>
-            <div class="um-item" data-i18n="document"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Döküman</div>
+            <div class="um-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Görsel</div>
+            <div class="um-item"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Video</div>
+            <div class="um-item"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Döküman</div>
           </div>
-          <button class="chat-upload-btn" id="voice-btn" title="Sesli Mesaj (ALT+M)" data-i18n="voice_message"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg></button>
+          <button class="chat-upload-btn" id="voice-btn" title="Sesli Mesaj (ALT+M)"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg></button>
           <div id="emoji-picker" style="display:none;position:absolute;bottom:100%;left:40px;width:320px;height:260px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;z-index:60;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)">
   <div style="display:flex;gap:2px;padding:6px 8px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto" id="emoji-cats">
     <span class="emoji-cat active emoji-cat-btn" data-cat="face">😊</span>
@@ -219,24 +219,24 @@
           <div class="voice-recorder" id="voice-recorder" style="display:none">
             <div class="vr-wave" id="vr-wave"></div>
             <span class="vr-time" id="vr-time">0:00</span>
-            <button class="vr-send" title="Gönder (Enter)" data-i18n="send"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
-            <button class="vr-cancel" title="İptal" data-i18n="cancel"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <button class="vr-send" title="Gönder (Enter)"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+            <button class="vr-cancel" title="İptal"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <div id="reply-bar" style="display:none;align-items:center;gap:8px;padding:6px 10px;background:var(--bg3);border-radius:8px;margin-bottom:4px;flex-shrink:0">
             <span id="reply-text" class="f-11 text-3 flex-1 text-ellipsis"></span>
             <button style="width:20px;height:20px;border:none;background:transparent;cursor:pointer;color:var(--text4);font-size:14px;display:flex;align-items:center;justify-content:center">✕</button>
           </div>
-          <input type="text" id="chat-input" placeholder="Mesaj yaz..." data-i18n="message_text">
+          <input type="text" id="chat-input" placeholder="Mesaj yaz...">
           <button class="chat-send-btn" id="chat-send" disabled><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
-          <div id="new-msg-indicator" style="display:none;position:absolute;bottom:100%;right:20px;background:var(--accent);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.2)" data-i18n="new_messages">↓ Yeni mesajlar</div>
-          <div id="scroll-bottom-btn" style="display:none;position:absolute;bottom:100%;right:20px;background:var(--bg3);border:1px solid var(--border2);color:var(--text3);padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer;z-index:9;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:all .15s" data-i18n="scroll_to_bottom">↓ Son mesaja git</div>
+          <div id="new-msg-indicator" style="display:none;position:absolute;bottom:100%;right:20px;background:var(--accent);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.2)">↓ Yeni mesajlar</div>
+          <div id="scroll-bottom-btn" style="display:none;position:absolute;bottom:100%;right:20px;background:var(--bg3);border:1px solid var(--border2);color:var(--text3);padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer;z-index:9;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:all .15s">↓ Son mesaja git</div>
         </div>
       </div>
     </div>
   </div>
       <!-- Profile panel -->
       <div class="profile-panel" id="profile-panel">
-        <div class="profile-panel-header"><button><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><span data-i18n="profile">Profil</span></div>
+        <div class="profile-panel-header"><button><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><span>Profil</span></div>
         <div class="profile-panel-body thin-scrollbar" id="profile-panel-body"></div>
       </div>
       <!-- Settings page removed - now in .window level -->
@@ -248,15 +248,14 @@
   <div class="settings-page" id="settings-page">
     <div class="settings-body">
       <div class="settings-sidebar thin-scrollbar thin-scrollbar--xs">
-        <button class="settings-back" data-i18n="close"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Geri</button>
-        <div class="settings-cat active" data-cat="profile"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> <span data-i18n="profile">Profil</span></div>
-        <div class="settings-cat" data-cat="theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> <span data-i18n="themes">Tema</span></div>
-        <div class="settings-cat" data-cat="language"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg> <span data-i18n="language">Dil</span></div>
-        <div class="settings-cat" data-cat="privacy"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> <span data-i18n="privacy_security">Gizlilik</span></div>
-            <div class="settings-cat" data-cat="media"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg> <span data-i18n="media">Ses &amp; Görüntü</span></div>
-            <div class="settings-cat" data-cat="danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> <span data-i18n="data_management">Veri Yönetimi</span></div>
-            <div class="settings-cat" data-cat="shortcuts"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01"/></svg> <span data-i18n="shortcuts">Kısayollar</span></div>
-            <div class="settings-cat" data-cat="about"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> <span data-i18n="about">Hakkında</span></div>
+        <button class="settings-back"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Geri</button>
+        <div class="settings-cat active" data-cat="profile"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Profil</div>
+        <div class="settings-cat" data-cat="theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Tema</div>
+        <div class="settings-cat" data-cat="privacy"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Gizlilik</div>
+            <div class="settings-cat" data-cat="media"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg> Ses & Görüntü</div>
+            <div class="settings-cat" data-cat="danger"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Veri Yönetimi</div>
+            <div class="settings-cat" data-cat="shortcuts"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01"/></svg> Kısayollar</div>
+            <div class="settings-cat" data-cat="about"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Hakkında</div>
         </div>
         <div class="settings-content thin-scrollbar thin-scrollbar--border2" id="settings-content"></div>
       </div>
@@ -266,7 +265,7 @@
 
 <!-- TOS MODAL -->
 <div class="modal-overlay" id="modal-tos">
-  <div class="modal"><div class="modal-header"><h3 data-i18n="terms_of_service">Kullanım Koşulları</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal"><div class="modal-header"><h3>Kullanım Koşulları</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body thin-scrollbar thin-scrollbar--border2">
       <h4>1. Kabul</h4><p>WaxMes'i kullanarak koşulları kabul etmiş olursun.</p>
       <h4>2. Hesap</h4><p>Şifreni kimseyle paylaşma.</p>
@@ -275,24 +274,24 @@
       <h4>5. Hizmet</h4><p>"Olduğu gibi" sunulur, kesinti olabilir.</p>
       <p style="margin-top:12px;opacity:.4;font-size:10px">Mayıs 2026</p>
     </div>
-    <div class="modal-footer"><button class="modal-btn modal-btn-secondary" data-i18n="close">Kapat</button><button class="modal-btn modal-btn-primary" data-i18n="accept">Kabul Et</button></div>
+    <div class="modal-footer"><button class="modal-btn modal-btn-secondary">Kapat</button><button class="modal-btn modal-btn-primary">Kabul Et</button></div>
   </div>
 </div>
 
 <!-- PINNED MESSAGES MODAL -->
 <div class="modal-overlay" id="modal-pinned">
-  <div class="modal" style="width:460px;height:420px"><div class="modal-header"><h3 data-i18n="pinned">📌 Sabitlenmiş Mesajlar</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal" style="width:460px;height:420px"><div class="modal-header"><h3>📌 Sabitlenmiş Mesajlar</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body thin-scrollbar thin-scrollbar--border2" id="pinned-msg-list" style="font-size:12px;color:var(--text4)">
-      <div style="text-align:center;padding:30px" data-i18n="no_pinned">Sabitlenmiş mesaj yok.</div>
+      <div style="text-align:center;padding:30px">Sabitlenmiş mesaj yok.</div>
     </div>
   </div>
 </div>
 
 <!-- SEARCH MODAL -->
 <div class="modal-overlay" id="modal-search">
-  <div class="modal" style="width:480px;height:400px"><div class="modal-header"><h3 data-i18n="search">Ara</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal" style="width:480px;height:400px"><div class="modal-header"><h3>Ara</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body thin-scrollbar thin-scrollbar--border2" style="display:flex;flex-direction:column">
-      <input type="text" id="search-input" placeholder="Mesajlarda ara..." data-i18n="search_messages" style="width:100%;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:10px;font-family:inherit;font-size:13px;color:var(--text2);outline:none;flex-shrink:0">
+      <input type="text" id="search-input" placeholder="Mesajlarda ara..." style="width:100%;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:10px;font-family:inherit;font-size:13px;color:var(--text2);outline:none;flex-shrink:0">
       <div id="search-results" class="thin-scrollbar" style="flex:1;overflow-y:auto;margin-top:10px;font-size:12px;color:var(--text4)"></div>
     </div>
   </div>
@@ -300,7 +299,7 @@
 
 <!-- MEDIA GALLERY MODAL -->
 <div class="modal-overlay" id="modal-gallery">
-  <div class="modal" style="width:560px;height:460px"><div class="modal-header"><h3 data-i18n="media">📷 Medya Galerisi</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal" style="width:560px;height:460px"><div class="modal-header"><h3>📷 Medya Galerisi</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body thin-scrollbar thin-scrollbar--border2" id="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;padding:14px;overflow-y:auto;align-content:start"></div>
   </div>
 </div>
@@ -309,22 +308,22 @@
 <div class="modal-overlay" id="modal-delete">
   <div class="modal" style="width:360px"><div class="modal-body" style="text-align:center;padding:28px 24px 20px">
     <svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-    <h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px" id="delete-modal-title" data-i18n="delete_message">Mesajı Sil</h4>
-    <p style="color:var(--text4);font-size:12px" id="delete-modal-desc" data-i18n="delete_confirm">Bu mesaj kalıcı olarak silinsin mi?</p>
+    <h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px" id="delete-modal-title">Mesajı Sil</h4>
+    <p style="color:var(--text4);font-size:12px" id="delete-modal-desc">Bu mesaj kalıcı olarak silinsin mi?</p>
     <div id="delete-password-field" style="display:none;margin-top:12px">
-      <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px" data-i18n="password">Şifreni gir</label>
+      <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Şifreni gir</label>
       <input type="password" id="delete-password-input" placeholder="Şifre" style="width:100%;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border2);border-radius:10px;font-family:inherit;font-size:13px;color:var(--text2);text-align:center">
     </div></div>
     <div class="modal-footer" style="justify-content:center;gap:10px">
-      <button class="modal-btn modal-btn-secondary" style="min-width:100px" data-i18n="cancel">İptal</button>
-      <button class="modal-btn" id="delete-confirm-btn" style="min-width:100px;background:#ef4444;color:#fff" data-i18n="delete">Sil</button>
+      <button class="modal-btn modal-btn-secondary" style="min-width:100px">İptal</button>
+      <button class="modal-btn" id="delete-confirm-btn" style="min-width:100px;background:#ef4444;color:#fff">Sil</button>
     </div>
   </div>
 </div>
 
 <!-- MEDIA PREVIEW MODAL -->
 <div class="modal-overlay" id="modal-media">
-  <div class="modal" style="width:520px"><div class="modal-header"><h3 data-i18n="media">Medya Önizleme</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal" style="width:520px"><div class="modal-header"><h3>Medya Önizleme</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body thin-scrollbar thin-scrollbar--border2" style="text-align:center;padding-bottom:8px">
       <div id="media-files-list" style="margin-bottom:12px"></div>
       <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:10px">
@@ -333,34 +332,34 @@
         <button class="modal-btn modal-btn-secondary" id="media-next-btn" style="display:none">→</button>
       </div>
       <div id="media-preview-area" style="position:relative;min-height:100px"></div>
-      <div class="field-group" style="margin-top:8px"><label id="media-caption-label" data-i18n="caption">Açıklama (bu dosya için)</label><input type="text" id="media-caption" placeholder="Bu dosyaya not ekle..." data-i18n="caption_placeholder" maxlength="200"></div>
+      <div class="field-group" style="margin-top:8px"><label id="media-caption-label">Açıklama (bu dosya için)</label><input type="text" id="media-caption" placeholder="Bu dosyaya not ekle..." maxlength="200"></div>
     </div>
-    <div class="modal-footer"><button class="modal-btn modal-btn-secondary" data-i18n="cancel">İptal</button><button class="modal-btn modal-btn-primary" data-i18n="send">Gönder</button></div>
+    <div class="modal-footer"><button class="modal-btn modal-btn-secondary">İptal</button><button class="modal-btn modal-btn-primary">Gönder</button></div>
   </div>
 </div>
 
 <!-- GROUP MODAL -->
 <div class="modal-overlay" id="modal-group">
-  <div class="modal" style="width:420px"><div class="modal-header"><h3 data-i18n="new_group">Grup Oluştur</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal" style="width:420px"><div class="modal-header"><h3>Grup Oluştur</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body thin-scrollbar thin-scrollbar--border2">
-      <div class="field-group"><label data-i18n="profile_picture">Grup Fotoğrafı</label><div style="display:flex;align-items:center;gap:12px;margin-top:4px"><div id="group-avatar-picker" style="width:56px;height:56px;border-radius:50%;background:rgba(129,140,248,.1);border:1px dashed rgba(129,140,248,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden"><svg width="22" height="22" viewBox="0 0 24 24" stroke="rgba(129,140,248,.4)" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div><span style="font-size:11px;color:var(--text4)" data-i18n="optional">İsteğe bağlı</span></div></div>
-      <div class="field-group"><label data-i18n="name">Grup Adı</label><input type="text" id="group-name" placeholder="Örn: Arkadaşlar" data-i18n="group_name_placeholder" maxlength="30"></div>
-      <label style="font-size:11px;color:var(--text4);display:block;margin:8px 0 6px" data-i18n="members">Üyeleri Seç</label>
-      <input type="text" id="group-search" placeholder="Ara..." data-i18n="search" style="width:100%;padding:7px 10px;font-size:11px;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;color:var(--text2);outline:none;margin-bottom:6px">
+      <div class="field-group"><label>Grup Fotoğrafı</label><div style="display:flex;align-items:center;gap:12px;margin-top:4px"><div id="group-avatar-picker" style="width:56px;height:56px;border-radius:50%;background:rgba(129,140,248,.1);border:1px dashed rgba(129,140,248,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden"><svg width="22" height="22" viewBox="0 0 24 24" stroke="rgba(129,140,248,.4)" fill="none" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div><span style="font-size:11px;color:var(--text4)">İsteğe bağlı</span></div></div>
+      <div class="field-group"><label>Grup Adı</label><input type="text" id="group-name" placeholder="Örn: Arkadaşlar" maxlength="30"></div>
+      <label style="font-size:11px;color:var(--text4);display:block;margin:8px 0 6px">Üyeleri Seç</label>
+      <input type="text" id="group-search" placeholder="Ara..." style="width:100%;padding:7px 10px;font-size:11px;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;color:var(--text2);outline:none;margin-bottom:6px">
       <div class="modal-member-list thin-scrollbar" id="group-member-list"></div>
     </div>
-    <div class="modal-footer"><button class="modal-btn modal-btn-secondary" data-i18n="cancel">İptal</button><button class="modal-btn modal-btn-primary" id="group-create-btn" data-i18n="new_group" disabled>Oluştur</button></div>
+    <div class="modal-footer"><button class="modal-btn modal-btn-secondary">İptal</button><button class="modal-btn modal-btn-primary" id="group-create-btn" disabled>Oluştur</button></div>
   </div>
 </div>
 
 <!-- FRIENDS PANEL -->
 <div class="modal-overlay" id="modal-friends">
-  <div class="modal" style="width:500px;height:460px"><div class="modal-header"><h3 data-i18n="friends">Arkadaşlar</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal" style="width:500px;height:460px"><div class="modal-header"><h3>Arkadaşlar</h3><button class="modal-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body" style="padding:0;display:flex;flex-direction:column">
       <div class="flex" style="border-bottom:1px solid var(--border);flex-shrink:0">
-        <button class="friends-tab active flex-1 f-12 fw-6 pointer text-4" data-tab="friends" data-i18n="friends" style="padding:10px;border:none;background:transparent;font-family:inherit;transition:all .15s">👥 Arkadaşlar</button>
-        <button class="friends-tab flex-1 f-12 fw-6 pointer text-4" data-tab="pending" data-i18n="pending" style="padding:10px;border:none;background:transparent;font-family:inherit;transition:all .15s;position:relative">⏳ Bekleyen<span class="badge-pending" id="badge-pending-tab" style="display:none;margin-left:4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;line-height:16px;vertical-align:middle"></span></button>
-        <button class="friends-tab flex-1 f-12 fw-6 pointer text-4" data-tab="add" data-i18n="add_friend" style="padding:10px;border:none;background:transparent;font-family:inherit;transition:all .15s">➕ Ekle</button>
+        <button class="friends-tab active flex-1 f-12 fw-6 pointer text-4" data-tab="friends" style="padding:10px;border:none;background:transparent;font-family:inherit;transition:all .15s">👥 Arkadaşlar</button>
+        <button class="friends-tab flex-1 f-12 fw-6 pointer text-4" data-tab="pending" style="padding:10px;border:none;background:transparent;font-family:inherit;transition:all .15s;position:relative">⏳ Bekleyen<span class="badge-pending" id="badge-pending-tab" style="display:none;margin-left:4px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 4px;line-height:16px;vertical-align:middle"></span></button>
+        <button class="friends-tab flex-1 f-12 fw-6 pointer text-4" data-tab="add" style="padding:10px;border:none;background:transparent;font-family:inherit;transition:all .15s">➕ Ekle</button>
       </div>
       <div id="friends-content" class="thin-scrollbar" style="flex:1;overflow-y:auto;padding:14px"></div>
     </div>
@@ -369,14 +368,14 @@
 
 <!-- FORWARD MODAL -->
 <div class="modal-overlay" id="modal-forward">
-  <div class="modal" style="width:420px"><div class="modal-header"><h3 data-i18n="forward">Mesajı İlet</h3><button class="modal-close" id="forward-close-btn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="modal" style="width:420px"><div class="modal-header"><h3>Mesajı İlet</h3><button class="modal-close" id="forward-close-btn"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body thin-scrollbar thin-scrollbar--border2">
-      <div class="field-group"><label data-i18n="comment">Yorum</label><input type="text" id="forward-caption" placeholder="İletilen mesaja yorum ekle..." data-i18n="comment_placeholder" maxlength="200"></div>
-      <div class="field-group"><label data-i18n="search">Kişi veya Grup Ara</label><input type="text" id="forward-search" placeholder="Ara..." data-i18n="search"></div>
-      <div style="font-size:10px;color:var(--text4);margin-bottom:4px" data-i18n="forward_help">Birden fazla seçmek için tıklayın</div>
+      <div class="field-group"><label>Yorum</label><input type="text" id="forward-caption" placeholder="İletilen mesaja yorum ekle..." maxlength="200"></div>
+      <div class="field-group"><label>Kişi veya Grup Ara</label><input type="text" id="forward-search" placeholder="Ara..."></div>
+      <div style="font-size:10px;color:var(--text4);margin-bottom:4px">Birden fazla seçmek için tıklayın</div>
       <div class="thin-scrollbar" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px" id="forward-contact-list"></div>
     </div>
-    <div class="modal-footer"><button class="modal-btn modal-btn-secondary" id="forward-cancel-btn" data-i18n="cancel">İptal</button><button class="modal-btn modal-btn-primary" id="forward-send-btn" data-i18n="forward">Seçililere İlet</button></div>
+    <div class="modal-footer"><button class="modal-btn modal-btn-secondary" id="forward-cancel-btn">İptal</button><button class="modal-btn modal-btn-primary" id="forward-send-btn">Seçililere İlet</button></div>
   </div>
 </div>
 
@@ -384,7 +383,6 @@
 <script src="src/constants.js"></script>
 <script src="src/store.js"></script>
 <script src="src/utils.js"></script>
-<script src="src/translations.js"></script>
 <script src="src/accounts.js"></script>
 <script src="src/shortcuts.js"></script>
 <script src="src/ui-core.js"></script>
@@ -398,6 +396,5 @@
 <script src="src/calls.js"></script>
 <script src="src/app-init.js"></script>
 <script src="src/init-ui.js"></script>
-<script src="src/mobile-init.js"></script>
 </body>
 </html>

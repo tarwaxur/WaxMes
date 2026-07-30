@@ -223,7 +223,11 @@
     transform: translateX(0);
   }
 
-
+  body.mobile-chat-open .mobile-nav,
+  body.mobile-keyboard-open .mobile-nav {
+    transform: translateY(calc(100% + env(safe-area-inset-bottom, 0px)));
+    pointer-events: none;
+  }
 
   .chat-empty {
     display: none !important;
@@ -572,6 +576,11 @@
 
   .chat-header .flex-items-center.gap-4 .sidebar-action-btn:nth-of-type(n+2) {
     display: none !important;
+  }
+
+  .mobile-nav-item {
+    min-width: 64px;
+    font-size: 10px;
   }
 
   .msg {
