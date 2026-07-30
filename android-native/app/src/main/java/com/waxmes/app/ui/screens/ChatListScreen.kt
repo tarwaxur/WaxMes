@@ -42,6 +42,7 @@ import com.waxmes.app.data.Conversation
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.Story
 import com.waxmes.app.data.LocalTranslations
+import com.waxmes.app.ui.screens.AvatarImage
 import com.waxmes.app.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -272,10 +273,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                         items(filteredStories) { story ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { selectedStory = story; showStoryViewer = true }) {
                                 Box(modifier = Modifier.size(60.dp).background(Color(story.authorColor), CircleShape).padding(2.dp)) {
-                                    SubcomposeAsyncImage(model = story.authorAvatar, contentDescription = null,
-                                        modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                                        error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(story.authorName.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) } },
-                                        loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(story.authorName.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) } })
+                                    AvatarImage(url = story.authorAvatar, fallbackText = story.authorName,
+                                        modifier = Modifier.fillMaxSize(), textColor = t.text, fontSize = 18.sp)
                                 }
                                 Text(story.authorName, color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                             }
@@ -300,10 +299,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             items(filteredConvs) { conv ->
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onChatClick(conv.id) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Color(conv.color))) {
-                        SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                            error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 16.sp) } },
-                            loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 16.sp) } })
+                        AvatarImage(url = conv.avatarUrl, fallbackText = conv.name,
+                            modifier = Modifier.fillMaxSize(), textColor = t.text, fontSize = 16.sp)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -369,9 +366,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 }
                 // Header
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 62.dp).navigationBarsPadding()) {
-                    SubcomposeAsyncImage(model = story.authorAvatar, contentDescription = null,
-                        modifier = Modifier.size(32.dp).clip(CircleShape),
-                        error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(story.authorName.first().uppercase(), color = Color.White, fontWeight = FontWeight.Bold) } })
+                    AvatarImage(url = story.authorAvatar, fallbackText = story.authorName,
+                        modifier = Modifier.size(32.dp), textColor = Color.White, fontSize = 14.sp)
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(story.authorName, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
