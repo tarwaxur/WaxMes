@@ -85,6 +85,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     var myNameInitial by remember { mutableStateOf("?") }
     var myAvatarUrl by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf("chats") }
+    var savedTabBeforeAddFriend by remember { mutableStateOf("chats") }
     var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var showStoryViewer by remember { mutableStateOf(false) }
     var selectedStory by remember { mutableStateOf<Story?>(null) }
@@ -292,7 +293,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 Spacer(Modifier.height(12.dp))
                 Surface(shape = RoundedCornerShape(16.dp), color = t.accent.copy(alpha = 0.12f),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { showAddFriend = true }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { savedTabBeforeAddFriend = selectedTab; showAddFriend = true }.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.PersonAdd, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(12.dp))
                         Text(tr["add_friend"] ?: "Add Friend", color = t.accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -436,7 +437,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     }
 
     if (showAddFriend) {
-        AddFriendScreen(t, onBack = { showAddFriend = false })
+        AddFriendScreen(t, onBack = { selectedTab = savedTabBeforeAddFriend; showAddFriend = false })
     }
 
     if (contextConv != null) {

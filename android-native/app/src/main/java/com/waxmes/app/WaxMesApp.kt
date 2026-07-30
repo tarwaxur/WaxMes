@@ -44,7 +44,10 @@ fun WaxMesApp() {
 
     LaunchedEffect(Unit) { repo.setContentResolver(ctx.contentResolver) }
 
-    BackHandler(enabled = navController.currentBackStackEntry?.destination?.route != "chats" && isLoggedIn) {
+    BackHandler(enabled = navController.currentBackStackEntry?.destination?.route == "chats" && isLoggedIn) {
+        (ctx as? android.app.Activity)?.moveTaskToBack(true)
+    }
+    BackHandler(enabled = navController.currentBackStackEntry?.destination?.route != "chats" && navController.currentBackStackEntry?.destination?.route != "login" && isLoggedIn) {
         navController.popBackStack()
     }
 
