@@ -11,6 +11,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -329,6 +332,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         var currentIdx by remember { mutableIntStateOf(0) }
         val story = if (allViewerStories.isNotEmpty() && currentIdx < allViewerStories.size) allViewerStories[currentIdx] else null
         var progress by remember { mutableFloatStateOf(0f) }
+        var dragOffset by remember { mutableFloatStateOf(0f) }
         val storyDurationMs = 5000L
 
         LaunchedEffect(story?.id) {
@@ -346,7 +350,25 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
 
         if (story != null) {
             val bg = try { Color(android.graphics.Color.parseColor(story.bgColor)) } catch (e: Exception) { Color(0xFF818cf8) }
-            Box(modifier = Modifier.fillMaxSize().background(bg)) {
+            val density = LocalDensity.current
+            val closeThresholdPx = with(density) { 150.dp.toPx() }
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .background(bg)
+                .offset(y = with(density) { (dragOffset * 0.5f).toDp() })
+                .graphicsLayer(alpha = (1f - (dragOffset / closeThresholdPx).coerceIn(0f, 1f)))
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            if (dragOffset > closeThresholdPx) {
+                                showStoryViewer = false; selectedStory = null
+                            } else {
+                                dragOffset = 0f
+                            }
+                        },
+                        onVerticalDrag = { _, dragAmount -> dragOffset = (dragOffset + dragAmount).coerceAtLeast(0f) }
+                    )
+                }) {
                 // Progress segments: one per story, current one animates
                 val userStorySegments = allViewerStories.filter { it.authorId == story.authorId }
                 Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 44.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -380,9 +402,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                             Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
                         }
                     }
-                    IconButton(onClick = { repo.viewStory(story.id); showStoryViewer = false; selectedStory = null }) {
-                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(22.dp))
-                    }
+
                 }
                 // Story content
                 Box(modifier = Modifier.fillMaxSize().padding(top = 90.dp, bottom = 40.dp), contentAlignment = Alignment.Center) {
@@ -505,9 +525,9 @@ private fun ContextMenuItem(icon: ImageVector, label: String, desc: String, tint
 private fun AddFriendScreen(t: ThemeColors, onBack: () -> Unit) {
     val tr = LocalTranslations.current
     var page by remember { mutableStateOf("add") }
-    Box(modifier = Modifier.fillMaxSize().background(t.bg).pointerInput(Unit) { detectTapGestures { } }) {
-        Column(modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 8.dp).navigationBarsPadding()) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    Box(modifier = Modifier.fillMaxSize().background(t.bg)) {
+        Column(modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp).navigationBarsPadding()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = t.text) }
                 Spacer(Modifier.width(8.dp))
                 Text(tr["add_friend"] ?: "Add Friend", color = t.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
