@@ -525,9 +525,9 @@ private fun ContextMenuItem(icon: ImageVector, label: String, desc: String, tint
 private fun AddFriendScreen(t: ThemeColors, onBack: () -> Unit) {
     val tr = LocalTranslations.current
     var page by remember { mutableStateOf("add") }
-    Box(modifier = Modifier.fillMaxSize().background(t.bg)) {
-        Column(modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp).navigationBarsPadding()) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+    Box(modifier = Modifier.fillMaxSize().background(t.bg).pointerInput(Unit) { detectTapGestures { } }) {
+        Column(modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 8.dp).navigationBarsPadding()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = t.text) }
                 Spacer(Modifier.width(8.dp))
                 Text(tr["add_friend"] ?: "Add Friend", color = t.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
