@@ -184,10 +184,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 ).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(if (conv.isGroup) 0xFF6366f1 else conv.color)), contentAlignment = Alignment.Center) {
                         if (!conv.isGroup) {
-                            SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                                error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) } },
-                                loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) } })
+                            AvatarImage(url = conv.avatarUrl, fallbackText = conv.name,
+                                modifier = Modifier.fillMaxSize(), bgColor = Color(conv.color), textColor = t.text, fontSize = 18.sp)
                         } else {
                             Text(tr["g"] ?: "G", color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         }
