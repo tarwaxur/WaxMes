@@ -249,7 +249,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                         item {
                             Surface(shape = RoundedCornerShape(8.dp), color = t.bg, shadowElevation = 4.dp) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable {
-                                    if (repo.ownStories.isNotEmpty()) showStoryViewer = true
+                                    if (repo.ownStories.isNotEmpty()) { selectedStory = repo.ownStories.firstOrNull(); showStoryViewer = true }
                                 }) {
                                     Box(modifier = Modifier.size(60.dp).background(if (repo.ownStories.isNotEmpty()) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
                                         if (repo.ownStories.isNotEmpty()) {
