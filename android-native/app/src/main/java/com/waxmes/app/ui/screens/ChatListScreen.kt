@@ -52,7 +52,6 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
 
     var selectedTab by remember { mutableStateOf("chats") }
     var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
-    var hasStory by remember { mutableStateOf(false) }
     var showStoryViewer by remember { mutableStateOf(false) }
     var selectedStory by remember { mutableStateOf<Story?>(null) }
     var showAddFriend by remember { mutableStateOf(false) }
@@ -223,16 +222,17 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                         item {
                             Surface(shape = RoundedCornerShape(8.dp), color = t.bg, shadowElevation = 4.dp) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable {
-                                    if (hasStory) showStoryViewer = true else { hasStory = true }
+                                    if (repo.ownStories.isNotEmpty()) showStoryViewer = true
                                 }) {
-                                    Box(modifier = Modifier.size(60.dp).background(if (hasStory) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
-                                        if (hasStory) {
-                                            Text(repo.uid.take(1).uppercase(), color = t.text2, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                    Box(modifier = Modifier.size(60.dp).background(if (repo.ownStories.isNotEmpty()) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
+                                        if (repo.ownStories.isNotEmpty()) {
+                                            val initial = repo.nameCache[repo.uid]?.first()?.uppercase() ?: "?"
+                                            Text(initial, color = t.text2, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                                         } else {
                                             Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                                         }
                                     }
-                                    Text(if (hasStory) (tr["my_story"] ?: "My Story") else (tr["add_story"] ?: "Add Story"), color = t.text3, fontSize = 10.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                                    Text(if (repo.ownStories.isNotEmpty()) (tr["my_story"] ?: "My Story") else (tr["add_story"] ?: "Add Story"), color = t.text3, fontSize = 10.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
                                 }
                             }
                         }
