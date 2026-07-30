@@ -323,24 +323,53 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         val nowMs = System.currentTimeMillis()
         val allViewerStories = remember(storiesList, repo.ownStories) {
             storiesList.filter { (it.expiresAt == 0L || it.expiresAt > nowMs) && (!it.viewers.contains(repo.uid) || it.authorId == repo.uid) }
-                .sortedByDescending { it.createdAt }
+                .sortedBy { it.createdAt }
         }
         var currentIdx by remember { mutableIntStateOf(0) }
         val story = if (allViewerStories.isNotEmpty() && currentIdx < allViewerStories.size) allViewerStories[currentIdx] else null
+        var progress by remember { mutableFloatStateOf(0f) }
+        val storyDurationMs = 5000L
+
+        LaunchedEffect(story?.id) {
+            progress = 0f
+            if (story != null) { repo.viewStory(story.id) }
+            val steps = 50
+            for (i in 1..steps) {
+                delay(storyDurationMs / steps)
+                progress = i.toFloat() / steps
+            }
+            // Auto advance
+            if (currentIdx < allViewerStories.size - 1) { currentIdx++ }
+            else { showStoryViewer = false; selectedStory = null }
+        }
 
         if (story != null) {
             val bg = try { Color(android.graphics.Color.parseColor(story.bgColor)) } catch (e: Exception) { Color(0xFF818cf8) }
             Box(modifier = Modifier.fillMaxSize().background(bg)) {
                 // Progress bars
-                Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 40.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    allViewerStories.filter { it.authorId == story.authorId }.forEachIndexed { idx, s ->
-                        Box(modifier = Modifier.weight(1f).height(3.dp).background(
-                            if (s.id == story.id) Color.White else Color.White.copy(alpha = 0.3f),
-                            RoundedCornerShape(2.dp)))
+                Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 40.dp).navigationBarsPadding()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                        allViewerStories.filter { it.authorId == story.authorId }.forEachIndexed { idx, s ->
+                            Box(modifier = Modifier.weight(1f).height(3.dp).background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp)))
+                        }
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    // Animated progress for current story
+                    val userStories = allViewerStories.filter { it.authorId == story.authorId }
+                    val storyIdx = userStories.indexOfFirst { it.id == story.id }
+                    if (storyIdx >= 0) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                            userStories.forEachIndexed { idx, s ->
+                                Box(modifier = Modifier.weight(1f).height(2.dp).background(
+                                    if (idx < storyIdx) Color.White
+                                    else if (idx == storyIdx) Color.White.copy(alpha = 0.7f)
+                                    else Color.Transparent, RoundedCornerShape(2.dp)))
+                            }
+                        }
                     }
                 }
                 // Header
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 52.dp).navigationBarsPadding()) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 62.dp).navigationBarsPadding()) {
                     SubcomposeAsyncImage(model = story.authorAvatar, contentDescription = null,
                         modifier = Modifier.size(32.dp).clip(CircleShape),
                         error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(story.authorName.first().uppercase(), color = Color.White, fontWeight = FontWeight.Bold) } })
@@ -372,10 +401,9 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 // Tap zones (left = prev, right = next)
                 Row(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.weight(1f).fillMaxSize().clickable {
-                        if (currentIdx > 0) { repo.viewStory(story.id); currentIdx-- }
+                        if (currentIdx > 0) { currentIdx-- }
                     })
                     Box(modifier = Modifier.weight(1f).fillMaxSize().clickable {
-                        repo.viewStory(story.id)
                         if (currentIdx < allViewerStories.size - 1) { currentIdx++ }
                         else { showStoryViewer = false; selectedStory = null }
                     })
