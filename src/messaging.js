@@ -46,7 +46,15 @@ async function showApp(profileOrUsername,display,email,avatar,status,bio,passwor
     store.activeConvId=null;
     // Start listening to conversation updates from Firestore
     var currentFbUid=fbUserId();
-    if(window.db&&currentFbUid){fbListenConversations(currentFbUid);fbListenStories();startPendingListener(currentFbUid)}
+    if(window.db&&currentFbUid){
+      fbListenConversations(currentFbUid);
+      fbListenStories();
+      startPendingListener(currentFbUid);
+      // Start message listeners for all conversations so new messages sync in background
+      for(var _sci=0;_sci<store.conversations.length;_sci++){
+        fbListenMessages(store.conversations[_sci].id);
+      }
+    }
     // Init background mode
     if(ls(STORAGE_KEYS.BACKGROUND_MODE)&&window.electronAPI&&electronAPI.setBackgroundMode)electronAPI.setBackgroundMode(true);
     await initE2E();
@@ -150,7 +158,7 @@ function parseTime(t){
 function goToHome(){hideContextMenu();hideAvatarMenu();hideSettings();closeProfilePanel();if(store.activeConvId)fbUnlistenMessages(store.activeConvId);fbStopTypingListener();fbStopCallSignals();stopTyping();store.activeConvId=null;$('chat-empty').style.display='flex';$('chat-active').style.display='none';$('settings-page').classList.remove('active');var cl=$('conv-list');if(cl){var oldActive=cl.querySelector('.conv-item.active');if(oldActive)oldActive.classList.remove('active')}var hb=$('sidebar-home-btn');if(hb)hb.style.display='none'}
 function selectConversation(id){try{hideContextMenu();hideAvatarMenu();hideSettings();$('settings-page').classList.remove('active');closeProfilePanel();store._hasNewMsg=false;if(store.activeConvId&&store.activeConvId!==id)fbUnlistenMessages(store.activeConvId);fbStopTypingListener();fbStopCallSignals();stopTyping();var oldId=store.activeConvId;store.activeConvId=id;var conv=findConv(id);if(!conv)return;conv.unread=0;saveUnreadCounts();saveConversations();var cl=$('conv-list');if(cl){var oldActive=cl.querySelector('.conv-item.active');if(oldActive)oldActive.classList.remove('active');var newActive=cl.querySelector('.conv-item[data-id="'+escJs(id)+'"]');if(newActive)newActive.classList.add('active')}$('chat-empty').style.display='none';$('chat-active').style.display='flex';var ca=$('chat-header-avatar');ca.style.background=conv.color||'var(--grad)';if(conv.avatar&&conv.avatar.length>2){ca.innerHTML='<img src="'+escJs(sanitizeUrl(conv.avatar))+'" style="width:100%;height:100%;object-fit:cover" data-err-bg="'+(conv.color||'var(--grad)')+'" data-err-text="'+(conv.isGroup?'G':'?')+'" data-err-avatar="1">';ca.style.background='transparent'}else{ca.style.background=conv.color||'var(--grad)';ca.textContent=conv.isGroup?'G':(conv.avatar||'?')}$('chat-header-name').textContent=conv.name;$('chat-header-status').textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);    store._forceScrollBottom=true;fbListenMessages(id);fbSyncOnlineStatus(id);var inp=$('chat-input');if(inp)inp.focus();
 if(!conv.isGroup&&window.db&&fbUserId()){var otherId=null;for(var ti=0;ti<(conv.memberIds||[]).length;ti++){if(conv.memberIds[ti]!==fbUserId()){otherId=conv.memberIds[ti];break}}if(otherId)fbListenTyping(id,otherId)}
-fbListenCallSignals(id);var hb=$('sidebar-home-btn');if(hb)hb.style.display='flex';renderMessages(id);var _chb=$('chat-header-btn');if(_chb)_chb.onclick=function(e){if(!e.target.closest('button'))showProfilePanel()}}catch(e){console.error('[sel] error',e)}}
+fbListenCallSignals(id);var hb=$('sidebar-home-btn');if(hb)hb.style.display='flex';renderMessages(id);renderConversations();var _chb=$('chat-header-btn');if(_chb)_chb.onclick=function(e){if(!e.target.closest('button'))showProfilePanel()}}catch(e){console.error('[sel] error',e)}}
 
 async function getRecipientPubKey(convId){
   var conv=findConv(convId);if(!conv)return null;
@@ -1117,6 +1125,13 @@ function updateConvPreview(convId){
     else if(last.audio)ltxt='🎤 Ses';
     conv.lastMsg=ltxt;
     conv.time=last.time
+  }
+  saveMessages();
+  if(!store._reorderTimer){
+    store._reorderTimer=setTimeout(function(){
+      store._reorderTimer=null;
+      renderConversations()
+    },300)
   }
 }
 

@@ -1,462 +1,167 @@
 ===============================================================================
-WAXMES — PROFIL FOTOGRAFLARI ENTEGRASYON SORUNU (Desktop ↔ Mobile)
+WAXMES — DM SIRALAMASI & MESAJ YUKLEME SORUNU (KESIN TESPIT)
 ===============================================================================
 
-SORUN: Bilgisayar surumunde profil fotograflari gorunurken mobil
-surumunde HICBIR profil foto (kendi profil fotomuz dahil) gorunmuyor.
-
-OZEL ALT SORUN: Story Bar'daki "Durumum" butonunda profil fotom
-gelmiyor, bas harf gorunuyor. Oysa story viewer (tam ekran acilan
-story) sol ustundeki profil fotografi GELIYOR. Yani veri var,
-fotograf yuklenebiliyor, sadece story bar'daki profil dairesi
-okumuyor.
+SORUN: Kullanıcı mobilden hyper'e mesaj atıyor. Masaüstü açılınca
+DM listesinde hyper'in son mesajı ESKİ mesaj olarak görünüyor.
+Kullanıcı hyper sohbetine girince YENİ mesaj geliyor.
 
 ===============================================================================
-1. DESKTOP'TA AVATAR NASIL SAKLANIYOR (KAYNAK KOD ANALIZI)
+1. KONSOL LOG ANALİZİ
 ===============================================================================
 
-1.1. Kayit Sirasinda (accounts.js:337)
-     completeRegistration() fonksiyonunda:
-       await db.collection(COLLECTIONS.USERS).doc(uid).set({
-         avatar: store.avatarDataUrl || null,
-         ...
-       });
-     store.avatarDataUrl = FileReader.readAsDataURL() ciktisi:
-       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+00:45:40 [LOG] [msg] cache-loaded dm_...TzLZ... 8 msgs
+00:45:40 [LOG] [upd] preview hyper = Deneme act: 1785247026177
 
-     Yani Firestore'daki /users/{uid}/avatar alani bir BASE64 DATA URL'dir.
-     Bu string COK BUYUK olabilir (100KB - 500KB arasi).
+"cache-loaded" = Mesajlar localStorage'dan OKUNDU, Firestore'dan DEGIL.
+Bu 8 mesaj, kullanıcının masaüstünü en son kapattığı andaki mesajlar.
+Mobilden sonra atılan mesajlar bu cache'te YOK.
+Sadece localStorage'ta ne varsa o yuklendi.
 
-1.2. Arkadaslik Istegi Gonderirken (ui-core.js:135-141)
-     sendFriendRequest() avatar'i Firestore user doc'undan alir:
-       myAv = _uSnap.data().avatar || null
-       // Yine base64 dataUrl
-     Istek dokumanina kaydedilir:
-       fromAvatar: myAv, toAvatar: targetUser.data().avatar || null
+00:45:38 [LOG] [conv] added dm_...TzLZ... dm lastMsg:Deneme
+Conversation listener ise DOGRU lastMsg'i goruyor (Firestore'dan).
+Yani:
+  - Conversation listener: hyper.lastMsg = "Deneme" ← dogru (Firestore'dan)
+  - Message cache: hyper mesajlari = 8 eski mesaj ← YANLIS (localStorage)
+  - updateConvPreview: conv.lastMsg = "Deneme" ← dogru guncellendi
 
-1.3. Arkadaslik Istegi Kabul Edilirken (ui-core.js:154-158)
-     acceptFriendRequest() istek dokumanindaki avatar'i friends
-     koleksiyonuna kopyalar:
-       friendAvatar = data.fromAvatar || data.toAvatar
-       db.collection(FRIENDS)...set({avatar: friendAvatar, ...})
-
-1.4. DM Konusmasi Olusurken (firebase-data.js:54)
-     convListenerAddConv() Firestore user doc'undan avatar alir:
-       avatar: ud.avatar || (ud.displayName||'?').charAt(0).toUpperCase()
-
-1.5. Konusma Listesinde Gosterirken (messaging.js:127-129)
-     if(c.avatar&&c.avatar.length>2)
-       // <img src="data:image/png;base64,..."> olarak goster
-     else
-       // bas harf goster
+Ama kullanici sohbete GIRINCE:
+  selectConversation() → fbListenMessages() basliyor
+  → Firestore'dan yeni mesajlar geliyor
+  → Mesaj kutusunda yeni mesaj gorunuyor ✅
+  → Ama zaten goruntulenmis olan preview'i guncellemiyor
 
 ===============================================================================
-2. MOBILDE PROFIL FOTOSU GORUNMEMESININ 7 OLASI NEDENI
+2. ASIL NEDEN: fbListenMessages SADECE AKTIF KONUSMA ICIN BASLATILIYOR
 ===============================================================================
 
-NEDEN 1 — FIRESTORE'DAKI avatar ALANI BASE64 DATAURL, MOBIL URL BEKLIYOR
-----------------------------------------------------------------------
-    Desktop: avatar = "data:image/png;base64,iVBORw0KGgo..."
-    Mobil genelde Coil/Glide ile HTTP URL'leri yukler.
-    Coil data URI'leri destekler AMA:
-    - Uzun base64 string'ler sorun cikarabilir (256KB+)
-    - ImageDecoder bazen "File size limit exceeded" hatasi verir
-    - Okuma sirasinda OutOfMemoryError olusabilir
+showApp() (messaging.js:2) su asamalari icerir:
+  1. loadMessages() → localStorage'dan tum konusma ve mesajlari yukler
+  2. fbListenConversations() → konusma dokumanlarini canli dinler
+     (lastMsg, lastActivity guncellenir ✅)
+  3. fbListenMessages() → SADECE activeConvId icin cagrilir
+     (aktif konusma yoksa HIC KONUSMA ICIN CAGRIlMAZ ❌)
 
-    Cozum A: dataUrl'i dogrudan yukle (en hizli cozum):
-      imageView.load(avatarDataUrl) {
-          crossfade(true)
-          fallback(R.drawable.placeholder_avatar)
-      }
-      Coil: data URIs'leri "data:" prefix'inden taniyip otomatik cozer.
-      Glide: Uri.parse(avatarDataUrl) ile calisir.
+fbListenMessages'in iki modu var:
+  a) Mesajlar cached ise (localStorage'da var): forward listener baslatir
+     → YALNIZCA YENI mesajlari Firestore'dan canli alir
+  b) Mesajlar cached degilse: Firestore'dan toplu ceker + forward listener
 
-    Cozum B (ONERILEN): Desktop'tan avatar'i Firebase Storage'a yukle,
-      Firestore'a sadece Storage URL'sini kaydet. Boylece mobil normal
-      bir HTTPS URL'si okur. Ama bu BUYUK bir degisiklik gerektirir.
+Yani:
+  - Konusma LISTESI (isimler, son mesaj, siralama):
+    Firestore listener ile CANLI ✅
+  - Konusma MESAJLARI (mesaj icerikleri):
+    Sadece kullanici o konusmayi acinca yukleniyor ❌
 
-    Cozum C (EN IYISI): Data URL'yi mobile'da decode et, Bitmap'e cevir,
-      sonra ImageView'da goster. Coil/Glide otomatik yapar ama manuel:
-        val bytes = Base64.decode(avatarDataUrl.substringAfter(","), Base64.DEFAULT)
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        imageView.setImageBitmap(bitmap)
-
-NEDEN 2 — FIRESTORE DOKUMAN BOYUTU SINIRI (1MB)
-----------------------------------------------------------------------
-    Base64 data URL'ler cok yer kaplar. Ornegin 200KB'lik bir JPEG,
-    base64'e cevirince ~267KB olur. Firestore max dokuman boyutu 1MB.
-    Bir kullanicinin user dokumaninda avatar (267KB) + diger alanlar
-    (username, displayName, bio, publicKey, online, status, lastSeen)
-    toplami rahatca 300-400KB'yi bulur.
-
-    Eger birden fazla kullaniciyi batch sorguda cekiyorsaniz, her biri
-    300KB+ olabilir. Bu, ag yavaslamasina ve timeout'a yol acar.
-
-    Cozum: Desktop'ta avatar kaydedilirken yeniden boyutlandir (resize).
-      su an 5000x5000 cozunurlukte bir fotograf bile dataUrl olarak
-      saklanabiliyor. Max 200x200px'e dusurmek base64'i ~20KB'a indirir.
-
-    Mobil tarafta da Coil'in size() fonksiyonu ile yukleme yap:
-      imageView.load(avatarDataUrl) {
-          size(200, 200)
-          crossfade(true)
-      }
-
-NEDEN 3 — MOBIL YANLIS ALANI OKUYOR OLABILIR
-----------------------------------------------------------------------
-    Desktop avatar'i su alanlarda saklar:
-      - /users/{uid}.avatar             → base64 dataUrl
-      - /friendRequests/{id}.fromAvatar → base64 dataUrl
-      - /friendRequests/{id}.toAvatar   → base64 dataUrl
-      - /friends/{uid}/list/{fid}.avatar → base64 dataUrl
-      - localStorage accounts[i].avatar → base64 dataUrl
-
-    Mobil butun bu kaynaklardan avatar'i OKUYABILMELI:
-    - Kendi profil fotosu icin: /users/{myUid}.avatar
-    - DM'deki kullanici icin: /users/{peerUid}.avatar
-    - Arkadas listesindeki kullanici icin: once friends listesindeki
-      avatar'a bak, yoksa /users/{friendUid}.avatar'dan dene
-    - Istek listesindeki kullanici icin: fromAvatar/toAvatar
-
-    KONTROL: Mobilde su sorguyu yapip avatar'in geldigini gormelisin:
-      FirebaseFirestore.getInstance()
-          .collection("users")
-          .document(uid)
-          .get()
-          .addOnSuccessListener { doc ->
-              Log.d("Avatar", "avatar field = ${doc.getString("avatar")?.take(50)}...")
-              Log.d("Avatar", "avatar length = ${doc.getString("avatar")?.length}")
-          }
-
-NEDEN 4 — avatar ALANI null VEYA KISA STRING, FALLBACK GOSTERILMIYOR
-----------------------------------------------------------------------
-    Desktop'ta avatar null veya tek karakter ise bas harf gosterilir:
-      if(c.avatar&&c.avatar.length>2) {
-          // img goster
-      } else {
-          // bas harf goster (c.avatar || _init)
-      }
-    Mobilde bu fallback KONTROL EDILMELI:
-      if (avatarUrl.isNullOrEmpty() || avatarUrl.length <= 2) {
-          textView.text = userName.first().uppercase()
-          textView.visibility = View.VISIBLE
-          imageView.visibility = View.GONE
-      } else {
-          Coil/Glide ile yukle
-      }
-
-NEDEN 5 — FIRESTORE RULES EKSIK (users koleksiyonu)
-----------------------------------------------------------------------
-    Desktop'u kullanarak avatar yuklenebiliyor olmasi rules'in
-    desktop icin calistigini gosterir. ANCAK mobil farkli bir
-    Firebase project ID kullaniyor olabilir mi? Veya rules'da
-    mobil icin ayri bir kisit var mi?
-      match /users/{uid} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null
-          && request.auth.uid == uid;
-      }
-    KONTROL: Firebase Console > Firestore > Rules >
-             users koleksiyonu icin read izni var mi?
-
-NEDEN 6 — NETWORK IMAGE LOADER DATA URI'YI DESTEKLEMIYOR
-----------------------------------------------------------------------
-    Coil ve Glide data URI'lerini destekler ANCAK bazi surumlerde
-    sorun olabilir. Ornegin Coil 1.x 'data:' sekmesini otomatik
-    algilamaz, Coil 2.x algilar.
-    KONTROL:
-      - Coil: implementation("io.coil-kt:coil:2.6.0") kullan
-      - Glide: implementation("com.github.bumptech.glide:glide:4.16.0")
-    Test: Dogrudan bir data URL'sini webview'da acmayi dene:
-      webView.loadDataWithBaseURL(null, avatarHtml, "text/html", "UTF-8", null)
-    Eger webview'da gorunuyorsa Coil/Glide ayarlarinda sorun var.
-
-NEDEN 7 — KENDI PROFIL FOTOMUZ BILE GORUNMUYORSA VERI HIC GELMIYOR
-----------------------------------------------------------------------
-    "Kendi profil fotomuz dahi gorunmuyor" demek, Firestore'dan
-    kendi user dokumanina ulasamadigin anlamina gelir.
-    Olasiliklar:
-    a) Firestore rules /users/{uid} okumayi engelliyor
-    b) Firebase Auth UID ile Firestore dokuman ID'si uyusmuyor
-       (biri farkli formatta)
-    c) Henuz hic profil fotosu kaydedilmemis (avatar field yok)
-    d) Mobilde farkli bir Firebase project kullaniliyor
+Bu nedenle mobilden mesaj atinca:
+  - Firestore'da konusmanin lastMsg'i guncelleniyor ✅
+  - Desktop konusma listesinde dogru gorunuyor ✅
+  - Ama o konusmanin mesaj listesi localStorage'daki ESKI halinde ❌
+  - Desktop'ta hyper'e tıklanınca fbListenMessages basliyor,
+    forward listener yeni mesaji cekiyor ✅
 
 ===============================================================================
-3. COZUM STRATEJISI (Adim Adim)
+3. COZUM: Tum Konusmalar Icin fbListenMessages Baslat
 ===============================================================================
 
-Adim 1: FIRESTORE'DA VERI VAR MI KONTROL ET
-  Firebase Console > Firestore > /users/{uid} dokumanini ac
-  "avatar" field'i gorunuyor mu? Uzerine tikla, tam degerini gor.
-  data: ile basliyorsa formati dogru.
-  Uzunlugu kopyala (kac karakter oldugunu ogren).
+showApp() icinde, fbListenConversations'tan sonra, tum konusmalar
+icin fbListenMessages cagrilmali:
 
-Adim 2: MOBILDE VERIYI LOG'A BAS
-  FirebaseFirestore.getInstance()
-      .collection("users").document(uid).get()
-      .addOnSuccessListener { doc ->
-          val avatar = doc.getString("avatar")
-          Log.d("AVATAR_DEBUG", "avatar var mi: ${avatar != null}")
-          Log.d("AVATAR_DEBUG", "avatar uzunluk: ${avatar?.length}")
-          Log.d("AVATAR_DEBUG", "avatar prefix: ${avatar?.take(50)}")
-      }
-      .addOnFailureListener { e ->
-          Log.e("AVATAR_DEBUG", "HATA: ${e.message}")
-      }
-  Bu log'u calistir. avatar null geliyorsa sorun Firestore'da.
-  avatar geliyorsa sorun gosterim katmaninda.
+  // showApp icinde (messaging.js ~49):
+  if(window.db&&currentFbUid){
+    fbListenConversations(currentFbUid);
+    fbListenStories();
+    startPendingListener(currentFbUid);
 
-Adim 3: DATA URL'YI COIL ILE YUKLE
-  // Coil 2.x ile data URL yukleme:
-  imageView.load(avatar) {
-      crossfade(true)
-      size(200, 200)
-      placeholder(R.drawable.avatar_placeholder)
-      error(R.drawable.avatar_placeholder)
-  }
-  avatar degiskeni: "data:image/png;base64,iVBOR..." (tamami)
-
-  EGER CALISMAZSA manuel decode dene:
-  val base64 = avatar.substringAfter(",")
-  val bytes = Base64.decode(base64, Base64.DEFAULT)
-  val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-  imageView.setImageBitmap(bitmap)
-
-Adim 4: FALLBACK GÖSTER (avatar yoksa bas harf)
-  if (avatar.isNullOrEmpty() || avatar.length <= 2) {
-      // Avatar yok, kullanicinin isminin bas harfini goster
-      val initial = userName.first().uppercaseChar()
-      avatarCircle.apply {
-          text = initial.toString()
-          setBackgroundColor(getColorForName(userName))
-          visibility = View.VISIBLE
-      }
-      imageView.visibility = View.GONE
-  } else {
-      // Coil ile yukle
-      imageView.load(avatar) { ... }
+    // YENI: Tum konusmalar icin mesaj dinleyicisini baslat
+    for(var _sci=0;_sci<store.conversations.length;_sci++){
+      fbListenMessages(store.conversations[_sci].id);
+    }
   }
 
-Adim 5: FIRESTORE RULES'U GUNCELLE
-  Firebase Console > Firestore > Rules:
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        match /users/{uid} {
-          allow read: if request.auth != null;
-          allow write: if request.auth != null && request.auth.uid == uid;
-        }
-        match /stories/{storyId} {
-          allow read: if request.auth != null;
-          allow create: if request.auth != null
-            && request.resource.data.authorId == request.auth.uid;
-        }
-        match /friendRequests/{id} {
-          allow read, write: if request.auth != null;
-        }
-        match /friends/{uid}/{document=**} {
-          allow read, write: if request.auth != null;
-        }
-        match /conversations/{id} {
-          allow read, write: if request.auth != null;
-        }
-      }
+Bu sayede her konusma icin bir forward listener acilir.
+Firestore'daki yeni mesajlar anlik olarak alinir.
+Preview guncellenir, siralama dogru olur.
+
+DIKKAT: Her konusma icin onSnapshot listener'i acilir.
+Bu Firestore okuma sayisini artirir. 50 konusma = 50 listener.
+Firestore siniri: 100 eszamanli listener (guvenli tarafta).
+Okuma maliyeti: her yeni mesajda 1 okuma + listener bildirimi.
+Bu genelde kabul edilebilir bir maliyettir.
+
+ALTERNATIF COZUM (daha az maliyetli):
+  Sadece son 10 konusma icin listener ac, geri kalanlar icin
+  kullanici acinca yukle:
+    var convs=store.conversations.slice().sort(function(a,b){
+      return (b.lastActivity||0)-(a.lastActivity||0);
+    });
+    for(var _sci=0;_sci<Math.min(convs.length,10);_sci++){
+      fbListenMessages(convs[_sci].id);
     }
 
 ===============================================================================
-4. BENIM YORUMUM (Deep)
+4. EK SORUN: updateConvPreview CI FTOSU (regresyon)
 ===============================================================================
 
-"Kendi profil fotomuz dahi gorunmuyor" cumlesi en kritik ipucu.
-Bu demek ki Firestore'dan /users/{uid} dokumanina erisimde dahi
-sorun var. Cunku kendi UID'mizi biliyoruz, avatar field'ini
-okumaya calisiyoruz ama gelmiyor.
+Iki farkli updateConvPreview var, ayni isimde:
 
-Ilk yapman gereken: Firebase Console'u ac, /users/{uid} dokumanina
-tikla, "avatar" adinda bir field var mi ve degeri data:... ile
-basliyor mu diye kontrol et.
+firebase-data.js:327 — 3 parametreli, icinde renderConversations() ✅
+messaging.js:1090 — 1 parametreli, icinde renderConversations() YOK ❌
 
-Eger Firestore'da avatar VAR ise:
-  -> Sorun mobil okuma katmaninda (Coil ayari, rules)
-Eger Firestore'da avatar YOK ise:
-  -> Desktop hic avatar kaydetmemis (rules engelledi veya kayit
-     sirasinda hata oldu)
+messaging.js sonra yuklendigi icin firebase-data.js'dekini ezer.
+Bu nedenle firebase-data.js'deki debounced renderConversations cagrisi
+OLU KOD'dur ve hic calismaz.
 
-En buyuk yapisal sorun: Desktop base64 dataUrl kullaniyor.
-Data URL'ler:
-- Cok buyuk (Firestore limitine yaklasir)
-- Ag uzerinden okumasi yavas (mobilde 500KB indirmek demek)
-- Coil/Glide ile sorun cikarabilir
-- Cache'lenmesi zor (HTTP ETag vs yok)
-
-ONERILEN UZUN VADELI COZUM:
-Desktop'ta avatar'i Firebase Storage'a yukle (kucuk boyutlu),
-Firestore'daki avatar alanina Storage URL'sini yaz.
-Ornegin: "https://firebasestorage.googleapis.com/v0/b/waxmes...
-Bu URL:
-- Cok daha kucuk (200 karakter vs 300KB)
-- Coil/Glide ile sorunsuz calisir
-- Cache'lenebilir (HTTP cache)
-- Firebase Storage'in built-in CDN'i ile hizli yuklenir
-
-Ama kisa vadede: Coil'in data URI destegini kontrol et,
-gerekirse manuel Base64.decode + BitmapFactory ile coz.
+Cozum: messaging.js'deki updateConvPreview'in sonuna renderConversations
+ekle veya iki fonksiyonu birlestir.
 
 ===============================================================================
-5. OZEL DURUM: STORY BAR'DAKI PROFIL DAIRESI BAS HARF GOSTERIYOR
+5. SON DURUM (NE YAPILACAK)
 ===============================================================================
 
-KULLANICI TANIMI:
-- "Durumum" yazan butonda daire var, icinde kullanici adimin bas harfi
-- Bunun yerine profil fotografimi gormek istiyorum
-- Story viewer'da (tam ekran) sol ustte profil fotom DOGRU GORUNUYOR
-- Yani Firestore'da avatar verisi var ve yuklenebiliyor
-- Sadece story bar'daki profil dairesi bas harf gosteriyor
-
-ANALIZ:
-Story viewer'da avatar gorunuyor ama story bar'da gorunmuyor.
-Bu, IKI FARKLI KAYNAKTAN OKUNDUGU anlamina gelir.
-
-5.1. Story Viewer'daki Avatar Nereden Geliyor? (CALISIYOR)
-    Desktop renderStoryViewer() (story.js:491-496):
-      author.authorAvatar degerini kullanir.
-      Bu deger suradan gelir:
-        groupStoriesByAuthor() -> s.authorAvatar
-        -> story dokumanindaki authorAvatar field'i
-        -> fbCreateStory() tarafindan yazilir:
-           authorAvatar = me.avatar || (authorName||'?').charAt(0)
-           me.avatar = Firestore /users/{uid}.avatar
-    MOBILDE: Story viewer ayri bir Composable kullaniyordur.
-    Calistigina gore bu component story'deki authorAvatar'i
-    dogru okuyor.
-
-5.2. Story Bar'daki Profil Dairesi Nereden Geliyor? (CALISMIYOR)
-    Desktop renderStoryBar() (story.js:287-298):
-      if (myHasStory) renderStoryAvatar(myEntry, 0) ile gosterir
-      renderStoryAvatar() (story.js:321-339):
-        var av = entry.authorAvatar; // story feed'den
-        if (av && av.length > 2) {
-          // img goster
-        } else {
-          // bas harf goster
-        }
-      Eger story'niz YOKSA:
-        html += '<div class="story-avatar-add">+</div>'
-
-    MOBILDE: Story bar'daki profil dairesi MUHTEMELEN su
-    kaynaklardan birini kullaniyordur ve CALISMIYORDUR:
-
-    a) FirebaseAuth.currentUser?.photoUrl
-       -> Desktop bu alani HICBIR ZAMAN ayarlamaz.
-       -> Her zaman null doner. Bas harf gosterilir. (MUHTEMELEN BUDUR!)
-
-    b) Firestore /users/{uid}.avatar
-       -> Eger okunuyorsa gostermeli. Okunmuyor olabilir.
-       -> dataUrl cok uzun, Coil/Glide kirilabilir.
-
-    c) Story feed'deki authorAvatar
-       -> Story'niz yoksa null. Bas harf kalir.
-       -> Story'niz varsa bile authorAvatar set edilmemis olabilir.
-
-    d) Hardcode bas harf
-       -> "Hic ugrasmadim, direkt kullanici adinin bas harfini yazdim"
-
-5.3. EN COK OLASI NEDEN: FirebaseAuth photoUrl KULLANILIYOR
-    Desktop avatar'i Firestore user doc'una base64 dataUrl olarak
-    kaydeder. Firebase Auth'un photoUrl field'ini ASLA guncellemez.
-    Mobilde:
-      FirebaseAuth.getInstance().currentUser?.photoUrl
-    Bu her zaman NULL dondugu icin story bar bas harf gosterir.
-    Story viewer ise Firestore'daki story dokumaninin authorAvatar
-    field'ini okur, o da dolu oldugu icin gosterir.
-
-    TEST: Mobilde su kodu calistir:
-      Log.d("AVATAR", "auth photoUrl: ${FirebaseAuth.getInstance().currentUser?.photoUrl}")
-      // -> null gelmeli
-      FirebaseFirestore.getInstance()
-          .collection("users").document(uid).get()
-          .addOnSuccessListener { doc ->
-              Log.d("AVATAR", "firestore avatar: ${doc.getString("avatar")?.take(50)}")
-          }
-      // -> data:image/... seklinde gelmeli
-
-5.4. KESIN COZUM (Story Bar'a Eklenecek Kod)
-    Story bar'daki profil dairesi su kaynaklardan OKUMALI:
-
-    1) ONCELIK: storyFeed'deki authorAvatar (story'niz varsa)
-    2) SONRA: Firestore user doc'undaki avatar
-    3) FALLBACK: kullanici adinin bas harfi
-
-    Kotlin kodu:
-      @Composable
-      fun MyStoryCircle(
-          storyFeed: List<StoryGroup>,
-          onClick: () -> Unit
-      ) {
-          val context = LocalContext.current
-          val uid = FirebaseAuth.getInstance().currentUser?.uid
-          var firestoreAvatar by remember { mutableStateOf<String?>(null) }
-
-          // Firestore'dan avatar oku
-          LaunchedEffect(uid) {
-              if (uid != null) {
-                  val doc = FirebaseFirestore.getInstance()
-                      .collection("users").document(uid).get().await()
-                  firestoreAvatar = doc.getString("avatar")
-              }
-          }
-
-          val myEntry = storyFeed.find { it.isMine }
-          val hasStory = myEntry != null
-
-          // Gosterilecek goruntu (oncelik sirasiyla)
-          val avatarToShow = when {
-              hasStory && !myEntry.items.first().authorAvatar.isNullOrBlank() ->
-                  myEntry.items.first().authorAvatar
-              firestoreAvatar != null && firestoreAvatar.length > 10 ->
-                  firestoreAvatar
-              else -> null
-          }
-
-          Box(modifier = Modifier.size(56.dp).clip(CircleShape).clickable(onClick = onClick)) {
-              if (avatarToShow != null) {
-                  // PROFIL FOTOGRAFI
-                  AsyncImage(
-                      model = avatarToShow,
-                      contentDescription = null,
-                      modifier = Modifier.fillMaxSize().clip(CircleShape),
-                      contentScale = ContentScale.Crop
-                  )
-                  // Story ring (halka)
-                  if (hasStory) {
-                      StoryRingCanvas(myEntry.items.size, viewedCount)
-                  }
-              } else {
-                  // FALLBACK: bas harf
-                  Box(
-                      modifier = Modifier.fillMaxSize()
-                          .background(getColorForName(userName)),
-                      contentAlignment = Alignment.Center
-                  ) {
-                      Text(text = userName.first().toString(), fontWeight = Bold)
-                  }
-                  if (!hasStory) {
-                      // + simgesi
-                      Icon(Icons.Default.Add, "...", modifier = Modifier.align(BottomEnd))
-                  }
-              }
-          }
-      }
-
-5.5. ONE-CIKMA TEST (sorunu aninda tespit et)
-    ADIM 1: Firebase Console'da /users/{uid}/avatar field'i var mi?
-            data: ile basliyor mu? Uzunlugu kac?
-    ADIM 2: Mobilde FirebaseAuth photoUrl'i log'a bas:
-            -> null ise sorun burada.
-    ADIM 3: Firestore'dan doc.getString("avatar") log'a bas:
-            -> data: ile basliyor mu?
-    ADIM 4: Story bar Composable'inda hangi kaynaktan avatar
-            okundugunu bul.
+┌─────────────────────────────────────────────────────────────────────┐
+│ ONCELIKLI:                                                         │
+│ 1. showApp() icinde tum konusmalar icin fbListenMessages cagir     │
+│    → Mesajlar arka planda yuklensin                                │
+│ 2. messaging.js'deki updateConvPreview'a renderConversations EKLE  │
+│    → Siralama guncellensin                                         │
+│                                                                     │
+│ IKINCI:                                                            │
+│ 3. selectConversation'a renderConversations EKLE                   │
+│    → Kullanici acinca da siralama guncellensin                     │
+│ 4. fbListenConversations listener sonuna renderConversations EKLE  │
+│    → Firestore'dan gelen degisikliklerde siralama guncellensin     │
+└─────────────────────────────────────────────────────────────────────┘
 
 ===============================================================================
+6. EK TESPIT: Ilk Snapshot'ta DM lastActivity Guncellenmiyor
+===============================================================================
+
+HALA DEVAM EDEN SORUN:
+Mesajlar arka planda yukleniyor ✅ (duzeltildi)
+Ancak DM siralamasi hala eski localStorage degerlerine gore yapiliyor ❌
+
+KESIN NEDEN (firebase-data.js:62):
+  }else if(change.type==='modified'){
+
+Ilk Firestore snapshot'inda TUM konusmalar change.type === 'added'
+olarak gelir. Yukaridaki satir sadece 'modified' tipini yakalar.
+Bu nedenle mevcut DM'lerin lastActivity degeri GUNCELLENMEZ.
+
+Oysa grup konusmalari icin:
+  if(d.type==='group'){applyFirestoreGroupConversation(cid,d,uid);return}
+Bu fonksiyon HER ZAMAN (added/modified fark etmez) lastActivity'i
+gunceller ✅. DM'ler icin boyle bir kod YOK ❌.
+
+COZUM (tek satir):
+  firebase-data.js satir 62:
+    }else if(change.type==='modified'){
+        ↓
+    }else{
+
+Cunku bu noktaya sadece 'added' veya 'modified' tipleri gelir
+(removed tipi satir 15-20'de erken return eder).
+'added' tipinde de mevcut DM'lerin lastActivity'si guncellenmeli.
+
+ALTERNATIF COZUM:
+  }else if(change.type==='modified'||(change.type==='added'&&exists)){

@@ -59,7 +59,9 @@ function fbListenConversations(uid){
               },300)
             }
           }
-        }else if(change.type==='modified'){
+        }else if(change.type==='modified'||(change.type==='added'&&exists)){
+          // modified: gerçek zamanlı güncelleme
+          // added+exists: ilk snapshot'ta localStorage'dan gelen konuşma Firestore'da da var
           console.log('[mod] DM conv',cid,'lastMsg:',(d.lastMsg||'').substring(0,30));
           for(var uci=0;uci<store.conversations.length;uci++){
             if(store.conversations[uci].id===cid){
@@ -85,6 +87,10 @@ function fbListenConversations(uid){
           delete sc._fromLocal
         }
       }
+    } else {
+      // Sonraki snapshot'larda sıralamayı güncelle (mobil ↔ desktop senkron)
+      renderConversations();
+      saveConversations();
     }
     // Snapshot sonrası dedup: aynı kullanıcıya ait duplicate DM'leri temizle
     deduplicateConversations();
@@ -206,7 +212,7 @@ async function fbSendMessage(convId,msg){
       saveMessages()
     }
   }catch(e){console.error(e)}
-  try{await db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).set({lastActivity:Date.now(),lastMsg:displayMsg,lastTime:msg.time},{merge:true})}catch(e){console.error('[fsm] set fail',e)}
+  try{var _seq=(store._lastActSeq||0)*0.001;await db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).set({lastActivity:Date.now()+_seq,lastMsg:displayMsg,lastTime:msg.time},{merge:true})}catch(e){console.error('[fsm] set fail',e)}
   console.log('[fsm] sent',convId,'msg:',displayMsg.substring(0,30),'act:',Date.now());
   fbSyncMembers(convId)
 }

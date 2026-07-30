@@ -59,7 +59,10 @@ function fbListenConversations(uid){
               },300)
             }
           }
-        }else if(change.type==='modified'){
+        }else if(change.type==='modified'||(change.type==='added'&&exists)){
+          // modified: gerçek zamanlı güncelleme
+          // added+exists: ilk snapshot'ta localStorage'dan gelen konuşma Firestore'da da var
+          console.log('[mod] DM conv',cid,'lastMsg:',(d.lastMsg||'').substring(0,30));
           for(var uci=0;uci<store.conversations.length;uci++){
             if(store.conversations[uci].id===cid){
               store.conversations[uci].lastMsg=d.lastMsg||store.conversations[uci].lastMsg||'';
@@ -84,6 +87,10 @@ function fbListenConversations(uid){
           delete sc._fromLocal
         }
       }
+    } else {
+      // Sonraki snapshot'larda sıralamayı güncelle (mobil ↔ desktop senkron)
+      renderConversations();
+      saveConversations();
     }
     // Snapshot sonrası dedup: aynı kullanıcıya ait duplicate DM'leri temizle
     deduplicateConversations();
@@ -101,6 +108,7 @@ function fbListenConversations(uid){
 
 function deduplicateConversations(){
   var uid=fbUserId();if(!uid)return;
+  if(store._skipDedup)return;
   var seen={};
   for(var di=store.conversations.length-1;di>=0;di--){
     var dc=store.conversations[di];
@@ -142,6 +150,7 @@ function fbStopConversations(){
 
 
 async function applyFirestoreGroupConversation(gid,gd,uid){
+  console.log('[group] update',gid,'name:',gd.name,'lastMsg:',(gd.lastMsg||'').substring(0,20));
   var mids=gd.memberIds||[];
   var memberFetches=mids.filter(function(mid){return mid!==uid}).map(async function(mid){
     try {
@@ -159,8 +168,11 @@ async function applyFirestoreGroupConversation(gid,gd,uid){
     normalizeGroupMembers(group);
     var existing=findConv(gid);
     if(existing){
-      existing.name=group.name;existing.avatar=group.avatar;existing.avatarLetter=group.avatarLetter;existing.color=group.color;existing.members=group.members;existing.memberIds=group.memberIds;existing.adminIds=group.adminIds;existing.creatorId=group.creatorId;existing.lastActivity=group.lastActivity;
-      saveGroup(existing);renderConversations();if(store.activeConvId===gid)renderMessages(gid)
+      var _oldMsg=existing.lastMsg;
+      existing.name=group.name;existing.avatar=group.avatar;existing.avatarLetter=group.avatarLetter;existing.color=group.color;existing.members=group.members;existing.memberIds=group.memberIds;existing.adminIds=group.adminIds;existing.creatorId=group.creatorId;existing.lastActivity=group.lastActivity;existing.lastMsg=group.lastMsg;existing.time=group.time;
+      saveGroup(existing);
+      if(store.activeConvId===gid&&group.lastMsg!==_oldMsg)renderMessages(gid);
+      renderConversations()
     }else{
       convListenerAddConv(group);saveGroup(group)
     }
@@ -200,7 +212,7 @@ async function fbSendMessage(convId,msg){
       saveMessages()
     }
   }catch(e){console.error(e)}
-  try{await db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).set({lastActivity:Date.now(),lastMsg:displayMsg,lastTime:msg.time},{merge:true})}catch(e){console.error('[fsm] set fail',e)}
+  try{var _seq=(store._lastActSeq||0)*0.001;await db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).set({lastActivity:Date.now()+_seq,lastMsg:displayMsg,lastTime:msg.time},{merge:true})}catch(e){console.error('[fsm] set fail',e)}
   console.log('[fsm] sent',convId,'msg:',displayMsg.substring(0,30),'act:',Date.now());
   fbSyncMembers(convId)
 }
@@ -274,6 +286,19 @@ function fbListenMessages(convId){
             updateConvPreview(convId,d,curUid)
             }
           }
+        }else if(change.type==='modified'){
+          var d=change.doc.data();var mid=change.doc.id;
+          if(d.deleted){
+            for(var _mi=0;_mi<store.messages[convId].length;_mi++){
+              if(store.messages[convId][_mi]._fbId===mid){
+                store.messages[convId][_mi].deleted=true;store.messages[convId][_mi].deletedByMe=d.deletedByMe||false;
+                store.messages[convId][_mi].text='';store.messages[convId][_mi].audio='';store.messages[convId][_mi].image='';store.messages[convId][_mi].video='';
+                if(store.activeConvId===convId)renderMessages(convId);
+                updateConvPreview(convId,d,curUid);
+                break
+              }
+            }
+          }
         }
       })
     },function(err){if(err)console.error('onSnapshot error:',err)})
@@ -336,7 +361,8 @@ function updateConvPreview(convId,d,curUid){
   var msgs=store.messages[convId];
   if(msgs){for(var upi=msgs.length-1;upi>=0;upi--){if(msgs[upi]._decrypted&&msgs[upi]._fbId){localDecrypted=msgs[upi]._decrypted;break}}}
   var preview=d.lastMsg||d.text||'';
-  if(d.image)preview='📷 Fotoğraf';
+  if(d.deleted)preview=d.deletedByMe?'Bu mesajı sildiniz':'Bu mesaj silindi';
+  else if(d.image)preview='📷 Fotoğraf';
   else if(d.video)preview='🎬 Video';
   else if(d.audio)preview='🎤 Ses';
   else if(localDecrypted)preview=localDecrypted;
