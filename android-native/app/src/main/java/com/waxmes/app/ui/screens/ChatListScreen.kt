@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -436,6 +437,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         }
     }
 
+    BackHandler(enabled = showAddFriend) { showAddFriend = false; selectedTab = savedTabBeforeAddFriend }
     if (showAddFriend) {
         AddFriendScreen(t, onBack = { selectedTab = savedTabBeforeAddFriend; showAddFriend = false })
     }
