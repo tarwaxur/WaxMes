@@ -320,8 +320,9 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
 
     // Full-screen story viewer
     AnimatedVisibility(visible = showStoryViewer, enter = fadeIn(animationSpec = tween(300)), exit = fadeOut(animationSpec = tween(300))) {
+        val nowMs = System.currentTimeMillis()
         val allViewerStories = remember(storiesList, repo.ownStories) {
-            storiesList.filter { !it.viewers.contains(repo.uid) || it.authorId == repo.uid }
+            storiesList.filter { (it.expiresAt == 0L || it.expiresAt > nowMs) && (!it.viewers.contains(repo.uid) || it.authorId == repo.uid) }
                 .sortedByDescending { it.createdAt }
         }
         var currentIdx by remember { mutableIntStateOf(0) }
@@ -332,7 +333,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             Box(modifier = Modifier.fillMaxSize().background(bg)) {
                 // Progress bars
                 Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 40.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    storiesList.filter { it.authorId == story.authorId }.forEachIndexed { idx, s ->
+                    allViewerStories.filter { it.authorId == story.authorId }.forEachIndexed { idx, s ->
                         Box(modifier = Modifier.weight(1f).height(3.dp).background(
                             if (s.id == story.id) Color.White else Color.White.copy(alpha = 0.3f),
                             RoundedCornerShape(2.dp)))
