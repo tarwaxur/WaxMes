@@ -5,6 +5,12 @@ WAXMES — PROFIL FOTOGRAFLARI ENTEGRASYON SORUNU (Desktop ↔ Mobile)
 SORUN: Bilgisayar surumunde profil fotograflari gorunurken mobil
 surumunde HICBIR profil foto (kendi profil fotomuz dahil) gorunmuyor.
 
+OZEL ALT SORUN: Story Bar'daki "Durumum" butonunda profil fotom
+gelmiyor, bas harf gorunuyor. Oysa story viewer (tam ekran acilan
+story) sol ustundeki profil fotografi GELIYOR. Yani veri var,
+fotograf yuklenebiliyor, sadece story bar'daki profil dairesi
+okumuyor.
+
 ===============================================================================
 1. DESKTOP'TA AVATAR NASIL SAKLANIYOR (KAYNAK KOD ANALIZI)
 ===============================================================================
@@ -296,3 +302,161 @@ Bu URL:
 
 Ama kisa vadede: Coil'in data URI destegini kontrol et,
 gerekirse manuel Base64.decode + BitmapFactory ile coz.
+
+===============================================================================
+5. OZEL DURUM: STORY BAR'DAKI PROFIL DAIRESI BAS HARF GOSTERIYOR
+===============================================================================
+
+KULLANICI TANIMI:
+- "Durumum" yazan butonda daire var, icinde kullanici adimin bas harfi
+- Bunun yerine profil fotografimi gormek istiyorum
+- Story viewer'da (tam ekran) sol ustte profil fotom DOGRU GORUNUYOR
+- Yani Firestore'da avatar verisi var ve yuklenebiliyor
+- Sadece story bar'daki profil dairesi bas harf gosteriyor
+
+ANALIZ:
+Story viewer'da avatar gorunuyor ama story bar'da gorunmuyor.
+Bu, IKI FARKLI KAYNAKTAN OKUNDUGU anlamina gelir.
+
+5.1. Story Viewer'daki Avatar Nereden Geliyor? (CALISIYOR)
+    Desktop renderStoryViewer() (story.js:491-496):
+      author.authorAvatar degerini kullanir.
+      Bu deger suradan gelir:
+        groupStoriesByAuthor() -> s.authorAvatar
+        -> story dokumanindaki authorAvatar field'i
+        -> fbCreateStory() tarafindan yazilir:
+           authorAvatar = me.avatar || (authorName||'?').charAt(0)
+           me.avatar = Firestore /users/{uid}.avatar
+    MOBILDE: Story viewer ayri bir Composable kullaniyordur.
+    Calistigina gore bu component story'deki authorAvatar'i
+    dogru okuyor.
+
+5.2. Story Bar'daki Profil Dairesi Nereden Geliyor? (CALISMIYOR)
+    Desktop renderStoryBar() (story.js:287-298):
+      if (myHasStory) renderStoryAvatar(myEntry, 0) ile gosterir
+      renderStoryAvatar() (story.js:321-339):
+        var av = entry.authorAvatar; // story feed'den
+        if (av && av.length > 2) {
+          // img goster
+        } else {
+          // bas harf goster
+        }
+      Eger story'niz YOKSA:
+        html += '<div class="story-avatar-add">+</div>'
+
+    MOBILDE: Story bar'daki profil dairesi MUHTEMELEN su
+    kaynaklardan birini kullaniyordur ve CALISMIYORDUR:
+
+    a) FirebaseAuth.currentUser?.photoUrl
+       -> Desktop bu alani HICBIR ZAMAN ayarlamaz.
+       -> Her zaman null doner. Bas harf gosterilir. (MUHTEMELEN BUDUR!)
+
+    b) Firestore /users/{uid}.avatar
+       -> Eger okunuyorsa gostermeli. Okunmuyor olabilir.
+       -> dataUrl cok uzun, Coil/Glide kirilabilir.
+
+    c) Story feed'deki authorAvatar
+       -> Story'niz yoksa null. Bas harf kalir.
+       -> Story'niz varsa bile authorAvatar set edilmemis olabilir.
+
+    d) Hardcode bas harf
+       -> "Hic ugrasmadim, direkt kullanici adinin bas harfini yazdim"
+
+5.3. EN COK OLASI NEDEN: FirebaseAuth photoUrl KULLANILIYOR
+    Desktop avatar'i Firestore user doc'una base64 dataUrl olarak
+    kaydeder. Firebase Auth'un photoUrl field'ini ASLA guncellemez.
+    Mobilde:
+      FirebaseAuth.getInstance().currentUser?.photoUrl
+    Bu her zaman NULL dondugu icin story bar bas harf gosterir.
+    Story viewer ise Firestore'daki story dokumaninin authorAvatar
+    field'ini okur, o da dolu oldugu icin gosterir.
+
+    TEST: Mobilde su kodu calistir:
+      Log.d("AVATAR", "auth photoUrl: ${FirebaseAuth.getInstance().currentUser?.photoUrl}")
+      // -> null gelmeli
+      FirebaseFirestore.getInstance()
+          .collection("users").document(uid).get()
+          .addOnSuccessListener { doc ->
+              Log.d("AVATAR", "firestore avatar: ${doc.getString("avatar")?.take(50)}")
+          }
+      // -> data:image/... seklinde gelmeli
+
+5.4. KESIN COZUM (Story Bar'a Eklenecek Kod)
+    Story bar'daki profil dairesi su kaynaklardan OKUMALI:
+
+    1) ONCELIK: storyFeed'deki authorAvatar (story'niz varsa)
+    2) SONRA: Firestore user doc'undaki avatar
+    3) FALLBACK: kullanici adinin bas harfi
+
+    Kotlin kodu:
+      @Composable
+      fun MyStoryCircle(
+          storyFeed: List<StoryGroup>,
+          onClick: () -> Unit
+      ) {
+          val context = LocalContext.current
+          val uid = FirebaseAuth.getInstance().currentUser?.uid
+          var firestoreAvatar by remember { mutableStateOf<String?>(null) }
+
+          // Firestore'dan avatar oku
+          LaunchedEffect(uid) {
+              if (uid != null) {
+                  val doc = FirebaseFirestore.getInstance()
+                      .collection("users").document(uid).get().await()
+                  firestoreAvatar = doc.getString("avatar")
+              }
+          }
+
+          val myEntry = storyFeed.find { it.isMine }
+          val hasStory = myEntry != null
+
+          // Gosterilecek goruntu (oncelik sirasiyla)
+          val avatarToShow = when {
+              hasStory && !myEntry.items.first().authorAvatar.isNullOrBlank() ->
+                  myEntry.items.first().authorAvatar
+              firestoreAvatar != null && firestoreAvatar.length > 10 ->
+                  firestoreAvatar
+              else -> null
+          }
+
+          Box(modifier = Modifier.size(56.dp).clip(CircleShape).clickable(onClick = onClick)) {
+              if (avatarToShow != null) {
+                  // PROFIL FOTOGRAFI
+                  AsyncImage(
+                      model = avatarToShow,
+                      contentDescription = null,
+                      modifier = Modifier.fillMaxSize().clip(CircleShape),
+                      contentScale = ContentScale.Crop
+                  )
+                  // Story ring (halka)
+                  if (hasStory) {
+                      StoryRingCanvas(myEntry.items.size, viewedCount)
+                  }
+              } else {
+                  // FALLBACK: bas harf
+                  Box(
+                      modifier = Modifier.fillMaxSize()
+                          .background(getColorForName(userName)),
+                      contentAlignment = Alignment.Center
+                  ) {
+                      Text(text = userName.first().toString(), fontWeight = Bold)
+                  }
+                  if (!hasStory) {
+                      // + simgesi
+                      Icon(Icons.Default.Add, "...", modifier = Modifier.align(BottomEnd))
+                  }
+              }
+          }
+      }
+
+5.5. ONE-CIKMA TEST (sorunu aninda tespit et)
+    ADIM 1: Firebase Console'da /users/{uid}/avatar field'i var mi?
+            data: ile basliyor mu? Uzunlugu kac?
+    ADIM 2: Mobilde FirebaseAuth photoUrl'i log'a bas:
+            -> null ise sorun burada.
+    ADIM 3: Firestore'dan doc.getString("avatar") log'a bas:
+            -> data: ile basliyor mu?
+    ADIM 4: Story bar Composable'inda hangi kaynaktan avatar
+            okundugunu bul.
+
+===============================================================================

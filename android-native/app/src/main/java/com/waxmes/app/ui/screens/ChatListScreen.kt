@@ -79,6 +79,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     }
 
     var myNameInitial by remember { mutableStateOf("?") }
+    var myAvatarUrl by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf("chats") }
     var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var showStoryViewer by remember { mutableStateOf(false) }
@@ -102,7 +103,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         }
         repo.listenStories { storiesList = it }
         if (repo.uid.isNotEmpty()) {
-            repo.fetchUserName(repo.uid) { name -> myNameInitial = name.first().uppercase().toString() }
+            repo.fetchUserName(repo.uid) { name -> myNameInitial = name.first().uppercase().toString(); myAvatarUrl = repo.userCache[repo.uid] ?: "" }
         }
     }
 
@@ -261,7 +262,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 }) {
                                     Box(modifier = Modifier.size(60.dp).background(if (repo.ownStories.isNotEmpty()) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
                                         if (repo.ownStories.isNotEmpty()) {
-                                            Text(myNameInitial, color = t.text2, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                            AvatarImage(url = myAvatarUrl, fallbackText = myNameInitial,
+                                                modifier = Modifier.size(60.dp).fillMaxSize(), textColor = t.text2, fontSize = 20.sp)
                                         } else {
                                             Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                                         }
