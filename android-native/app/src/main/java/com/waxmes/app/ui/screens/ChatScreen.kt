@@ -43,6 +43,7 @@ import com.waxmes.app.data.appLog
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.launch
 import com.waxmes.app.data.LocalTranslations
+import com.waxmes.app.ui.screens.AvatarImage
 import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -113,10 +114,8 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(modifier = Modifier.size(72.dp).clip(CircleShape).background(t.bg3), contentAlignment = Alignment.Center) {
-                        SubcomposeAsyncImage(model = convAvatar, contentDescription = null,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                            error = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2, fontSize = 30.sp, fontWeight = FontWeight.Bold) },
-                            loading = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2.copy(alpha = 0.5f), fontSize = 30.sp, fontWeight = FontWeight.Bold) })
+                        AvatarImage(url = convAvatar, fallbackText = convName,
+                            modifier = Modifier.fillMaxSize(), textColor = t.text2, fontSize = 30.sp)
                     }
                 Spacer(Modifier.height(14.dp))
                 Text(convName.ifEmpty { tr["unknown"] ?: "Unknown" }, color = t.text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -185,10 +184,8 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                 TopAppBar(title = {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { showProfileSheet = true }) {
                     Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(t.bg3), contentAlignment = Alignment.Center) {
-                        SubcomposeAsyncImage(model = convAvatar, contentDescription = null,
-                            modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                            error = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-                            loading = { Text(if (convName.isNotEmpty()) convName.first().uppercase() else "?", color = t.text2.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 16.sp) })
+                        AvatarImage(url = convAvatar, fallbackText = convName,
+                            modifier = Modifier.fillMaxSize(), textColor = t.text2, fontSize = 16.sp)
                     }
                         Spacer(Modifier.width(12.dp))
                         Column {

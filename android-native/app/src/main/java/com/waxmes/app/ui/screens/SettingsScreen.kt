@@ -49,6 +49,7 @@ import com.waxmes.app.data.appLogs
 import com.waxmes.app.data.detectSystemLanguage
 import com.waxmes.app.data.getLangByCode
 import com.waxmes.app.data.getLanguages
+import com.waxmes.app.ui.screens.AvatarImage
 import com.waxmes.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -143,8 +144,8 @@ fun ProfileSection(t: ThemeColors, repo: Repository) {
         Spacer(Modifier.height(20.dp))
         Box(modifier = Modifier.size(84.dp).clip(CircleShape).background(t.bg3), contentAlignment = Alignment.Center) {
             if (avatarUrl.isNotEmpty()) {
-                coil.compose.AsyncImage(model = avatarUrl, contentDescription = null,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                AvatarImage(url = avatarUrl, fallbackText = name,
+                    modifier = Modifier.fillMaxSize(), textColor = t.text2, fontSize = 32.sp, bgColor = t.bg3)
             } else {
                 Text(if (name.isNotEmpty()) name.first().uppercase() else "?", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = t.text2)
             }
