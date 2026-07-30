@@ -68,6 +68,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         }
     }
 
+    var myNameInitial by remember { mutableStateOf("?") }
     var selectedTab by remember { mutableStateOf("chats") }
     var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var showStoryViewer by remember { mutableStateOf(false) }
@@ -90,6 +91,9 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
             }
         }
         repo.listenStories { storiesList = it }
+        if (repo.uid.isNotEmpty()) {
+            repo.fetchUserName(repo.uid) { name -> myNameInitial = name.first().uppercase().toString() }
+        }
     }
 
     val displayConvs = if (searchQuery.isBlank()) {
@@ -249,8 +253,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 }) {
                                     Box(modifier = Modifier.size(60.dp).background(if (repo.ownStories.isNotEmpty()) t.accent.copy(alpha = 0.15f) else t.accent.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
                                         if (repo.ownStories.isNotEmpty()) {
-                                            val initial = repo.nameCache[repo.uid]?.first()?.uppercase() ?: "?"
-                                            Text(initial, color = t.text2, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                            Text(myNameInitial, color = t.text2, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                                         } else {
                                             Icon(Icons.Default.Add, contentDescription = null, tint = t.accent, modifier = Modifier.size(22.dp))
                                         }
