@@ -1,560 +1,432 @@
 ===============================================================================
-WAXMES — DESKTOP (ELEKTRON JS) SURUMU AKTIF HATALAR (27.07.2026)
-Her satirin basindaki kutucugu [ ] -> [x] yaparak cozuldugunu isaretleyebilirsin.
+WAXMES — MOBIL (ANDROID NATIVE) SURUMU AKTIF SORUNLAR & ENTEGRASYON (27.07.2026)
 ===============================================================================
 
-[x] 1. GRUP MESAJLARI HER TUS BASIMINDA YENIDEN YUKLENIYOR
-    Dosya: src/firebase-data.js:145-169 (applyFirestoreGroupConversation)
-           src/firebase-data.js:22-23 (fbListenConversations)
-           src/messaging.js:742-752 (startTyping)
+SORUN 1: PULL-TO-REFRESH GOSTERGESI TAKILI KALIYOR
+====================================================
 
-    KESIN TESPIT:
+KULLANICI TANIMI:
+Sayfayi yuklemek icin asagi dogru parmakla cekildiginde yukaridan
+bir yenileme simgesi (spinner/loading indicator) cikiyor. Ancak
+fazla cekildiginde veya tam yerinde birakildiginda bu gosterge
+yerinde sabitlenip kaliyor, geri yukari gitmiyor.
 
-    Kullanici grup sohbetinde yazi yazarken startTyping() (messaging.js:742)
-    her ~1 saniyede bir Firestore'daki konusma dokumanina su veriyi yazar:
-      {typing: fbUserId(), typingAt: Date.now()}
+MEVCUT DURUM:
+- Compose PullToRefreshBox kullaniyorsunuz (View sistemi degil)
+- refreshScope.launch + delay(5000) ile 5 saniyelik zaman asimi
+  eklendi, en gec 5 saniyede gosterge kayboluyor
+- Bu bir BAND-AID cozum, kok neden hala cozulmedi
 
-    Bu yazma islemi fbListenConversations listener'ini tetikler.
-    Listener (firebase-data.js:22-23) su sekilde calisir:
-      if(change.type==='added'||change.type==='modified'){
-        if(d.type==='group'){applyFirestoreGroupConversation(cid,d,uid);return}
-      }
+KOK NEDEN (MUTLAKA BULUNMALI):
+5 saniyelik timeout bir ise yaramaz: isRefreshing = false'in
+NORMAL AKISTA hicbir zaman cagrilmamasi, su sorunlardan birini
+isaret eder:
 
-    Yani GRUP konusmasindaki HER degisiklik (typing indicator dahil)
-    applyFirestoreGroupConversation() fonksiyonuna gider. Bu fonksiyon:
+1. ViewModel'deki refresh fonksiyonu hic tamamlanmiyor
+   - Firestore sorgusu sonsuza dek askida (canli listener?)
+   - viewModelScope iptal edilmis (lifecycle kapali)
+   - Coroutine exception sessizce yutuluyor
 
-    1. Tum uyelerin profil bilgilerini Firestore'dan TEKRAR ceker
-       (satir 147-154: memberFetches.map -> db.collection(USERS).doc(mid).get())
-    2. Tum grup nesnesini bastan olusturur (satir 159)
-    3. renderConversations() cagirir (satir 164) — SIDEBAR'I YENIDEN RENDER EDER
-    4. if(store.activeConvId===gid)renderMessages(gid) cagirir
-       (satir 164) — TUM MESAJLARI YENIDEN RENDER EDER
+2. refreshState StateFlow'u UI'a iletilmiyor
+   - StateFlow .collect() cagrilmiyor veya scope kapali
+   - State bir kez Refreshing'te kalip Idle'a donmuyor
 
-    Sonuc: Kullanici her tus bastiginda:
-    - startTyping() Firestore'a yazar
-    - Listener tetiklenir
-    - applyFirestoreGroupConversation calisir
-    - renderMessages(gid) cagrilir
-    - el.innerHTML='' ile tum mesajlar silinir
-    - Tum mesaj DOM'u bastan olusturulur
-    - CSS animasyonlari tekrar oynar
+3. PullToRefreshBox'un isRefreshing parametresine yanlis
+   state baglanmis. Ornegin Scaffold ile catisma.
 
-    NEDEN DM'DE OLMAZ:
-    DM'lerde (firebase-data.js:62-70) modified handler sadece su
-    alanlari gunceller:
-      conv.lastMsg = d.lastMsg || ...
-      conv.lastActivity = ...
-      conv.time = ...
-    Hicbir render cagrisi yapilmaz.
-
-    COZUM:
-    Secenek A (kolay): applyFirestoreGroupConversation'da (satir 162-164)
-                       existing kontrolu icinde, eger sadece typing/typingAt
-                       degismisse render'i atla. Firestore snapshot'indaki
-                       change doc'una bakarak typing alani harici bir
-                       degisiklik yoksa erken don:
-      if(existing){
-        var sadeceTyping = gd.typing && !gd.lastMsg && !gd.name;
-        if(sadeceTyping) return;
-        ...
-      }
-
-    Secenek B (daha iyi): fbListenConversations'da (satir 22-23)
-                          group kontrolunu degistir. Eger change tipi
-                          'modified' ise ve sadece typing/typingAt
-                          degistiyle, applyFirestoreGroupConversation'i
-                          cagirma:
-      if(change.type==='modified' && d.typing && !d.lastMsg && !d.name) {
-        // Sadece typing indicator, grubu isleme
-        return;
-      }
-      if(d.type==='group'){applyFirestoreGroupConversation(cid,d,uid);return}
-
-    Secenek C: startTyping()'i grup konusmalarinda FIRESTORE'A YAZMA.
-               Typing indicator sadece DM'lerde calissin. Gruplarda
-               typing gostermek istemiyorsan en basit cozum bu.
-
-    Secenek D: renderMessages(gid) cagrisini kaldir (satir 164).
-               renderConversations() yeterlidir. Mesajlarin
-               yeniden render edilmesine gerek yok.
-
-===============================================================================
-
-[ ] 2. MESAJ SILINCE DM ONIZLEMESI GUNCELLENMIYOR
-    Dosya: src/messaging.js:1075-1088 (confirmDelete)
-           src/firebase-data.js:102-125 (deduplicateConversations)
-
-    KESIN TESPIT:
-
-    confirmDelete() su sirayla calisir:
-      1. store._skipDedup=true; (satir 1079)
-      2. Mesaji local'de deleted=true yapar (satir 1081)
-      3. updateConvPreview(convId) ile conv.lastMsg='Bu mesaj silindi' (satir 1082)
-      4. db.collection(...).update({lastMsg:'Bu mesaj silindi'})  (satir 1085)
-         — FIRESTORE'a yaz, ASYNC, AWAIT YOK
-      5. renderMessages(convId) — mesaj alanini render et (satir 1087)
-      6. renderConversations() — sidebar'i render et (satir 1087)
-      7. store._skipDedup=false; (satir 1087) ← COK ERKEN!
-
-    Asil sorun: store._skipDedup=true, 7. adimda hemen false yapiliyor.
-    Ama Firestore yazmasi (adim 4) asenkron. Yazma tamamlaninca
-    fbListenConversations listener'i tetikleniyor:
-
-      8. Listener'daki modified handler (firebase-data.js:62-70):
-         conv.lastMsg = d.lastMsg || ...  ← 'Bu mesaj silindi' dogru
-      9. deduplicateConversations() (firebase-data.js:102-125) calisiyor
-         store._skipDedup=false oldugu icin calisiyor!
-      10. Eger ayni kullaniciya ait iki konusma kaydi varsa:
-          - lastActivity degeri yuksek olani KORUR
-          - Dusuk olani SILER
-      11. confirmDelete'te lastActivity guncellenmedigi icin (sadece
-          lastMsg update ediliyor), eski konusma kaydinin lastActivity'si
-          yeni (silinen) kayitla ayni veya daha yuksek olabilir
-      12. Dedup yanlis kaydi tutup dogruyu silebilir!
-
-    Ayrica: Silinen mesaj store.messages[convId] dizisinin SON elemani
-            degilse updateConvPreview (messaging.js:1090) son mesaja bakar
-            ve onun deleted durumuna gore karar verir. Eger son mesaj
-            silinmemisse normal icerigini gosterir. Bu dogru davranistir
-            ama kullanici kafasini karistirabilir.
-
-    COZUM:
-    a) _skipDedup'i setTimeout ile geciktir:
-         store._skipDedup=true;
-         // ... islemler ...
-         setTimeout(function(){ store._skipDedup=false; }, 2000);
-       Bu, Firestore yazmasi tamamlanip listener calisana kadar
-       dedup'i kapali tutar.
-
-    b) Veya _skipDedup'i hic false yapma, deduplicateConversations
-       fonksiyonunu iyilestir. Su an sadece lastActivity'e bakarak
-       karar veriyor. Oysa en son silinen mesajin oldugu konusma
-       kaydini korumali. Ornegin:
-       - Eger iki kayittan birinin lastMsg'i "Bu mesaj silindi" ise
-         onu koru (en guncel silme islemi bu)
-
-    c) Veya deduplicateConversations'in basinda (satir 103-104):
-         if(store._skipDedup)return;
-       Bu zaten var ama _skipDedup cok erken false oluyor (yukaridaki
-       cozum a'ya bak).
-
-    NOT: confirmDelete'teki db.collection(...).update() sadece lastMsg
-         gonderiyor (lastActivity yok). Bu IYI bir degisiklik cunku
-         lastActivity carptiRMAsini engelliyor. Sadece _skipDedup
-         zamanlamasi hatali.
-
-===============================================================================
-
-[ ] 3. ARKADAS LISTESINDE PROFIL FOTOGRAFI GORUNMUYOR
-    Dosya: src/ui-core.js:95-145 (sendFriendRequest)
-           src/ui-core.js:146-162 (acceptFriendRequest)
-           src/ui-core.js:267-325 (switchFriendsTab)
-           src/firebase-data.js:145-169 (applyFirestoreGroupConversation)
-
-    KESIN TESPIT:
-
-    Arkadas listesindeki avatar suradan geliyor:
-      switchFriendsTab 'friends' (satir 277-290):
-        snap=db.collection(FRIENDS).doc(uid).collection(LIST).get()
-        friends=snap.docs.map(d=>d.data())
-        friends.forEach(f=>{
-          var fAv=f.avatar;
-          if(fAv&&fAv.length>2){
-            // avatar goster (IMG)
-          }else{
-            // bas harf goster
+COZUM (dogru yontem):
+  // 5 saniyelik timeout'u KALDIR. Onun yerine:
+  viewModelScope.launch {
+      isRefreshing = true
+      try {
+          val result = withTimeout(15_000L) {  // gercekci timeout
+              repo.refreshData()
           }
-        })
-
-    Avatar degeri friends koleksiyonunda nasil saklaniyor?
-
-    acceptFriendRequest'te (satir 154-158):
-      friendAvatar = data.fromAvatar || data.toAvatar
-      // (istek dokumanindaki avatar)
-      db.collection(FRIENDS)...set({avatar:friendAvatar,...})
-
-    Peki friend request'teki avatar nereden geliyor?
-
-    sendFriendRequest'te (satir 135-136, 141):
-      myAv = FIRESTORE user doc'undan aliniyor ✅
-      (db.collection(USERS).doc(fbUid).get())
-      toAvatar = targetUser.data().avatar (Firestore'dan) ✅
-      db.collection(FRIEND_REQUESTS).doc(reqId).set({
-        fromAvatar:myAv, toAvatar:targetUser.data().avatar||null
-      })
-
-    Yeni istekler icin avatar Firestore'dan cekiliyor. Bu dogru.
-    ANCAK:
-    1. ESKI istekler (bu fix'ten once gonderilmis olanlar) hala null
-    2. Kullanici hic avatar yuklemediyse Firestore'da da null
-    3. Daha once kabul edilmis arkadasliklarda avatar null (fix'ten
-       once kabul edilmisse)
-
-    Ayrica sendFriendRequest'te toAvatar = targetUser.data().avatar
-    dogrudan Firestore'dan aliniyor. Bu dogru. fromAvatar da
-    Firestore'dan aliniyor. Yani YENI istekler icin sorun yok.
-
-    ESKI arkadaslar icin cozum: switchFriendsTab'de avatar null olan
-    arkadaslar icin Firestore user doc'undan avatar cek. Veya bir
-    migration script'i yaz.
-
-    COZUM:
-    a) switchFriendsTab'de (satir 284-286 civari):
-         if(!fAv||fAv.length<=2){
-           // Firestore'dan kullanici avatarini dene
-           db.collection(USERS).doc(f.id).get().then(u=>{
-             if(u.exists&&u.data().avatar) { f.avatar=u.data().avatar; renderAgain(); }
-           })
-         }
-       NOT: Bu N tane async query demek (arkadas sayisi kadar).
-       Toplu cekim icin 'in' query kullanilabilir.
-
-    b) Veya acceptFriendRequest'te arkadas eklendikten sonra,
-       friendAvatar hala null ise Firestore user doc'undan cek:
-         if(!friendAvatar){
-           var uSnap=await db.collection(USERS).doc(friendId).get();
-           if(uSnap.exists) friendAvatar=uSnap.data().avatar||null;
-         }
-
-    c) Veya periyodik olarak (ornek: uygulama acilirken) tum
-       arkadas listesini Firestore user doc'lariyla senkronize et.
-
-===============================================================================
-
-[ ] 4. SOHBET ARAMA / FILTRELEME CALISMIYOR
-    Dosya: src/messaging.js:136 (filterConversations)
-           src/messaging.js:72-140 (renderConversations)
-
-    KESIN TESPIT:
-
-    filterConversations(q) (satir 136):
-      store._searchQuery=q;
-      store._convListAnimatedOnce=true;
-      renderConversations()
-
-    Sadece _searchQuery'i kaydedip renderConversations cagiriyor.
-
-    renderConversations'da _searchQuery kullanimi (satir 95):
-      if(!store._searchQuery)data=data.filter(function(c){
-        return store._showArchived?isArchived(c.id):!isArchived(c.id)
-      });
-
-    Bu satir: "ARAMA YOKSA archive filtresini uygula" demek.
-    Arama VARSA archive filtresi atlaniyor. YANLI$ DEGIL.
-
-    AMA hicbir yerde su kod YOK:
-      if(store._searchQuery){
-        var q=store._searchQuery.toLowerCase();
-        data = data.filter(function(c){
-          return c.name.toLowerCase().indexOf(q) !== -1
-        });
+          // basarili
+      } catch (e: TimeoutCancellationException) {
+          Log.e("Refresh", "Zaman asimi")
+          // kullaniciya bildir
+      } catch (e: Exception) {
+          Log.e("Refresh", "Hata: ${e.message}")
+      } finally {
+          isRefreshing = false  // HER DURUMDA CALISIR
       }
+  }
 
-    Yani _searchQuery sadece archive filtresini bypass etmek icin
-    kullaniliyor, konusma adina gore filtreleme HIC KODLANMAMIS!
-
-    COZUM:
-    renderConversations'da (satir 95'ten sonra, 97'dan once):
-      if(store._searchQuery){
-        var _sq=store._searchQuery.toLowerCase();
-        data=data.filter(function(c){
-          return c.name.toLowerCase().indexOf(_sq)!==-1
-        });
-      }
-    Ayrica arama yaparken hidden/archived konusmalar da sonuclarda
-    gorunmeli (su an archive filtresi atlaniyor, hidden da gorunmeli).
-
-===============================================================================
-STORIES / 24h DURUM — KESIF EDILEN HATALAR (27.07.2026)
-===============================================================================
-
-[ ] 5. renderStoryBar() KAPANIS BRACE'I EKSIK → TUM STORY FONKSIYONLARI KIRIK
-    Dosya: src/story.js:271-319 (+ 321-1063)
-    Seviye: KRITIK — tum story ozelliklerini etkiler
-
-    TESPIT:
-    renderStoryBar() fonksiyonu satir 271'de aciliyor ({)
-    ancak hic kapatilmiyor. Kapanmasi gereken yer satir 320.
-    Bunun sonucunda satir 321'den itibaren TUM fonksiyonlar
-    renderStoryBar'in ICINDE nested hale geliyor:
-
-    271: function renderStoryBar() {
-    272-319: // govde
-    (320: }  ← EKSIK!)
-    321: function renderStoryAvatar(...) { → renderStoryBar'in ICINDE
-    343: function openStoryViewer(...)    → renderStoryBar'in ICINDE
-    439: function renderStoryViewer(...)  → renderStoryBar'in ICINDE
-    535: function showCreateStoryModal()  → renderStoryBar'in ICINDE
-    549: function renderCreateStoryModal()→ renderStoryBar'in ICINDE
-    589: function renderCreateStoryModal()→ renderStoryBar'in ICINDE
-    660: function pickStoryMedia()        → renderStoryBar'in ICINDE
-    681: function confirmCreateStory()   → renderStoryBar'in ICINDE
-    781: document.addEventListener()     → renderStoryBar'in ICINDE
-    ...tum story viewer/kb/actions...
-    1053: function closeDevtools()      → renderStoryBar'in ICINDE
-    1063: } ← BU renderStoryBar'I KAPATIR (cok gec!)
-
-    SONUCLARI (bu eksik brace yuzunden olusan tum hatalar):
-
-    a) Story paneli acilmiyor
-       showCreateStoryModal() global degil.
-       init-ui.js:364'te typeof kontrolu FALSE doner.
-       + butonlarina tiklayinca hicbir sey olmaz.
-
-    b) Story izleyici acilmiyor
-       openStoryViewer() global degil.
-       init-ui.js:404'te typeof kontrolu FALSE doner.
-
-    c) Story ring halkasi maviden griye donmuyor
-       openStoryViewer() calismadigi icin fbViewStory()
-       hicbir zaman cagrilmaz. store.storyViewed guncellenmez.
-       renderStoryBar() viewed parametresi hep 0 gelir.
-       makeStoryRingSvg() hep 'tumunu gorulmedi' olarak cizer.
-       Kullanici story izlese bile halka mavi kalir.
-
-    d) Story viewer klavye kisa yollari calismiyor
-       document.addEventListener('keydown', ...) (satir 781)
-       renderStoryBar icinde nested oldugu icin hicbir zaman
-       document'e eklenmez. Ok tuslari/ESC calismaz.
-
-    e) Story silme (delete-my-story) calismiyor
-       fbDeleteStory() satir 212'de TANIMLI (renderStoryBar'dan
-       once) → global. ANCAK showConfirmModal() nested oldugu
-       icin init-ui.js:420'de typeof kontrolu FALSE doner.
-       Silme akisi baslamaz.
-
-    f) Tum story yardimci fonksiyonlari global scope'ta yok
-       closeStoryViewer, nextStorySegment, prevStorySegment,
-       pauseStoryViewer, resumeStoryViewer, startStoryTimer,
-       updateStoryProgressBar, pickStoryMedia, findConvByUid
-       — hicbiri disaridan erisilemez.
-
-    COZUM:
-    Satir 320'ye (319 ile 321 arasina) kapatma brace'i ekle:
-      319:   try{console.log('[sb] done users:'+others.length)}catch(e){}
-      320: }  // <-- EKLE: renderStoryBar kapanisi
-      321: function renderStoryAvatar(entry, itemIdx) {
-    Boylece satir 321'den itibaren tum fonksiyonlar global
-    olur ve init-ui.js'deki typeof kontrolleri TRUE doner.
-
-[ ] 6. renderStoryBar ILK RENDER'DA $('story-bar') NULL ISE ERRORYE TAKILIR
-    Dosya: src/story.js:274
-    Seviye: Orta
-
-    TESPIT:
-    renderStoryBar() satir 274'te:
-      if (!el) {try{console.log('SB_EL_NULL')}catch(e){};return}
-    Eger #story-bar elementi DOM'da yoksa erken donuyor.
-    Bu normalde dogru ama sonraki renderStoryBar cagrilari
-    da hep erken donecek cunku el hala null.
-    Firestore listener'i her snapshot'ta renderStoryBar'i
-    cagirir. Eger ilk cagrida el null'sa, sonraki tum
-    cagrilar da hicbir sey yapmaz.
-
-    HTML'de #story-bar elementi var (index.html:123).
-    Sorun: DOMContentLoaded'dan once fbListenStories
-    calisirsa el null olur. Ilk render kacirilir.
-
-    COZUM:
-    setTimeout veya DOM kontrolu ile renderStoryBar
-    cagrilarini geciktir. Veya el bulunana kadar
-    setInterval ile dene. Veya MutationObserver kullan.
-
-[ ] 7. STORY VIEWER PROGRESS BAR HER RENDERDA SIFIRLANIYOR
-    Dosya: src/story.js:477-496 (renderStoryViewer)
-    Seviye: Dusuk-Orta
-
-    TESPIT:
-    renderStoryViewer() her cagrildiginda progress bar'i
-    sifirdan baslatiyor. Kullanici 'ileri' okuna basinca
-    nextStorySegment() renderStoryViewer()'i tekrar cagirir.
-    Bu, mevcut story'nin izleme suresinin sifirlanmasina
-    yol acar.
-
-    Ornegin 5 saniyelik bir story'nin 4. saniyesinde
-    kullanici saga tiklasa, bir sonraki story'nin progress'i
-    sifirdan baslar (dogru). Ama ayni story'ye geri donerse
-    (onceki ok) progress tekrar sifirlanir.
-
-    COZUM:
-    renderStoryViewer icinde progress'i koru. Sadece
-    gecis yapildiginda sifirla. Veya mevcut item'in
-    gecmiste ne kadar izlendigini store'da sakla.
-
-[ ] 8. STORY CREATE MODAL'DA TEXTAREA FONT ONIZLEMESI YOK
-    Dosya: src/story.js:615 (renderCreateStoryModal)
-    Seviye: Dusuk (UX)
-
-    TESPIT:
-    Textarea (metin girisi): style'inda font-family yok
-      <textarea class="story-text-input" style="font-family:inherit">
-    Font degistiginde textarea'nin fontu degismez.
-    Ayri bir <div id="story-font-preview"> var (satir 617)
-    ama kullanici yazi yazarken textarea'da gordugu font
-    degismez, sadece altindaki preview div'inde degisir.
-
-    COZUM:
-    Textarea'ya da secili fontu inline style olarak ekle:
-      style="font-family:' + _currFontStack + '"
-
-[ ] 9. STORY MEDYA PAYLASIMINDA STORAGE YUKLEMESI YOK (dataUrl gidiyor)
-    Dosya: src/story.js:700-722 (confirmCreateStory media kolu)
-    Seviye: YUKSEK
-
-    TESPIT:
-    Media story'si olusturulurken payload.mediaUrl dogrudan
-    dataUrl olarak ataniyor. Firebase Storage'a yukleme
-    yapilmiyor. dataUrl:
-    - Cok buyuk (1MB sinirini asabilir)
-    - Baska kullanicilar tarafindan goruntulenemez
-
-    COZUM:
-    fbUploadFile() cagrisi eklenmeli:
-      var url = await fbUploadFile(dataUrl, 'stories/'+fbUserId()+'/'+...);
-      payload.mediaUrl = url;
+BENIM YORUMUM (Deep):
+delay(5000) cozum degil, semptomu gizliyor. Asil sorun su:
+refreshScope.launch icindeki islem hic bir sekilde
+"tamamlandi" sinyali gondermiyor. Firestore'dan veri cekme
+isleminin sonunda .addOnCompleteListener veya suspend
+fonksiyonun await() ile bitip bitmedigini kontrol et.
+Eger Firestore sorgusu canli bir listener (onSnapshot) ile
+yapiliyorsa, o SONSUZA KADAR acik kalir ve suspend olmaz.
+Refresh icin get() kullan (tek seferlik), onSnapshot degil.
 
 ===============================================================================
 
-[x] 10. CEVIRI (i18n) TAMAMLANDI — Tüm maddeler (A-M) çözüldü
-    Seviye: Orta-Yüksek
-    Tarih: 29.07.2026
+SORUN 2: BILGISAYAR & MOBIL STORY SISTEMI ENTEGRASYONU
+========================================================
 
-    TESPIT:
-    `tr()` fonksiyonu ve dil sistemi eklendi, İngilizce/Türkçe geçiş
-    çalışıyor. Ancak tüm kullanıcı arayüzü metinleri henüz `tr()`'ye
-    bağlanmadı. Aşağıdaki dosyalarda sabit Türkçe metinler var:
+HEDEF:
+Bilgisayar surumunde (Electron/JS) atilan story'ler mobil
+surumde (Android Native) goruntulenebilmeli. Mobildeki story
+arabirimi bilgisayardakiyle birebir ayni calismali:
+- Story bar (kullanici profili + arkadaslarin story'leri)
+- Story viewer (text/image/video goruntuleme)
+- Viewed/unviewed takibi (halka renklendirmesi)
 
-    =======================
-    A) index.html (~120 metin)
-    =======================
-    - Giriş ekrani: "Hesabını seç veya yeni hesap oluştur", "Giriş Yap",
-      "E-posta", "Şifre", placeholder'lar, error mesajları
-    - Kayıt ekrani: "Hesap Oluştur", tüm alan etiketleri, placeholder'lar,
-      "Kullanım Koşulları"
-    - Sidebar: "Sohbet ara...", "Durumlar", "Arşiv", "Kapalı Sohbetler",
-      tooltip'ler ("Ana Sayfa", "Arkadaş Ekle / Grup Oluştur")
-    - Sohbet alani: "Sohbet Seç", "Mesajlaşmaya başlamak için...",
-      "Arkadaş", "Çevrimiçi"
-    - Buton tooltip'leri: "Sesli Arama (beta)", "Ara", "Medya Galerisi",
-      "Sabitlenmiş Mesajlar", "Uçtan uca şifreli", "Şifreli"
-    - Input alani: "Mesaj yaz...", "↓ Yeni mesajlar", "↓ Son mesaja git"
-    - Tüm modal'lar: silme onayi, medya önizleme, grup oluşturma,
-      arkadaş paneli, iletme, TOS
-    - Çağrı arayüzü: "Arıyor...", "Bağlanıyor...", "Mikrofon", "Kamera",
-      "Ekran Paylaş", "Hoparlör", "Çağrıyı Sonlandır", "Reddet", "Cevapla"
-    - Profil paneli: "Profil"
+--- VERI MODELI (Firestore) ---
 
-    =======================
-    B) src/messaging.js (~50 metin)
-    =======================
-    - "🔒 [Çözülemedi]", "🔒 Mesaj" (şifreli mesaj placeholder'lari)
-    - "Mesajlarda aramak için yaz...", "Sonuç yok", "Sonuç bulunamadı",
-      " sonuç", "Yazıyor..."
-    - "Kaldır" (sabitlenmiş mesaj butonu), " mesaj"
-    - "📷 Medya bulunamadı." (galeri boş)
-    - "Resmi Kaydet", "Resmi Kopyala", "Videoyu İndir", "Mesaja Git"
-    - "🔒 [Şifreli mesaj]" (kopyalama)
-    - "Kaydet", "İptal" (düzenleme butonlari)
-    - "Grubu Sil", "Gruptan Çıkar", "Yöneticiliği Kaldır", "Yönetici Yap",
-      "Gruptan Ayrıl", grup log mesajlari
-    - "Bu mesajı sildiniz", "Bu mesaj silindi", "📤 İletildi",
-      "(düzenlendi)"
-    - "Medyaları Düzenle", "Tümünü İlet", " görsel", "Tümünü Sil"
-    - Fotoğraf/Video/Ses fallback'lari
+Desktop story.js'deki veri yapisi (Firestore'daki 'stories'
+koleksiyonunda saklaniyor):
 
-    =======================
-    C) src/accounts.js (~8 metin)
-    =======================
-    - showAlert(): 'E-posta veya şifre hatalı.', 'Çok fazla hatalı giriş...',
-      'Geçersiz e-posta formatı.', 'Bu hesap devre dışı bırakılmış.',
-      'Ağ bağlantısı yok.', 'Bilinmeyen hata'
-    - showError(): 'Veritabanı bağlantısı yok.', 'Otomatik giriş başarısız',
-      'Kayıtlı oturum bulunamadı', 'Firebase Auth yüklenemedi'
+  /stories/{storyId}  (Firestore dokumani)
+  {
+    authorId:   String,  // Firebase Auth UID
+    authorName: String,  // Gosterim adi
+    authorAvatar: String,// data URL veya Firebase Storage URL
+    authorColor: String, // #818cf8 gibi hex renk
+    type:       String,  // "text" | "image" | "video"
+    createdAt:  Timestamp, // firebase.firestore.FieldValue.serverTimestamp()
+    expiresAt:  Timestamp, // olusturma + 24 saat
+    viewers:    [String],  // izleyen kullanici UID'leri
+    // type === "text" icin:
+    text:       String,   // en fazla 500 karakter
+    bgColor:    String,   // #818cf8
+    fontFamily: String,   // "sans" | "serif" | "mono" | "rounded"
+    // type === "image" || type === "video" icin:
+    mediaUrl:   String,   // Firebase Storage URL (veya fallback data URL)
+    caption:    String    // en fazla 200 karakter
+  }
 
-    =======================
-    D) src/calls.js (~10 metin)
-    =======================
-    - "Çağrı başlatılıyor...", "Bağlandı", "Bağlanıyor...", "Birisi"
-    - "Mikrofon erişimi gerekli"
-    - "Ekran Paylaş", "Ekran bulunamadı"
+ExpiresAt: olusturma ani + 24 saat. 24 saatten eski story'ler
+Firestore listener tarafindan filtrelenir ve gosterilmez.
 
-    =======================
-    E) src/media.js (~15 metin)
-    =======================
-    - "Kamera kapalı", "Kamerayı Aç", "Kamerayı Kapat"
-    - "Mikrofonu Test Et", "Durdur"
-    - "Yükleniyor...", "Paylaşım durduruldu", "Erişim reddedildi"
-    - "E-posta değiştirme şu anlık devre dışı."
-    - "Şifre değiştirilemedi: ...", "Mevcut şifren yanlış."
-    - "✓ Değiştirildi", "Şifreyi Değiştir"
+--- YAPILACAKLAR (MOBIL TARAFI) ---
 
-    =======================
-    F) src/firebase-data.js (~12 metin)
-    =======================
-    - "Kullanıcı" (fallback isim, 2 yerde)
-    - "Konuşmalar yüklenemedi: ..."
-    - "🔒 Mesaj", "📷 Fotoğraf", "🎬 Video", "🎤 Ses" (ön izleme)
-    - "Sohbet temizlendi"
-    - "Bu mesajı sildiniz", "Bu mesaj silindi"
-    - " üye"
+1. FIRESTORE VERI OKUMA (STORY LISTENER)
+   Desktop'taki fbListenStories() fonksiyonunun Android karsiligi:
+   - Kendi UID + arkadas UID'lerini al
+   - 10'arli batch'ler halinde Firestore'u dinle (in operatoru
+     maksimum 10 deger alir)
+   - Sorgu: .where('authorId', 'in', batchIds)
+            .where('expiresAt', '>', Timestamp.now())
+   - onSnapshot ile canli dinle
+   - Gelen her yeni/guncellenen story'yi local listeye ekle
+   - Silinen story'leri listeden cikar
+   - Story'leri expiresAt'e gore sirala
+   - View status'unu local'de (SharedPreferences vb.) sakla
 
-    =======================
-    G) src/ui-core.js (~10 metin)
-    =======================
-    - "👑 Grup fotoğrafı değiştirildi" (grup log)
-    - "Grubu Düzenle", "Grubu Sil", "Gruptan Ayrıl" (context menu)
-    - "En fazla 3 hesap bulundurabilirsin..." (uyari)
-    - "Sohbet Zaten Temiz", "Bu sohbette silinecek mesaj bulunmuyor."
-    - "🔒 Mesaj", "📷 Fotoğraf", "🎬 Video", "🎤 Ses" (forward)
+   FIRESTORE QUERY ORNEGI (Kotlin):
+   ```kotlin
+   val myUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+   val friendIds = getFriendIds() + myUid
 
-    =======================
-    H) src/encryption.js (~5 metin)
-    =======================
-    - "Tüm Verileri Sıfırla", "Tüm hesaplar, mesajlar...", "Tümünü Sıfırla"
-    - "Doğrulama başarısız. Hesap silinemedi."
+   for (i in friendIds.indices step 10) {
+       val batch = friendIds.subList(i, minOf(i + 10, friendIds.size))
+       FirebaseFirestore.getInstance()
+           .collection("stories")
+           .whereIn("authorId", batch)
+           .whereGreaterThan("expiresAt", Timestamp.now())
+           .addSnapshotListener { snapshot, error ->
+               snapshot?.documentChanges?.forEach { change ->
+                   when (change.type) {
+                       DocumentChange.Type.ADDED -> addStory(change.document)
+                       DocumentChange.Type.MODIFIED -> updateStory(change.document)
+                       DocumentChange.Type.REMOVED -> removeStory(change.document)
+                   }
+               }
+               updateStoryBar()
+           }
+   }
+   ```
 
-    =======================
-    I) src/settings.js (~20 metin)
-    =======================
-    - Tema isimleri (20 adet): "Varsayılan", "Kraliyet", "Orman", "Şarap" vb.
-    - Kısayol etiketleri (7 adet): "Dosya yükleme menüsü", "Sesli mesaj" vb.
-    - Güncelleme mesajlari: "v"+v+" İndir", "mevcut. İndirmek için tıkla."
-    - Hata mesajlari: "İndirme başarısız:", "Güncelleme hatası:"
+2. STORY BAR ARABIRIMI (UI)
+   Bilgisayardaki renderStoryBar() fonksiyonunun Android karsiligi:
+   - Yatay kaydirilabilir (Horizontal RecyclerView) story listesi
+   - Ilk sirada KULLANICI PROFILI:
+     * Story'si varsa: renkli/gradient halka + story kapak fotografi
+     * Story'si yoksa: + simgeli bos profil dairesi
+   - Arkadaslarin story'leri:
+     * Gorulmemis (unseen): mavi/gradient halka
+     * Gorulmus (seen): gri halka
+   - Story halkasi: SVG veya Canvas ile cizilebilir
+   - Her story item'ina tiklayinca story viewer acilir
 
-    =======================
-    J) src/init-ui.js (~3 metin)
-    =======================
-    - "Durumu Kaldır", "Bu durum kalıcı olarak silinsin mi?", "Kaldır"
+   LAYOUT STRUCTURE (Android):
+   ```xml
+   <LinearLayout android:orientation="vertical">
+       <!-- Story Bar Header -->
+       <LinearLayout android:orientation="horizontal">
+           <TextView text="Durum" />
+           <ImageButton
+               android:id="@+id/btn_add_story"
+               android:src="@drawable/ic_plus" />
+       </LinearLayout>
 
-    =======================
-    K) src/voice.js (~3 metin)
-    =======================
-    - "Ses kaydı desteklenmiyor.", "Mikrofon erişimi reddedildi."
-    - "🎤 Sesli mesaj"
+       <!-- Story Items (Horizontal Scroll) -->
+       <HorizontalScrollView>
+           <LinearLayout android:id="@+id/story_bar_container"
+               android:orientation="horizontal" />
+       </HorizontalScrollView>
+   </LinearLayout>
+   ```
 
-    =======================
-    L) src/story.js (~1 metin)
-    =======================
-    - "Durumu Kaldır", "Bu durum kalıcı olarak silinsin mi?"
+   Veya daha iyisi RecyclerView + LinearLayoutManager.HORIZONTAL.
 
-    =======================
-    M) src/capacitor-bridge.js (~1 metin)
-    =======================
-    - "APK indirildi. Lütfen dosyaya tıklayarak manuel olarak kurun."
+3. KULLANICI PROFIL BUTONU (ILK SIRADAKI)
+   - Story'si yoksa: profil fotografi veya bas harf + uzerinde +
+     simgesi. Tiklayinca story olusturma ekrani acilir.
+   - Story'si varsa: profil fotografi + gradient/story halkasi.
+     Halkadaki mavi segmentler gorulmemis story'leri temsil eder.
+     Tiklayinca kendi story'leri izlenir.
 
-    =======================
-    ÇÖZÜM ÖNERİSİ
-    =======================
-    Mevcut `tr()` altyapisi calisiyor. Yapilmasi gereken:
-    1. Yukaridaki metinleri `tr('key')` ile değiştirmek
-    2. Eksik çeviri anahtarlarını `translations.js`'e eklemek
-    3. `index.html` icin `data-i18n` attribute'lari kullanilabilir (mevcut
-       `updateStaticI18n()` fonksiyonu bunu destekliyor)
-    4. Her dosyada syntax kontrolü yapmak (`node --check`)
+   ```kotlin
+   fun bindMyStoryItem(stories: List<Story>) {
+       if (stories.isEmpty()) {
+           // + butonu goster
+           avatarView.setImageResource(R.drawable.ic_plus)
+           ringView.visibility = View.GONE
+           setOnClickListener { openCreateStory() }
+       } else {
+           // Kapak story'sini goster
+           val coverStory = stories.first()
+           loadAvatar(coverStory)
+           ringView.visibility = View.VISIBLE
+           ringView.drawRing(stories.size, viewedCount)
+           setOnClickListener { openStoryViewer(myUid) }
+       }
+   }
+   ```
+
+4. STORY RING / HALKA CIzIMI
+   Desktop'taki makeStoryRingSvg() fonksiyonunun Android karsiligi:
+   - Canvas uzerine cizilebilir custom View
+   - Veya SVG'den PNG'ye donusturulebilir
+   - Iki halka: gri (base) + mavi (gorulmemis segmentler)
+
+   ```kotlin
+   class StoryRingView @JvmOverloads constructor(
+       context: Context, attrs: AttributeSet? = null
+   ) : View(context, attrs) {
+
+       private val grayPaint = Paint().apply {
+           color = Color.GRAY
+           style = Paint.Style.STROKE
+           strokeWidth = 3.dpToPx()
+           strokeCap = Paint.Cap.ROUND
+       }
+       private val bluePaint = Paint().apply {
+           color = Color.parseColor("#3b82f6")
+           style = Paint.Style.STROKE
+           strokeWidth = 3.dpToPx()
+           strokeCap = Paint.Cap.ROUND
+       }
+
+       private var total = 0
+       private var viewed = 0
+
+       fun setSegments(total: Int, viewed: Int) {
+           this.total = total
+           this.viewed = viewed
+           invalidate()
+       }
+
+       override fun onDraw(canvas: Canvas) {
+           super.onDraw(canvas)
+           if (total == 0) return
+           val cx = width / 2f
+           val cy = height / 2f
+           val r = minOf(cx, cy) - 4f
+           val circ = 2 * Math.PI.toFloat() * r
+           val gapAngle = if (total <= 1) 0f else 8f
+           val gapArc = circ * gapAngle / 360f
+           val segLen = (circ - total * gapArc) / total
+
+           // once gri halka (tum segmentler)
+           val grayPath = Path()
+           for (i in 0 until total) {
+               val startAngle = i * (segLen + gapArc) / circ * 360f - 90f
+               val sweepAngle = segLen / circ * 360f
+               grayPath.addArc(cx - r, cy - r, cx + r, cy + r, startAngle, sweepAngle)
+           }
+           canvas.drawPath(grayPath, grayPaint)
+
+           // sonra mavi halka (sadece gorulmemis segmentler)
+           if (viewed < total) {
+               val bluePath = Path()
+               for (i in viewed until total) {
+                   val startAngle = i * (segLen + gapArc) / circ * 360f - 90f
+                   val sweepAngle = segLen / circ * 360f
+                   bluePath.addArc(cx - r, cy - r, cx + r, cy + r, startAngle, sweepAngle)
+               }
+               canvas.drawPath(bluePath, bluePaint)
+           }
+       }
+   }
+   ```
+
+5. STORY VIEWER (IZLEYICI)
+   Desktop'taki renderStoryViewer() fonksiyonunun Android karsiligi:
+   - Fullscreen Activity veya DialogFragment
+   - Ust kısım: progress bar (story'lerin sayisi kadar segment)
+   - Header: yazar avatar + isim + sure
+   - Icerik:
+     * type === "text": metin + arka plan rengi + font
+     * type === "image": ImageView (URL'den yukle)
+     * type === "video": VideoView (URL'den oynat)
+   - Alt kısım: saga/sola tiklanabilir alanlar (tap zones)
+   - 5 saniye sonra otomatik sonraki story'ye gec
+   - Kullanici saga/sola tiklayarak manuel gecis yapabilir
+   - Video story'lerde video suresi kadar bekle
+
+6. VIEWED / IZLENME TAKIBI
+   - Story acildiginda Firebase'e viewers array'ine UID'yi ekle:
+     FirebaseFirestore.getInstance()
+         .collection("stories")
+         .document(storyId)
+         .update("viewers", FieldValue.arrayUnion(myUid))
+   - Hata olursa sessizce yoksay (local cache yeterli)
+   - Local'de (SharedPreferences) izlenen story'leri cache'le:
+     val viewed = prefs.getStringSet("story_viewed", mutableSetOf())!!
+     viewed.add(storyId)
+     prefs.edit().putStringSet("story_viewed", viewed).apply()
+   - Story bar render edilirken bu cache'e bak:
+     val isViewed = viewedCache.contains(story.id)
+
+7. FIREBASE STORAGE'dAN MEDYA YUKLEME
+   Story'lerin mediaUrl degeri Firebase Storage URL'si olabilir
+   (desktop'taki future fix'ten sonra). Bu URL'yi Android'de
+   Glide veya Coil ile yukle:
+   ```kotlin
+   // Coil
+   imageView.load(mediaUrl) {
+       crossfade(true)
+       error(R.drawable.placeholder)
+   }
+   // Video icin ExoPlayer
+   val player = ExoPlayer.Builder(context).build()
+   player.setMediaItem(MediaItem.fromUri(mediaUrl))
+   playerView.player = player
+   player.prepare()
+   player.play()
+   ```
+
+8. HATA DURUMLARI & COZUMLERI
+   - Yetki hatasi (Firestore security rules): stories koleksiyonu
+     icin read/write kurallari hem desktop hem mobil icin dogru
+     ayarlanmali:
+     match /stories/{storyId} {
+       allow read: if request.auth != null
+         && (resource.data.authorId == request.auth.uid
+             || request.auth.uid in resource.data.viewers);
+       allow create: if request.auth != null
+         && request.resource.data.authorId == request.auth.uid;
+       allow update: if request.auth != null
+         && resource.data.authorId == request.auth.uid;
+       allow delete: if request.auth != null
+         && resource.data.authorId == request.auth.uid;
+     }
+   - Media URL 404: Firebase Storage rules da eklenmeli:
+     match /stories/{userId}/{allPaths=**} {
+       allow write: if request.auth != null
+         && request.auth.uid == userId;
+       allow read: if request.auth != null;
+     }
+   - Story suresi dolmus (24 saat): expiresAt filtresi ile
+     otomatik elenir. Gorev zamanlayici ile silinebilir.
+   - Gorsel yuklenemezse (Coil/Glide hatasi): fallback olarak
+     yazarin bas harfini goster.
+
+9. ENTEGRASYON TESTI ADIMLARI
+   1. Bilgisayar surumunde giris yap, bir text story'si olustur
+   2. Mobil surumunde AYNI hesaba giris yap
+   3. Story bar'da kendi story'ni gor (kapak fotografi + halka)
+   4. Story'e tikla, story viewer acilsin
+   5. Story'yi izle, halka maviden griye donsun
+   6. Bilgisayar surumune don, halkanin mobilde goruldugunu gor
+   7. Mobil surumunde bir image story'si olustur
+   8. Bilgisayarda story'nin gorundugunu dogrula
+   9. Ters test: once mobilde olustur, bilgisayarda gor
+
+10. EK: ENTEGRASYONUN ONUNDAKI GIZLI ENGELLER (MUTLAKA KONTROL EDIN)
+    Asagidaki maddeler "her sey calisiyor" denmesine ragmen
+    story'lerin mobilde goruntulenememesinin GERCEK sebepleridir:
+
+    a) FIRESTORE COMPOSITE INDEX GEREKIYOR
+       Sorgu: .whereIn("authorId", batch).whereGreaterThan("expiresAt", now)
+       Bu sorgu icin Firestore'un su index'e ihtiyaci var:
+         Collection: stories
+         Fields: authorId ARRAY, expiresAt DESC
+       Eger index yoksa sorgu HATA verir. Hata genelde
+       Firebase konsolunda link olarak gelir, ama catch
+       edilip yutuluyorsa gorulmez.
+       KONTROL: Firebase Console > Firestore > Indexes >
+                "stories" koleksiyonunda authorId+expiresAt
+                index'i var mi?
+
+    b) DESKTOP'TA HIC STORY URETILEMEMIS OLABILIR
+       Desktop fbCreateStory() (story.js:130) hata durumunda
+       null doner ve sessizce yutulur:
+         } catch (e) {
+           console.error('createStory error:', e);
+           return null;
+         }
+       Kullanici daha once "Missing or insufficient permissions"
+       hatasi aliyordu (konsolda goruldu). Bu demektir ki
+       desktop'tan Firestore'a hic story yazilamamis olabilir.
+       Yani Firestore'da hic story dokumani YOK.
+       Mobil okumaya calissa da okuyacak bir sey bulamaz.
+       KONTROL: Firebase Console > Firestore > stories
+                koleksiyonunda dokuman var mi? Eger bossa
+                once desktop'tan rules fix'lenip story
+                olusturulmali.
+
+    c) MOBIL'DEKI QUERY ILE DESKTOPTAKI QUERY UYUMSUZ OLABILIR
+       Desktop fbListenStories() sunu kullanir:
+         .where('expiresAt', '>', firebase.firestore.Timestamp.fromMillis(storyNow()))
+       Mobilde:
+         .whereGreaterThan("expiresAt", Timestamp.now())
+       Bu ikisi esit olmali. ANCAK:
+       - Desktop'ta storyNow() = Date.now()
+       - Mobilde Timestamp.now() = System.currentTimeMillis()
+       Eger cihaz saatleri farkliysa veya Timestamp precision
+       farkliysa eslesmeyebilir.
+       KONTROL: Mobil cihaz ile bilgisayar saatinin ayni olup
+                olmadigini kontrol et. expiresAt'in desktop'ta
+                nasil kaydedildigini gor (serverTimestamp + 24h).
+
+    d) "Yapilacak bir sey yok" DIYORSA
+       Firestore rules guncellendikten SONRA rules'un Firebase
+       Console'a KAYDEDILDIGINE emin ol. Bazen "yayimla"
+       butonuna basmayi unutuyoruz. Ayrica degisikliklerin
+       etkili olmasi icin 1-2 dakika gerekebilir.
+       KONTROL: Firebase Console > Firestore > Rules >
+                En ustte "Published" tarihi gorunuyor mu?
+                Story icin allow read, allow create izni var mi?
+
+    e) LISTENER CANLI MI?
+       listenStories() cagrilmis olabilir ama hata callback'inde
+       sessizce yutuluyordur. addSnapshotListener'in hata
+       parametresini log'a bas:
+         .addSnapshotListener { snapshot, error ->
+             if (error != null) {
+                 Log.e("Stories", "Listener hatasi: ${error.message}")
+                 return@addSnapshotListener
+             }
+             ...
+         }
+       KONTROL: Logcat'te "Stories" tag'inde hata var mi?
+
+BENIM YORUMUM (Deep):
+"Her sey calisiyor, veri modeli ayni" diyorsunuz ama story
+gelmiyor. O zaman sorun KESINLIKLE su ucunden biridir:
+1) Firestore'da hic story dokumani yok (desktop yazamadi)
+2) Composite index eksik (sorgu patliyor)
+3) Rules hala aktif degil (Firebase Console'a kaydedilmedi)
+Bu ucunu tek tek kontrol edin. Index linkini Firebase hata
+mesajinda bulabilirsiniz, catch blogunda log'u acmayi
+unutmamalisiniz.
 
 ===============================================================================
-
-NOT: Bu hatalarin tamami Desktop (Electron/JS) surumune aittir.
-Kodlarda debug log'u veya gecici cozum bulunmamaktadir.
-Yukaridaki satir numaralari mevcut kaynak koda gore verilmistir.
-

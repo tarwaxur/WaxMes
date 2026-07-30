@@ -229,8 +229,9 @@ class Repository {
     var activeStories = mutableListOf<Story>()
 
     fun listenStories(onChange: (List<Story>) -> Unit) {
+        appLog("listenStories: starting listener on 'stories' collection")
         db.collection("stories").addSnapshotListener { snap, error ->
-            if (error != null) { appLog("listenStories error: ${error.message}"); return@addSnapshotListener }
+            if (error != null) { appLog("listenStories error: ${error.message}"); appLog("listenStories: Check Firestore rules for 'stories' collection - needs allow read: if request.auth != null"); return@addSnapshotListener }
                 if (snap == null) return@addSnapshotListener
                 val all = snap.documents.mapNotNull { doc ->
                     val d = doc.data ?: return@mapNotNull null

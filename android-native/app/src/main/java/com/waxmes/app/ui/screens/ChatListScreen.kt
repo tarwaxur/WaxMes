@@ -54,15 +54,17 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     var isRefreshing by remember { mutableStateOf(false) }
     val refreshScope = rememberCoroutineScope()
 
+    LaunchedEffect(isRefreshing) {
+        if (isRefreshing) {
+            kotlinx.coroutines.delay(3000)
+            isRefreshing = false
+        }
+    }
+
     val doRefresh: () -> Unit = {
         isRefreshing = true
-        refreshScope.launch {
-            repo.getConversations { list ->
-                convs = list.map { c -> c.copy(isPinned = prefs.getBoolean("pin_${c.id}", false), isMuted = prefs.getBoolean("mute_${c.id}", false), isArchived = prefs.getBoolean("arch_${c.id}", false)) }
-                isRefreshing = false
-            }
-            kotlinx.coroutines.delay(5000)
-            isRefreshing = false
+        repo.getConversations { list ->
+            convs = list.map { c -> c.copy(isPinned = prefs.getBoolean("pin_${c.id}", false), isMuted = prefs.getBoolean("mute_${c.id}", false), isArchived = prefs.getBoolean("arch_${c.id}", false)) }
         }
     }
 
