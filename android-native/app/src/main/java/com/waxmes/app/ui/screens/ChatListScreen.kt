@@ -5,11 +5,14 @@ import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -346,27 +349,13 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         if (story != null) {
             val bg = try { Color(android.graphics.Color.parseColor(story.bgColor)) } catch (e: Exception) { Color(0xFF818cf8) }
             Box(modifier = Modifier.fillMaxSize().background(bg)) {
-                // Progress bars
-                Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 40.dp).navigationBarsPadding()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                        allViewerStories.filter { it.authorId == story.authorId }.forEachIndexed { idx, s ->
-                            Box(modifier = Modifier.weight(1f).height(3.dp).background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(2.dp)))
-                        }
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    // Animated progress for current story
-                    val userStories = allViewerStories.filter { it.authorId == story.authorId }
-                    val storyIdx = userStories.indexOfFirst { it.id == story.id }
-                    if (storyIdx >= 0) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                            userStories.forEachIndexed { idx, s ->
-                                Box(modifier = Modifier.weight(1f).height(2.dp).background(
-                                    if (idx < storyIdx) Color.White
-                                    else if (idx == storyIdx) Color.White.copy(alpha = 0.7f)
-                                    else Color.Transparent, RoundedCornerShape(2.dp)))
-                            }
-                        }
-                    }
+                // Progress bar: single row with animated fill
+                Box(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 44.dp).navigationBarsPadding().height(3.dp)) {
+                    // Background track
+                    Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)))
+                    // Animated fill
+                    val fillWidth by animateFloatAsState(targetValue = progress, animationSpec = tween(storyDurationMs.toInt(), easing = androidx.compose.animation.core.LinearEasing))
+                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction = fillWidth).background(Color.White, RoundedCornerShape(2.dp)))
                 }
                 // Header
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 62.dp).navigationBarsPadding()) {
@@ -398,14 +387,16 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                             modifier = Modifier.padding(32.dp))
                     }
                 }
-                // Tap zones (left = prev, right = next)
+                // Tap zones (left = prev, right = next) - no ripple
                 Row(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxSize().clickable {
-                        if (currentIdx > 0) { currentIdx-- }
+                    Box(modifier = Modifier.weight(1f).fillMaxSize().pointerInput(Unit) {
+                        detectTapGestures { if (currentIdx > 0) currentIdx-- }
                     })
-                    Box(modifier = Modifier.weight(1f).fillMaxSize().clickable {
-                        if (currentIdx < allViewerStories.size - 1) { currentIdx++ }
-                        else { showStoryViewer = false; selectedStory = null }
+                    Box(modifier = Modifier.weight(1f).fillMaxSize().pointerInput(Unit) {
+                        detectTapGestures {
+                            if (currentIdx < allViewerStories.size - 1) currentIdx++
+                            else { showStoryViewer = false; selectedStory = null }
+                        }
                     })
                 }
             }
