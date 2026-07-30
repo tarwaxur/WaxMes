@@ -35,6 +35,7 @@ import com.waxmes.app.data.Repository
 import com.waxmes.app.data.Story
 import com.waxmes.app.data.LocalTranslations
 import com.waxmes.app.ui.theme.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -49,6 +50,15 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     var isSearching by remember { mutableStateOf(false) }
     var contextConv by remember { mutableStateOf<Conversation?>(null) }
     var storiesList by remember { mutableStateOf<List<Story>>(emptyList()) }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    val doRefresh: () -> Unit = {
+        isRefreshing = true
+        repo.getConversations { list ->
+            convs = list.map { c -> c.copy(isPinned = prefs.getBoolean("pin_${c.id}", false), isMuted = prefs.getBoolean("mute_${c.id}", false), isArchived = prefs.getBoolean("arch_${c.id}", false)) }
+            isRefreshing = false
+        }
+    }
 
     var selectedTab by remember { mutableStateOf("chats") }
     var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
@@ -143,7 +153,9 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         }
     ) { padding ->
         if (selectedTab == "chats") {
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding(), contentPadding = PaddingValues(vertical = 4.dp)) {
+        PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = doRefresh,
+            modifier = Modifier.fillMaxSize().padding(padding).background(t.bg)) {
+        LazyColumn(modifier = Modifier.fillMaxSize().navigationBarsPadding(), contentPadding = PaddingValues(vertical = 4.dp)) {
             items(displayConvs) { conv ->
                 Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).combinedClickable(
                     onClick = { onChatClick(conv.id) },
@@ -202,13 +214,16 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 item { Text(tr["no_conversations"] ?: "No conversations yet", color = t.text4, modifier = Modifier.padding(40.dp).fillMaxWidth(), fontSize = 13.sp) }
             }
         }
+        }
         } else {
         var newSearchQuery by remember { mutableStateOf("") }
         val filteredConvs = if (newSearchQuery.isBlank()) convs.filter { !it.isGroup && !it.isArchived }.sortedByDescending { it.online }
             else convs.filter { !it.isGroup && !it.isArchived && it.name.contains(newSearchQuery, ignoreCase = true) }.sortedByDescending { it.online }
         val filteredStories = if (newSearchQuery.isBlank()) storiesList.filter { it.authorId != repo.uid }
             else storiesList.filter { it.authorName.contains(newSearchQuery, ignoreCase = true) && it.authorId != repo.uid }
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding()) {
+        PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = doRefresh,
+            modifier = Modifier.fillMaxSize().padding(padding).background(t.bg)) {
+        LazyColumn(modifier = Modifier.fillMaxSize().navigationBarsPadding()) {
             item {
                 OutlinedTextField(value = newSearchQuery, onValueChange = { newSearchQuery = it },
                     placeholder = { Text(tr["search_friends"] ?: "Search friends...", color = t.text4) }, singleLine = true,
@@ -281,6 +296,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                 }
             }
             item { Spacer(Modifier.height(80.dp)) }
+        }
         }
     }
     }
