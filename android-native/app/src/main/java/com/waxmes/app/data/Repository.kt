@@ -68,7 +68,10 @@ class Repository {
             val avatar = snap.getString("avatarUrl") ?: snap.getString("avatar") ?: ""
             val online = snap.getBoolean("online") ?: false
             nameCache[userId] = name; userCache[userId] = avatar; onlineCache[userId] = online
-            appLog("fetchUserName: name=$name avatar=${if (avatar.isNotEmpty()) avatar.take(30) + "..." else "EMPTY"} online=$online")
+            appLog("fetchUserName: name=$name avatarLen=${avatar.length} validDataUrl=${avatar.startsWith("data:image/")} online=$online")
+            if (avatar.isNotEmpty() && avatar.length > 10 && !avatar.startsWith("data:image/")) {
+                appLog("AVATAR_WARN: userId=$userId avatar does NOT start with data:image/ prefix! Starts with: ${avatar.take(20)}")
+            }
             onResult(name)
         }.addOnFailureListener { e -> appLog("fetchUserName FAIL: ${e.message}") }
     }
@@ -153,6 +156,7 @@ class Repository {
                         fetchUserName(c.otherId) { name ->
                             if (!c.isGroup) c.name = name
                             c.avatarUrl = userCache[c.otherId] ?: ""; c.online = onlineCache[c.otherId] ?: false
+                            appLog("AVATAR: conv=${c.id} otherId=${c.otherId} avatarUrl=${if (c.avatarUrl.isNotEmpty()) c.avatarUrl.take(30) + "... len=" + c.avatarUrl.length else "EMPTY"}")
                             pending--
                             if (pending == 0) onResult(dedup(convs).sortedByDescending { it.lastActivity })
                         }
@@ -172,6 +176,7 @@ class Repository {
                     pending++
                     fetchUserName(c.otherId) { name ->
                         c.name = name; c.avatarUrl = userCache[c.otherId] ?: ""; c.online = onlineCache[c.otherId] ?: false
+                        appLog("AVATAR_LISTEN: conv=${c.id} otherId=${c.otherId} avatarUrl=${if (c.avatarUrl.isNotEmpty()) c.avatarUrl.take(30) + "... len=" + c.avatarUrl.length else "EMPTY"}")
                         pending--
                         if (pending == 0) onChange(dedup(convs))
                     }
