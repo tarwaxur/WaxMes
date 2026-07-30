@@ -349,13 +349,25 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         if (story != null) {
             val bg = try { Color(android.graphics.Color.parseColor(story.bgColor)) } catch (e: Exception) { Color(0xFF818cf8) }
             Box(modifier = Modifier.fillMaxSize().background(bg)) {
-                // Progress bar: single row with animated fill
-                Box(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 44.dp).navigationBarsPadding().height(3.dp)) {
-                    // Background track
-                    Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)))
-                    // Animated fill
-                    val fillWidth by animateFloatAsState(targetValue = progress, animationSpec = tween(storyDurationMs.toInt(), easing = androidx.compose.animation.core.LinearEasing))
-                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction = fillWidth).background(Color.White, RoundedCornerShape(2.dp)))
+                // Progress segments: one per story, current one animates
+                val userStorySegments = allViewerStories.filter { it.authorId == story.authorId }
+                Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 44.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    userStorySegments.forEachIndexed { idx, s ->
+                        Box(modifier = Modifier.weight(1f).height(3.dp)) {
+                            // Background
+                            Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(2.dp)))
+                            // Foreground fill
+                            val isPast = idx < userStorySegments.indexOfFirst { it.id == story.id }
+                            val isCurrent = s.id == story.id
+                            val fill = when {
+                                isPast -> 1f
+                                isCurrent -> progress
+                                else -> 0f
+                            }
+                            val segmentFill by animateFloatAsState(targetValue = fill, animationSpec = tween(300))
+                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction = segmentFill).background(Color.White, RoundedCornerShape(2.dp)))
+                        }
+                    }
                 }
                 // Header
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 62.dp).navigationBarsPadding()) {
