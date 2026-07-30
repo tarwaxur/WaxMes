@@ -42,6 +42,7 @@ import com.waxmes.app.data.Conversation
 import com.waxmes.app.data.Repository
 import com.waxmes.app.data.Story
 import com.waxmes.app.data.LocalTranslations
+import com.waxmes.app.data.translateSystemMessage
 import com.waxmes.app.ui.screens.AvatarImage
 import com.waxmes.app.ui.theme.*
 import kotlinx.coroutines.delay
@@ -218,7 +219,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                             }
                         }
                         Spacer(Modifier.height(2.dp))
-                        Text(conv.lastMsg.ifEmpty { tr["no_messages"] ?: "No messages yet" }, color = t.text3, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text((if (conv.lastMsg.isNotEmpty()) translateSystemMessage(conv.lastMsg, tr) else tr["no_messages"] ?: "No messages yet"), color = t.text3, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (conv.unread > 0) {
                         Spacer(Modifier.width(8.dp))

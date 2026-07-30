@@ -174,5 +174,24 @@ fun detectSystemLanguage(ctx: Context): String {
     return if (getLanguages().any { it.code == sysLang }) sysLang else "en"
 }
 
+/** Translates known system message strings from any language to the current language */
+fun translateSystemMessage(msg: String, translations: Map<String, String>): String {
+    if (msg.isEmpty()) return msg
+    // Deleted message patterns (Turkish and English)
+    val lower = msg.lowercase()
+    if (lower.contains("bu mesajı sildiniz") || lower.contains("you deleted this message")) {
+        return translations["deleted_by_you"] ?: "Bu mesajı sildiniz"
+    }
+    if (lower.contains("bu mesaj silindi") || lower.contains("this message was deleted")) {
+        return translations["deleted_msg"] ?: "Bu mesaj silindi"
+    }
+    // Photo message
+    if (msg.contains("📷 Photo") || msg.contains("📷 Fotoğraf") || msg == "📷 Photo" || msg.startsWith("📷")) {
+        return "📷 " + (translations["image"]?.removePrefix("📷 ") ?: "Photo")
+    }
+    // Reply messages: "↩ text: text" - keep as-is, they contain user content
+    return msg
+}
+
 val LocalLangCode = compositionLocalOf { "tr" }
 val LocalTranslations = compositionLocalOf { emptyMap<String, String>() }
