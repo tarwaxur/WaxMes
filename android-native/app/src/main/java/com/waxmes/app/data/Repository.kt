@@ -333,10 +333,25 @@ class Repository {
 
     fun deleteMessage(convId: String, msgId: String) {
         appLog("Deleting message $msgId from $convId")
-        db.collection("conversations").document(convId).collection("messages").document(msgId)
-            .update("deleted", true, "deletedByMe", true, "text", "", "image", "", "audio", "", "video", "")
-            .addOnSuccessListener { appLog("Message deleted") }
-            .addOnFailureListener { e -> appLog("Delete fail: ${e.message}") }
+        // First read the message to get original text, then update
+        db.collection("conversations").document(convId).collection("messages").document(msgId).get()
+            .addOnSuccessListener { msgSnap ->
+                val originalText = msgSnap.getString("text") ?: ""
+                // Update message as deleted
+                msgSnap.reference.update("deleted", true, "deletedByMe", true, "text", "", "image", "", "audio", "", "video", "")
+                    .addOnSuccessListener {
+                        // If this was the last message, update conversation preview
+                        db.collection("conversations").document(convId).get().addOnSuccessListener { convSnap ->
+                            val currentLastMsg = convSnap.getString("lastMsg") ?: ""
+                            if (currentLastMsg == originalText || currentLastMsg.startsWith(originalText.take(20))) {
+                                db.collection("conversations").document(convId)
+                                    .update("lastMsg", "Bu mesajı sildiniz")
+                            }
+                        }
+                        appLog("Message deleted")
+                    }
+                    .addOnFailureListener { e -> appLog("Delete fail: ${e.message}") }
+            }
     }
 
     fun forwardMessage(convId: String, text: String, originalMsgId: String) {
