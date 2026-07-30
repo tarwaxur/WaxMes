@@ -54,6 +54,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     var friends by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var hasStory by remember { mutableStateOf(false) }
     var showStoryViewer by remember { mutableStateOf(false) }
+    var selectedStory by remember { mutableStateOf<Story?>(null) }
     var showAddFriend by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -206,9 +207,8 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         var newSearchQuery by remember { mutableStateOf("") }
         val filteredConvs = if (newSearchQuery.isBlank()) convs.filter { !it.isGroup && !it.isArchived }.sortedByDescending { it.online }
             else convs.filter { !it.isGroup && !it.isArchived && it.name.contains(newSearchQuery, ignoreCase = true) }.sortedByDescending { it.online }
-        val storyAuthorIds = storiesList.filter { it.authorId != repo.uid }.map { it.authorId }.toSet()
-        val filteredStories = if (newSearchQuery.isBlank()) convs.filter { it.otherId in storyAuthorIds && !it.isGroup }
-            else convs.filter { !it.isGroup && it.name.contains(newSearchQuery, ignoreCase = true) && it.otherId in storyAuthorIds }
+        val filteredStories = if (newSearchQuery.isBlank()) storiesList.filter { it.authorId != repo.uid }
+            else storiesList.filter { it.authorName.contains(newSearchQuery, ignoreCase = true) && it.authorId != repo.uid }
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).navigationBarsPadding()) {
             item {
                 OutlinedTextField(value = newSearchQuery, onValueChange = { newSearchQuery = it },
@@ -236,15 +236,15 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                                 }
                             }
                         }
-                        items(filteredStories) { conv ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChatClick(conv.id) }) {
-                                Box(modifier = Modifier.size(60.dp).background(Color(conv.color), CircleShape).padding(2.dp)) {
-                                    SubcomposeAsyncImage(model = conv.avatarUrl, contentDescription = null,
+                        items(filteredStories) { story ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { selectedStory = story; showStoryViewer = true }) {
+                                Box(modifier = Modifier.size(60.dp).background(Color(story.authorColor), CircleShape).padding(2.dp)) {
+                                    SubcomposeAsyncImage(model = story.authorAvatar, contentDescription = null,
                                         modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop,
-                                        error = { Text(conv.name.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
-                                        loading = { Text(conv.name.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) })
+                                        error = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(story.authorName.first().uppercase(), color = t.text, fontWeight = FontWeight.Bold, fontSize = 18.sp) } },
+                                        loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(story.authorName.first().uppercase(), color = t.text.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 18.sp) } })
                                 }
-                                Text(conv.name, color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                                Text(story.authorName, color = t.text3, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                             }
                         }
                     }
@@ -286,23 +286,52 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     }
 
     if (showStoryViewer) {
-        AlertDialog(onDismissRequest = { showStoryViewer = false },
-            containerColor = t.bg, shape = RoundedCornerShape(24.dp),
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    IconButton(onClick = { hasStory = false; showStoryViewer = false }) { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFef4444)) }
-                    Spacer(Modifier.weight(1f))
-                    Text(tr["my_story"] ?: "My Story", color = t.text, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { /* add another story */ }) { Icon(Icons.Default.Add, contentDescription = null, tint = t.accent) }
-                }
-            },
-            text = {
-                Box(modifier = Modifier.fillMaxWidth().height(300.dp).background(t.bg2, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                    Text(tr["your_story_here"] ?: "Your story will appear here", color = t.text3, fontSize = 14.sp)
-                }
-            },
-            confirmButton = { TextButton(onClick = { showStoryViewer = false }) { Text(tr["close"] ?: "Close", color = t.accent) } })
+        val story = selectedStory
+        if (story != null) {
+            val bg = try { Color(android.graphics.Color.parseColor(story.bgColor)) } catch (e: Exception) { Color(0xFF818cf8) }
+            AlertDialog(onDismissRequest = { showStoryViewer = false; selectedStory = null },
+                containerColor = bg, shape = RoundedCornerShape(24.dp),
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        if (story.authorId == repo.uid) {
+                            IconButton(onClick = { repo.deleteStory(story.id); showStoryViewer = false; selectedStory = null }) {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White.copy(alpha = 0.7f))
+                            }
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Text(story.authorName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { repo.viewStory(story.id); showStoryViewer = false; selectedStory = null }) {
+                            Icon(Icons.Default.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.7f))
+                        }
+                    }
+                },
+                text = {
+                    Box(modifier = Modifier.fillMaxWidth().height(350.dp), contentAlignment = Alignment.Center) {
+                        if (story.mediaUrl.isNotEmpty()) {
+                            SubcomposeAsyncImage(model = story.mediaUrl, contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Fit,
+                                error = { Text(story.text.ifEmpty { story.caption }, color = Color.White, fontSize = 20.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                                loading = { Text(story.text.ifEmpty { story.caption }, color = Color.White.copy(alpha = 0.7f), fontSize = 20.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) })
+                        } else if (story.text.isNotEmpty()) {
+                            Text(story.text, color = Color.White, fontSize = 22.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.padding(24.dp))
+                        }
+                    }
+                },
+                confirmButton = { TextButton(onClick = { repo.viewStory(story.id); showStoryViewer = false; selectedStory = null }) {
+                    Text(tr["close"] ?: "Close", color = Color.White.copy(alpha = 0.7f))
+                } })
+        } else {
+            AlertDialog(onDismissRequest = { showStoryViewer = false }, containerColor = t.bg, shape = RoundedCornerShape(24.dp),
+                title = { Text(tr["my_story"] ?: "My Story", color = t.text, fontWeight = FontWeight.Bold) },
+                text = {
+                    Box(modifier = Modifier.fillMaxWidth().height(300.dp).background(t.bg2, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                        Text(tr["your_story_here"] ?: "Your story will appear here", color = t.text3, fontSize = 14.sp)
+                    }
+                },
+                confirmButton = { TextButton(onClick = { showStoryViewer = false }) { Text(tr["close"] ?: "Close", color = t.accent) } })
+        }
     }
 
     if (showAddFriend) {
@@ -395,9 +424,9 @@ private fun ContextMenuItem(icon: ImageVector, label: String, desc: String, tint
 private fun AddFriendScreen(t: ThemeColors, onBack: () -> Unit) {
     val tr = LocalTranslations.current
     var page by remember { mutableStateOf("add") }
-    Box(modifier = Modifier.fillMaxSize().background(t.bg).clickable { /* consume clicks */ }) {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp).navigationBarsPadding()) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+    Box(modifier = Modifier.fillMaxSize().background(t.bg)) {
+        Column(modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp).navigationBarsPadding()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = t.text) }
                 Spacer(Modifier.width(8.dp))
                 Text(tr["add_friend"] ?: "Add Friend", color = t.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)

@@ -11,6 +11,8 @@
   .profile-panel.open{right:0!important}
 }
 
+
+
 .is-mobile .app-main{position:fixed;inset:0;z-index:50;transform:translateX(100%);transition:transform .25s ease}
 .is-mobile .app-main.open{transform:translateX(0)}
 .is-mobile .app-main .chat-header{padding:8px 10px!important}

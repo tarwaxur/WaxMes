@@ -52,7 +52,7 @@ function fbListenConversations(uid){
                       var ud=uDoc.data();
                       var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
                       var color=colors[Math.floor(Math.random()*colors.length)];
-                      convListenerAddConv({id:cid22,name:ud.displayName||ud.username||'Kullanıcı',avatar:ud.avatar||(ud.displayName||'?').charAt(0).toUpperCase(),color:color,online:ud.online||false,lastMsg:lm2,time:lt2,lastActivity:_tsToMs(la2),unread:0,isGroup:false,memberIds:[uid,oid2]})
+                      convListenerAddConv({id:cid22,name:ud.displayName||ud.username||tr('user'),avatar:ud.avatar||(ud.displayName||'?').charAt(0).toUpperCase(),color:color,online:ud.online||false,lastMsg:lm2,time:lt2,lastActivity:_tsToMs(la2),unread:0,isGroup:false,memberIds:[uid,oid2]})
                     }).catch(console.error)
                   })(oid,cid2,la,lm,lt)
                 }
@@ -60,6 +60,7 @@ function fbListenConversations(uid){
             }
           }
         }else if(change.type==='modified'){
+          console.log('[mod] DM conv',cid,'lastMsg:',(d.lastMsg||'').substring(0,30));
           for(var uci=0;uci<store.conversations.length;uci++){
             if(store.conversations[uci].id===cid){
               store.conversations[uci].lastMsg=d.lastMsg||store.conversations[uci].lastMsg||'';
@@ -96,11 +97,12 @@ function fbListenConversations(uid){
         if(!_osc.isGroup&&_osc.id&&!_osc._onlineListenerActive){_osc._onlineListenerActive=true;fbSyncOnlineStatus(_osc.id)}
       }
     },500);
-  },function(err){console.error('convListener error:',err);if(typeof showError==='function')showError('Konuşmalar yüklenemedi: '+err.message)})
+  },function(err){console.error('convListener error:',err);if(typeof showError==='function')showError(tr('conversations_load_failed')+': '+err.message)})
 }
 
 function deduplicateConversations(){
   var uid=fbUserId();if(!uid)return;
+  if(store._skipDedup)return;
   var seen={};
   for(var di=store.conversations.length-1;di>=0;di--){
     var dc=store.conversations[di];
@@ -142,13 +144,20 @@ function fbStopConversations(){
 
 
 async function applyFirestoreGroupConversation(gid,gd,uid){
+  // Skip if only typing indicator changed (avoids full re-render on every keystroke)
+  var existing=findConv(gid);
+  if(existing&&gd.typing&&!gd.lastMsg&&!gd.name){
+    existing.typing=gd.typing;existing.typingAt=gd.typingAt;
+    return;
+  }
+  console.log('[group] update',gid,'name:',gd.name,'lastMsg:',(gd.lastMsg||'').substring(0,20));
   var mids=gd.memberIds||[];
   var memberFetches=mids.filter(function(mid){return mid!==uid}).map(async function(mid){
     try {
       var uDoc=await db.collection(COLLECTIONS.USERS).doc(mid).get();
       var ud=uDoc.exists?uDoc.data():{};
       var colors=['#818cf8','#6d28d9','#0891b2','#16a34a','#ca8a04','#ea580c','#db2777'];
-      var nm=ud.displayName||ud.username||'Kullanıcı';
+      var nm=ud.displayName||ud.username||tr('user');
       return {id:mid,name:nm,avatar:ud.avatar||nm.charAt(0).toUpperCase(),color:colors[Math.floor(Math.random()*colors.length)],online:!!ud.online,isGroup:false}
     }catch(e){return null}
   });
@@ -157,10 +166,13 @@ async function applyFirestoreGroupConversation(gid,gd,uid){
     var initials=(gd.name||'G').split(' ').map(function(w){return w.charAt(0).toUpperCase()}).join('').slice(0,2)||'G';
     var group={id:gid,name:gd.name||'Grup',avatar:gd.avatar||initials,avatarLetter:gd.avatarLetter||initials,color:gd.color||'var(--grad)',isGroup:true,online:true,lastMsg:gd.lastMsg||'',time:gd.lastTime||'',lastActivity:gd.lastActivity||Date.now(),unread:0,members:members.filter(Boolean),memberIds:mids,adminIds:gd.adminIds||(gd.creatorId?[gd.creatorId]:mids.length>0?[mids[0]]:[]),creatorId:gd.creatorId||mids[0]};
     normalizeGroupMembers(group);
-    var existing=findConv(gid);
+    existing=findConv(gid);
     if(existing){
-      existing.name=group.name;existing.avatar=group.avatar;existing.avatarLetter=group.avatarLetter;existing.color=group.color;existing.members=group.members;existing.memberIds=group.memberIds;existing.adminIds=group.adminIds;existing.creatorId=group.creatorId;existing.lastActivity=group.lastActivity;
-      saveGroup(existing);renderConversations();if(store.activeConvId===gid)renderMessages(gid)
+      var _oldMsg=existing.lastMsg;
+      existing.name=group.name;existing.avatar=group.avatar;existing.avatarLetter=group.avatarLetter;existing.color=group.color;existing.members=group.members;existing.memberIds=group.memberIds;existing.adminIds=group.adminIds;existing.creatorId=group.creatorId;existing.lastActivity=group.lastActivity;existing.lastMsg=group.lastMsg;existing.time=group.time;
+      saveGroup(existing);
+      if(store.activeConvId===gid&&group.lastMsg!==_oldMsg)renderMessages(gid);
+      renderConversations()
     }else{
       convListenerAddConv(group);saveGroup(group)
     }
@@ -188,10 +200,10 @@ async function fbSendMessage(convId,msg){
   };
   if(!sendData.text&&!sendData.image&&!sendData.video&&!sendData.audio)sendData.text=' ';
   var displayMsg=msg.text;
-  if(msg.e2e||(displayMsg&&displayMsg.indexOf('🔒')===0))displayMsg='🔒 Mesaj';
-  else if(msg.image)displayMsg='📷 Fotoğraf';
-  else if(msg.video)displayMsg='🎬 Video';
-  else if(msg.audio)displayMsg='🎤 Ses';
+  if(msg.e2e||(displayMsg&&displayMsg.indexOf('🔒')===0))displayMsg=tr('encrypted_message');
+  else if(msg.image)displayMsg='📷 '+tr('photo');
+  else if(msg.video)displayMsg='🎬 '+tr('video');
+  else if(msg.audio)displayMsg='🎤 '+tr('audio');
   else displayMsg=msg.text||'';
   try {
     var docRef=await db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).collection(COLLECTIONS.MESSAGES).add(sendData);
@@ -274,6 +286,19 @@ function fbListenMessages(convId){
             updateConvPreview(convId,d,curUid)
             }
           }
+        }else if(change.type==='modified'){
+          var d=change.doc.data();var mid=change.doc.id;
+          if(d.deleted){
+            for(var _mi=0;_mi<store.messages[convId].length;_mi++){
+              if(store.messages[convId][_mi]._fbId===mid){
+                store.messages[convId][_mi].deleted=true;store.messages[convId][_mi].deletedByMe=d.deletedByMe||false;
+                store.messages[convId][_mi].text='';store.messages[convId][_mi].audio='';store.messages[convId][_mi].image='';store.messages[convId][_mi].video='';
+                if(store.activeConvId===convId)renderMessages(convId);
+                updateConvPreview(convId,d,curUid);
+                break
+              }
+            }
+          }
         }
       })
     },function(err){if(err)console.error('onSnapshot error:',err)})
@@ -319,8 +344,8 @@ function fbListenMessages(convId){
     else if(loaded===0){
       var conv=findConv(convId);
       if(conv&&!conv.lastMsg){
-        conv.lastMsg='Sohbet temizlendi';conv.time='';
-        db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:'Sohbet temizlendi',lastTime:''}).catch(function(){})
+        conv.lastMsg=tr('chat_cleared');conv.time='';
+        db.collection(COLLECTIONS.CONVERSATIONS).doc(convId).update({lastMsg:tr('chat_cleared'),lastTime:''}).catch(function(){})
       }
     }
     store._fbLoaded[convId]=true;
@@ -336,9 +361,10 @@ function updateConvPreview(convId,d,curUid){
   var msgs=store.messages[convId];
   if(msgs){for(var upi=msgs.length-1;upi>=0;upi--){if(msgs[upi]._decrypted&&msgs[upi]._fbId){localDecrypted=msgs[upi]._decrypted;break}}}
   var preview=d.lastMsg||d.text||'';
-  if(d.image)preview='📷 Fotoğraf';
-  else if(d.video)preview='🎬 Video';
-  else if(d.audio)preview='🎤 Ses';
+  if(d.deleted)preview=d.deletedByMe?tr('deleted_by_you'):tr('deleted_msg');
+  else if(d.image)preview='📷 '+tr('photo');
+  else if(d.video)preview='🎬 '+tr('video');
+  else if(d.audio)preview='🎤 '+tr('audio');
   else if(localDecrypted)preview=localDecrypted;
   else if(preview.indexOf('🔒')===0){preview=''}
   conv.lastMsg=preview;
@@ -456,7 +482,7 @@ function fbSyncOnlineStatus(convId){
           conv._status=uData.status||STATUS.ONLINE;
           conv._lastSeen=uData.lastSeen?uData.lastSeen.toMillis?uData.lastSeen.toMillis():uData.lastSeen:null;
           var statusEl=$('chat-header-status');
-          if(statusEl)statusEl.textContent=conv.isGroup?memberCount(conv)+' üye':statusText(conv);
+          if(statusEl)statusEl.textContent=conv.isGroup?memberCount(conv)+' '+tr('members'):statusText(conv);
           var cl=$('conv-list');
           if(cl){
             var item=cl.querySelector('.conv-item[data-id="'+escJs(convId)+'"]');

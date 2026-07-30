@@ -3,7 +3,7 @@ WAXMES — DESKTOP (ELEKTRON JS) SURUMU AKTIF HATALAR (27.07.2026)
 Her satirin basindaki kutucugu [ ] -> [x] yaparak cozuldugunu isaretleyebilirsin.
 ===============================================================================
 
-[ ] 1. GRUP MESAJLARI HER TUS BASIMINDA YENIDEN YUKLENIYOR
+[x] 1. GRUP MESAJLARI HER TUS BASIMINDA YENIDEN YUKLENIYOR
     Dosya: src/firebase-data.js:145-169 (applyFirestoreGroupConversation)
            src/firebase-data.js:22-23 (fbListenConversations)
            src/messaging.js:742-752 (startTyping)
@@ -412,6 +412,145 @@ STORIES / 24h DURUM — KESIF EDILEN HATALAR (27.07.2026)
     fbUploadFile() cagrisi eklenmeli:
       var url = await fbUploadFile(dataUrl, 'stories/'+fbUserId()+'/'+...);
       payload.mediaUrl = url;
+
+===============================================================================
+
+[x] 10. CEVIRI (i18n) TAMAMLANDI — Tüm maddeler (A-M) çözüldü
+    Seviye: Orta-Yüksek
+    Tarih: 29.07.2026
+
+    TESPIT:
+    `tr()` fonksiyonu ve dil sistemi eklendi, İngilizce/Türkçe geçiş
+    çalışıyor. Ancak tüm kullanıcı arayüzü metinleri henüz `tr()`'ye
+    bağlanmadı. Aşağıdaki dosyalarda sabit Türkçe metinler var:
+
+    =======================
+    A) index.html (~120 metin)
+    =======================
+    - Giriş ekrani: "Hesabını seç veya yeni hesap oluştur", "Giriş Yap",
+      "E-posta", "Şifre", placeholder'lar, error mesajları
+    - Kayıt ekrani: "Hesap Oluştur", tüm alan etiketleri, placeholder'lar,
+      "Kullanım Koşulları"
+    - Sidebar: "Sohbet ara...", "Durumlar", "Arşiv", "Kapalı Sohbetler",
+      tooltip'ler ("Ana Sayfa", "Arkadaş Ekle / Grup Oluştur")
+    - Sohbet alani: "Sohbet Seç", "Mesajlaşmaya başlamak için...",
+      "Arkadaş", "Çevrimiçi"
+    - Buton tooltip'leri: "Sesli Arama (beta)", "Ara", "Medya Galerisi",
+      "Sabitlenmiş Mesajlar", "Uçtan uca şifreli", "Şifreli"
+    - Input alani: "Mesaj yaz...", "↓ Yeni mesajlar", "↓ Son mesaja git"
+    - Tüm modal'lar: silme onayi, medya önizleme, grup oluşturma,
+      arkadaş paneli, iletme, TOS
+    - Çağrı arayüzü: "Arıyor...", "Bağlanıyor...", "Mikrofon", "Kamera",
+      "Ekran Paylaş", "Hoparlör", "Çağrıyı Sonlandır", "Reddet", "Cevapla"
+    - Profil paneli: "Profil"
+
+    =======================
+    B) src/messaging.js (~50 metin)
+    =======================
+    - "🔒 [Çözülemedi]", "🔒 Mesaj" (şifreli mesaj placeholder'lari)
+    - "Mesajlarda aramak için yaz...", "Sonuç yok", "Sonuç bulunamadı",
+      " sonuç", "Yazıyor..."
+    - "Kaldır" (sabitlenmiş mesaj butonu), " mesaj"
+    - "📷 Medya bulunamadı." (galeri boş)
+    - "Resmi Kaydet", "Resmi Kopyala", "Videoyu İndir", "Mesaja Git"
+    - "🔒 [Şifreli mesaj]" (kopyalama)
+    - "Kaydet", "İptal" (düzenleme butonlari)
+    - "Grubu Sil", "Gruptan Çıkar", "Yöneticiliği Kaldır", "Yönetici Yap",
+      "Gruptan Ayrıl", grup log mesajlari
+    - "Bu mesajı sildiniz", "Bu mesaj silindi", "📤 İletildi",
+      "(düzenlendi)"
+    - "Medyaları Düzenle", "Tümünü İlet", " görsel", "Tümünü Sil"
+    - Fotoğraf/Video/Ses fallback'lari
+
+    =======================
+    C) src/accounts.js (~8 metin)
+    =======================
+    - showAlert(): 'E-posta veya şifre hatalı.', 'Çok fazla hatalı giriş...',
+      'Geçersiz e-posta formatı.', 'Bu hesap devre dışı bırakılmış.',
+      'Ağ bağlantısı yok.', 'Bilinmeyen hata'
+    - showError(): 'Veritabanı bağlantısı yok.', 'Otomatik giriş başarısız',
+      'Kayıtlı oturum bulunamadı', 'Firebase Auth yüklenemedi'
+
+    =======================
+    D) src/calls.js (~10 metin)
+    =======================
+    - "Çağrı başlatılıyor...", "Bağlandı", "Bağlanıyor...", "Birisi"
+    - "Mikrofon erişimi gerekli"
+    - "Ekran Paylaş", "Ekran bulunamadı"
+
+    =======================
+    E) src/media.js (~15 metin)
+    =======================
+    - "Kamera kapalı", "Kamerayı Aç", "Kamerayı Kapat"
+    - "Mikrofonu Test Et", "Durdur"
+    - "Yükleniyor...", "Paylaşım durduruldu", "Erişim reddedildi"
+    - "E-posta değiştirme şu anlık devre dışı."
+    - "Şifre değiştirilemedi: ...", "Mevcut şifren yanlış."
+    - "✓ Değiştirildi", "Şifreyi Değiştir"
+
+    =======================
+    F) src/firebase-data.js (~12 metin)
+    =======================
+    - "Kullanıcı" (fallback isim, 2 yerde)
+    - "Konuşmalar yüklenemedi: ..."
+    - "🔒 Mesaj", "📷 Fotoğraf", "🎬 Video", "🎤 Ses" (ön izleme)
+    - "Sohbet temizlendi"
+    - "Bu mesajı sildiniz", "Bu mesaj silindi"
+    - " üye"
+
+    =======================
+    G) src/ui-core.js (~10 metin)
+    =======================
+    - "👑 Grup fotoğrafı değiştirildi" (grup log)
+    - "Grubu Düzenle", "Grubu Sil", "Gruptan Ayrıl" (context menu)
+    - "En fazla 3 hesap bulundurabilirsin..." (uyari)
+    - "Sohbet Zaten Temiz", "Bu sohbette silinecek mesaj bulunmuyor."
+    - "🔒 Mesaj", "📷 Fotoğraf", "🎬 Video", "🎤 Ses" (forward)
+
+    =======================
+    H) src/encryption.js (~5 metin)
+    =======================
+    - "Tüm Verileri Sıfırla", "Tüm hesaplar, mesajlar...", "Tümünü Sıfırla"
+    - "Doğrulama başarısız. Hesap silinemedi."
+
+    =======================
+    I) src/settings.js (~20 metin)
+    =======================
+    - Tema isimleri (20 adet): "Varsayılan", "Kraliyet", "Orman", "Şarap" vb.
+    - Kısayol etiketleri (7 adet): "Dosya yükleme menüsü", "Sesli mesaj" vb.
+    - Güncelleme mesajlari: "v"+v+" İndir", "mevcut. İndirmek için tıkla."
+    - Hata mesajlari: "İndirme başarısız:", "Güncelleme hatası:"
+
+    =======================
+    J) src/init-ui.js (~3 metin)
+    =======================
+    - "Durumu Kaldır", "Bu durum kalıcı olarak silinsin mi?", "Kaldır"
+
+    =======================
+    K) src/voice.js (~3 metin)
+    =======================
+    - "Ses kaydı desteklenmiyor.", "Mikrofon erişimi reddedildi."
+    - "🎤 Sesli mesaj"
+
+    =======================
+    L) src/story.js (~1 metin)
+    =======================
+    - "Durumu Kaldır", "Bu durum kalıcı olarak silinsin mi?"
+
+    =======================
+    M) src/capacitor-bridge.js (~1 metin)
+    =======================
+    - "APK indirildi. Lütfen dosyaya tıklayarak manuel olarak kurun."
+
+    =======================
+    ÇÖZÜM ÖNERİSİ
+    =======================
+    Mevcut `tr()` altyapisi calisiyor. Yapilmasi gereken:
+    1. Yukaridaki metinleri `tr('key')` ile değiştirmek
+    2. Eksik çeviri anahtarlarını `translations.js`'e eklemek
+    3. `index.html` icin `data-i18n` attribute'lari kullanilabilir (mevcut
+       `updateStaticI18n()` fonksiyonu bunu destekliyor)
+    4. Her dosyada syntax kontrolü yapmak (`node --check`)
 
 ===============================================================================
 

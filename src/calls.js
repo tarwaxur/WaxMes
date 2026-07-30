@@ -32,7 +32,7 @@ async function startCall(){
   // Show inline call bar
   $('call-bar').style.display='flex';
   $('call-bar-name').textContent=conv.name;
-  $('call-bar-status').textContent='Çağrı başlatılıyor...';
+  $('call-bar-status').textContent=tr('calling');
   $('call-bar-timer').style.display='none';
   // Helper: get avatar HTML for a user
   function makeCallAvatar(id, name, bgColor, avatarLetter, avatarUrl){
@@ -141,7 +141,7 @@ async function startLocalStream(){
         if(!vadSpeaking)vadNoiseFloor=vadNoiseFloor*0.95+avg*0.05
       },150)
     }catch(e){}
-  }catch(e){alert('Mikrofon erişimi gerekli');endCall()}
+  }catch(e){alert(tr('mic_required'));endCall()}
 }
 
 async function createOffer(callId){
@@ -158,7 +158,7 @@ async function createOffer(callId){
     if(store.callPeerConn.iceConnectionState==='connected'||store.callPeerConn.iceConnectionState==='completed'){
       if(store.callState!=='connected'){
         store.callState='connected';store.callStartTime=Date.now();
-        $('call-bar-status').textContent='Bağlandı';
+        $('call-bar-status').textContent=tr('connected');
         $('call-bar-timer').style.display='inline';
         stopRingtone();
         if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
@@ -190,8 +190,8 @@ async function createOffer(callId){
   try {
     var offer=await store.callPeerConn.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:false});
     store.callPeerConn.setLocalDescription(offer);
-    $('call-bar-status').textContent='Bağlanıyor...';
-    if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'offer',sdp:offer,callId:callId,callerName:$('sidebar-username').textContent||'Birisi'})
+    $('call-bar-status').textContent=tr('connecting');
+    if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'offer',sdp:offer,callId:callId,callerName:$('sidebar-username').textContent||tr('someone')})
   }catch(e){console.error(e)}
 }
 
@@ -233,7 +233,7 @@ function fbListenCallSignals(convId){
           // Skip if caller is offline (DM only)
           if(!conv.isGroup&&conv.online===false)return;
           store._callSigOfferId=sid;
-          var callerName=d.callerName||'Birisi';
+          var callerName=d.callerName||tr('someone');
           $('incoming-caller-name').textContent=callerName;
           store.callState='ringing';
           store.pendingCallMsgId=sid;
@@ -255,7 +255,7 @@ function fbListenCallSignals(convId){
         // Incoming answer (we are the caller)
         if(d.action==='answer'&&d.sdp&&store.callPeerConn&&store.callPeerConn.localDescription&&store.callPeerConn.localDescription.type==='offer'){
           (async function(){try{await store.callPeerConn.setRemoteDescription(new RTCSessionDescription(d.sdp));
-            $('call-bar-status').textContent='Bağlandı';
+            $('call-bar-status').textContent=tr('connected');
             $('call-bar-timer').style.display='inline';
             store.callState='connected';
             store.callStartTime=Date.now();
@@ -296,7 +296,7 @@ async function acceptCall(){
   a.id='call-bar-avatar';a.textContent=name.charAt(0);
   avatarContainer.appendChild(a);
   $('call-bar-name').textContent=name;
-  $('call-bar-status').textContent='Bağlanıyor...';
+  $('call-bar-status').textContent=tr('connecting');
   $('call-bar-timer').style.display='none';
   store.callState='calling';
   
@@ -318,7 +318,7 @@ async function acceptCall(){
       if(store.callPeerConn.iceConnectionState==='connected'||store.callPeerConn.iceConnectionState==='completed'){
         if(store.callState!=='connected'){
           store.callState='connected';store.callStartTime=Date.now();
-          $('call-bar-status').textContent='Bağlandı';
+          $('call-bar-status').textContent=tr('connected');
           $('call-bar-timer').style.display='inline';
           if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
           store.callTimerInterval=setInterval(function(){
@@ -346,7 +346,7 @@ async function acceptCall(){
     var answer=await store.callPeerConn.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:false});
     await store.callPeerConn.setLocalDescription(answer);
     store.callState='connected';store.callStartTime=Date.now();
-    $('call-bar-status').textContent='Bağlandı';
+    $('call-bar-status').textContent=tr('connected');
     $('call-bar-timer').style.display='inline';
     if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
     store.callTimerInterval=setInterval(function(){
@@ -525,7 +525,7 @@ function showScreenPicker(sources,callback){
   // Header
   var header=document.createElement('div');
   header.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)';
-  header.innerHTML='<span style="font-size:16px;font-weight:700;color:var(--text)">Ekran Paylaş</span>'+
+  header.innerHTML='<span style="font-size:16px;font-weight:700;color:var(--text)">'+tr('screen_share')+'</span>'+
     '<button style="width:30px;height:30px;border:none;border-radius:7px;background:transparent;cursor:pointer;color:var(--text4);font-size:18px;display:flex;align-items:center;justify-content:center" onclick="this.closest(\'#screen-picker-overlay\').remove()">✕</button>';
   card.appendChild(header);
 
@@ -536,7 +536,7 @@ function showScreenPicker(sources,callback){
 
   function renderScreens(){
     var items=screens;
-    if(items.length===0){listContainer.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4);font-size:13px">Ekran bulunamad\u0131</div>';return}
+    if(items.length===0){listContainer.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4);font-size:13px">'+tr('no_screen_found')+'</div>';return}
     listContainer.innerHTML='';
     var grid=document.createElement('div');
     grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px';

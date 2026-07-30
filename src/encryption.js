@@ -209,24 +209,24 @@ function toggleBackground(val){
 function resetFirebaseAll(){
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'+
-    '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Tüm Verileri Sıfırla</h4>'+
-    '<p style="color:var(--text4);font-size:12px">Tüm hesaplar, mesajlar ve ayarlar silinsin mi? Firebase hesabın da silinir. Bu işlem geri alınamaz.</p>';
+    '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">'+tr('reset_all_data')+'</h4>'+
+    '<p style="color:var(--text4);font-size:12px">'+tr('reset_all_confirm')+'</p>';
   $('delete-password-field').style.display='block';
   $('delete-password-input').value='';
   $('delete-password-input').focus();
-  $('delete-confirm-btn').textContent='Tümünü Sıfırla';
+  $('delete-confirm-btn').textContent=tr('reset_all');
   $('delete-confirm-btn').onclick=function(){
     closeModal('modal-delete',async function(){
       if(window.auth&&auth.currentUser){
         try{
           var email=auth.currentUser.email;
           var pass=$('delete-password-input').value;
-          if(!pass){showError('Şifre gerekli.','encryption.js:210');$('delete-password-field').style.display='none';return}
+          if(!pass){showError(tr('password_required'),'encryption.js:210');$('delete-password-field').style.display='none';return}
           var cred=firebase.auth.EmailAuthProvider.credential(email,pass);
           await auth.currentUser.reauthenticateWithCredential(cred);
           db.collection(COLLECTIONS.USERS).doc(auth.currentUser.uid).delete().catch(console.error);
           await auth.currentUser.delete()
-        }catch(e){$('delete-password-field').style.display='none';showError('Doğrulama başarısız. Hesap silinemedi.','encryption.js:215');return}
+        }catch(e){$('delete-password-field').style.display='none';showError(tr('verification_failed'),'encryption.js:215');return}
       }
       $('delete-password-field').style.display='none';
       $('delete-password-input').value='';
@@ -241,12 +241,12 @@ function resetFirebaseAll(){
 function resetAllData(){
   var body=$('modal-delete').querySelector('.modal-body');
   body.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" stroke="#ef4444" fill="none" stroke-width="1.5" style="margin-bottom:12px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>'+
-    '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">Hesabı Sil</h4>'+
-    '<p style="color:var(--text4);font-size:12px">Bu hesap kalıcı olarak silinsin mi? Diğer hesapların etkilenmez.</p>';
+    '<h4 style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:6px">'+tr('delete_account')+'</h4>'+
+    '<p style="color:var(--text4);font-size:12px">'+tr('delete_confirm_title')+'</p>';
   $('delete-password-field').style.display='block';
   $('delete-password-input').value='';
   $('delete-password-input').focus();
-  $('delete-confirm-btn').textContent='Hesabı Sil';
+  $('delete-confirm-btn').textContent=tr('delete_account');
   $('delete-confirm-btn').onclick=async function(){
     hideDeleteModal();
     var localId=store.activeAccountId,fbUid=fbUserId(),email=window.auth&&auth.currentUser?auth.currentUser.email:null;
@@ -254,7 +254,7 @@ function resetAllData(){
     if(window.auth&&auth.currentUser){
       try{
         var pass=$('delete-password-input').value;
-        if(!pass){$('delete-password-field').style.display='none';showError('Hesap silme iptal edildi.','encryption.js:243');return}
+        if(!pass){$('delete-password-field').style.display='none';showError(tr('delete_cancelled'),'encryption.js:243');return}
         var cred=firebase.auth.EmailAuthProvider.credential(email,pass);
         await auth.currentUser.reauthenticateWithCredential(cred);
         if(window.db&&fbUid){
@@ -280,7 +280,7 @@ db.collection(COLLECTIONS.FRIENDS).doc(otherId).collection(COLLECTIONS.LIST).doc
           await db.collection(COLLECTIONS.USERS).doc(fbUid).delete().catch(console.error)
         }
         await auth.currentUser.delete()
-      }catch(e){$('delete-password-field').style.display='none';showError('Doğrulama başarısız. Hesap silinemedi.','encryption.js:269');return}
+      }catch(e){$('delete-password-field').style.display='none';showError(tr('verification_failed'),'encryption.js:269');return}
     }
     $('delete-password-field').style.display='none';
     $('delete-password-input').value='';
