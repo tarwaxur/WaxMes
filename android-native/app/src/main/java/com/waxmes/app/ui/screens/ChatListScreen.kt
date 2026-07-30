@@ -35,6 +35,7 @@ import com.waxmes.app.data.Repository
 import com.waxmes.app.data.Story
 import com.waxmes.app.data.LocalTranslations
 import com.waxmes.app.ui.theme.*
+import kotlinx.coroutines.launch
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -51,11 +52,16 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
     var contextConv by remember { mutableStateOf<Conversation?>(null) }
     var storiesList by remember { mutableStateOf<List<Story>>(emptyList()) }
     var isRefreshing by remember { mutableStateOf(false) }
+    val refreshScope = rememberCoroutineScope()
 
     val doRefresh: () -> Unit = {
         isRefreshing = true
-        repo.getConversations { list ->
-            convs = list.map { c -> c.copy(isPinned = prefs.getBoolean("pin_${c.id}", false), isMuted = prefs.getBoolean("mute_${c.id}", false), isArchived = prefs.getBoolean("arch_${c.id}", false)) }
+        refreshScope.launch {
+            repo.getConversations { list ->
+                convs = list.map { c -> c.copy(isPinned = prefs.getBoolean("pin_${c.id}", false), isMuted = prefs.getBoolean("mute_${c.id}", false), isArchived = prefs.getBoolean("arch_${c.id}", false)) }
+                isRefreshing = false
+            }
+            kotlinx.coroutines.delay(5000)
             isRefreshing = false
         }
     }
