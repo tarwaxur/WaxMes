@@ -13,13 +13,29 @@ android {
         applicationId = "com.waxmes.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
+        versionCode = 2
         versionName = "0.1.0"
+    }
+
+    signingConfigs {
+        create("waxmes") {
+            val ks = rootProject.file("keystore/waxmes-release.jks")
+            if (ks.exists()) {
+                storeFile = ks
+                storePassword = System.getenv("WAXMES_KEYSTORE_PASS") ?: "waxmes-key-2026"
+                keyAlias = "waxmes"
+                keyPassword = System.getenv("WAXMES_KEY_PASS") ?: "waxmes-key-2026"
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("waxmes")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("waxmes")
         }
     }
 
