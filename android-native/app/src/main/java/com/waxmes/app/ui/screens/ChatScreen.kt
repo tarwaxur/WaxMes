@@ -196,12 +196,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
         }
     }
 
-    // Reply bar
-    AnimatedVisibility(visible = replyToMsg != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
-        replyToMsg?.let { replyMsg ->
-            TargetMessageBar(mode = "reply", content = replyMsg.text, onClose = { replyToMsg = null; keyboard?.hide() })
-        }
-    }
+    // Reply bar (bottomBar icinde, input'un hemen ustunde render ediliyor)
 
     if (contextMsg != null) {
         val msg = contextMsg!!
@@ -269,7 +264,11 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                             .clip(RoundedCornerShape(10.dp)).clickable {
                                 showPinned = false
                                 val idx = msgs.indexOfFirst { it.id == msg.id }
-                                if (idx >= 0) scope.launch { listState.animateScrollToItem(idx) }
+                                if (idx >= 0) scope.launch {
+                                    delay(250)
+                                    listState.animateScrollToItem(idx)
+                                    highlightMsgId = msg.id
+                                }
                             }.padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.width(2.dp).height(34.dp).background(t.accent, RoundedCornerShape(1.dp)))
@@ -528,6 +527,10 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp).navigationBarsPadding().imePadding()
                 ) {
                     Column {
+                        if (replyToMsg != null) {
+                            TargetMessageBar(mode = "reply", content = replyToMsg!!.text,
+                                onClose = { replyToMsg = null; keyboard?.hide() })
+                        }
                         if (editingMsg != null) {
                             TargetMessageBar(mode = "edit", content = editDraft, onClose = { editingMsg = null; editDraft = ""; text = TextFieldValue(""); keyboard?.hide() })
                         }
@@ -596,7 +599,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                 }
             }
         ) { padding ->
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg).imePadding(),
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).background(t.bg),
                 state = listState, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                 items(msgs) { msg ->
                     val isMine = msg.type == "sent"
@@ -635,9 +638,15 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                     AsyncImage(model = msg.image, contentDescription = null,
                                         modifier = Modifier.size(240.dp).clip(RoundedCornerShape(18.dp)).padding(4.dp),
                                         contentScale = ContentScale.Crop)
-                                    if (msg.text.isNotEmpty()) Text(translateSystemMessage(msg.text, tr), modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp), color = t.text3, fontSize = 12.sp)
+                                    if (msg.text.isNotEmpty()) Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
+                                        Text(translateSystemMessage(msg.text, tr), color = t.text3, fontSize = 12.sp)
+                                        if (msg.edited) Text(" (${tr["edited"] ?: "düzenlendi"})", color = t.text4, fontSize = 9.sp)
+                                    }
                                 } else if (msg.text.isNotEmpty()) {
-                                    Text(translateSystemMessage(msg.text, tr), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), color = t.text, fontSize = 15.sp, maxLines = 10)
+                                    Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                                        Text(translateSystemMessage(msg.text, tr), color = t.text, fontSize = 15.sp, maxLines = 10)
+                                        if (msg.edited) Text(" (${tr["edited"] ?: "düzenlendi"})", color = t.text4, fontSize = 9.sp)
+                                    }
                                 }
                                 }
                             }
@@ -650,7 +659,7 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
         // Scroll-to-bottom FAB
         AnimatedVisibility(visible = notAtBottom.value,
             enter = slideInVertically { it * 2 } + fadeIn(), exit = slideOutVertically { it * 2 } + fadeOut(),
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = if (replyToMsg != null) 16.dp else 80.dp)) {
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = if (replyToMsg != null || editingMsg != null) 120.dp else 80.dp)) {
             Surface(shape = CircleShape, color = t.accent, shadowElevation = 8.dp,
                 modifier = Modifier.size(48.dp).clickable {
                     if (msgs.isNotEmpty()) { scope.launch { listState.animateScrollToItem(msgs.size - 1) }; unreadCount = 0 }

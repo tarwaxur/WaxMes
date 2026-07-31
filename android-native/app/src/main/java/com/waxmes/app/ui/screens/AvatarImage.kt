@@ -74,6 +74,7 @@ private fun TextFallback(text: String, color: Color, fontSize: TextUnit,
 
 @Composable
 private fun TextFallbackContent(text: String, color: Color, fontSize: TextUnit) {
-    androidx.compose.material3.Text(text.firstOrNull()?.uppercase() ?: "?", color = color,
+    val ch = text.firstOrNull()?.takeIf { it.isLetter() }?.uppercaseChar()
+    androidx.compose.material3.Text(ch?.toString() ?: "?", color = color,
         fontWeight = FontWeight.Bold, fontSize = fontSize)
 }

@@ -62,7 +62,17 @@ fun WaxMesApp() {
             Surface(modifier = Modifier.fillMaxSize(), color = t.bg) {
                 NavHost(navController, startDestination = if (isLoggedIn) "chats" else "login") {
                     composable("login") { LoginScreen(repo, onLogin = { isLoggedIn = true; navController.navigate("chats") { popUpTo("login") { inclusive = true } } }) }
-                    composable("chats") { ChatListScreen(repo, onChatClick = { navController.navigate("chat/$it") }, onSettingsClick = { navController.navigate("settings") }) }
+                    composable("chats") {
+                        ChatListScreen(repo,
+                            onChatClick = { navController.navigate("chat/$it") },
+                            onSettingsClick = { navController.navigate("settings") },
+                            onLogout = {
+                                repo.logout()
+                                prefs.edit().clear().apply()
+                                isLoggedIn = false
+                                navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                            })
+                    }
                     composable("chat/{convId}") { ChatScreen(repo, it.arguments?.getString("convId") ?: "", onBack = { navController.popBackStack() }) }
                     composable("settings") {
                         SettingsScreen(repo, currentTheme,

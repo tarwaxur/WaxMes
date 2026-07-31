@@ -55,7 +55,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsClick: () -> Unit) {
+fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsClick: () -> Unit, onLogout: () -> Unit) {
     val t = LocalTheme.current
     val tr = LocalTranslations.current
     val ctx = LocalContext.current
@@ -151,8 +151,7 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(20.dp), offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {
                             DropdownMenuItem(text = { Text(tr["settings"] ?: "Settings", color = t.text) }, onClick = { showMenu = false; onSettingsClick() }, leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = t.text3) })
                             DropdownMenuItem(text = { Text(tr["logout"] ?: "Logout", color = Color(0xFFef4444)) }, onClick = {
-                                showMenu = false; repo.logout(); prefs.edit().clear().apply()
-                                (ctx as? android.app.Activity)?.recreate()
+                                showMenu = false; onLogout()
                             }, leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFef4444)) })
                         }
                     }
@@ -246,8 +245,12 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
         }
         } else {
         var newSearchQuery by remember { mutableStateOf("") }
-        val filteredConvs = if (newSearchQuery.isBlank()) convs.filter { !it.isGroup && !it.isArchived }.sortedByDescending { it.online }
-            else convs.filter { !it.isGroup && !it.isArchived && it.name.contains(newSearchQuery, ignoreCase = true) }.sortedByDescending { it.online }
+        val filteredConvs = if (newSearchQuery.isBlank())
+            convs.filter { !it.isGroup && !it.isArchived }.sortedWith(
+                compareByDescending<Conversation> { it.online }.thenBy { it.name.lowercase() })
+        else
+            convs.filter { !it.isGroup && !it.isArchived && it.name.contains(newSearchQuery, ignoreCase = true) }.sortedWith(
+                compareByDescending<Conversation> { it.online }.thenBy { it.name.lowercase() })
         val filteredStories = if (newSearchQuery.isBlank()) storiesList.filter { it.authorId != repo.uid }
             else storiesList.filter { it.authorName.contains(newSearchQuery, ignoreCase = true) && it.authorId != repo.uid }
         PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = doRefresh,

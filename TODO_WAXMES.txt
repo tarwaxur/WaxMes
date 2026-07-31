@@ -4,6 +4,684 @@ Her satirin basindaki kutucugu [ ] -> [x] yaparak cozuldugunu isaretleyebilirsin
 NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 ===============================================================================
 
+[x] 14. [MOBIL] SABITLENEN MESAJA TIKLAYINCA MESAJA GOTURMUYOR
+    Durum: "Pinned Messages" sayfasinda sabitlenen bir mesaja
+           tiklayinca kullanici o mesaja yonlendirilmiyor.
+           Ama ayni sekilde "Search" sonucuna tiklayinca
+           mesaja gidilebiliyor. Pinned'de de ayni davranis
+           isteniyor.
+
+    MEVCUT KOD (ChatScreen.kt):
+
+    A) SEARCH TIKLAMA (CALISIYOR — satir 423-429):
+         Row(...).clickable {
+             showSearch = false
+             val idx = msgs.indexOfFirst { it.id == msg.id }
+             if (idx >= 0) scope.launch {
+                 listState.animateScrollToItem(idx)
+                 highlightMsgId = msg.id        // ← VAR
+             }
+         }
+
+    B) PINNED TIKLAMA (CALISMIYOR — satir 269-272):
+         Row(...).clickable {
+             showPinned = false
+             val idx = msgs.indexOfFirst { it.id == msg.id }
+             if (idx >= 0) scope.launch { listState.animateScrollToItem(idx) }
+             // ← highlightMsgId YOK
+         }
+
+    KODLAR NEREDEYSE AYNI. IKISINDE DE animateScrollToItem VAR.
+    AMA pinned'de CALISMADIGI bildiriliyor.
+
+    ===== OLASI NEDENLER =====
+
+    NEDEN 1 — pinnedMsgs msgs'ten TUREMIYOR olabilir
+      Pinned listesi (satir 259):
+        val pinnedMsgs = msgs.filter { pinnedIds.contains(it.id) && !it.deleted }
+      pinnedIds, repo.getConversationPinnedIds(convId) ile Firestore'dan
+      geliyor (satir 507). Eger pinnedIds icindeki ID'ler, msgs'teki
+      id'lerle UYUSMUYORSA:
+        - pinnedMsgs BOS olur → kullanici hicbir sey goremez (ama
+          kullanici mesajlari goruyor, demek ki eslesme var)
+        - VEYA pinnedIds'e desktop'un clientId'si (local uid) yazildi,
+          mobil ise Firestore doc id (doc.id) bekliyor → pinnedMsgs
+          gorunur ama msgs.indexOfFirst eslesme BULAMAZ mı? Hayir,
+          ayni obje oldugu icin bulur.
+      KONTROL: pinnedIds degerleri msgs'teki id'lerle AYNI MI?
+
+    NEDEN 2 — Sheet kapanma animasyonu ile scroll yarisi
+      showPinned = false → ModalBottomSheet kapanma animasyonu baslar.
+      scope.launch { listState.animateScrollToItem(idx) } ayni anda
+      calisir. Sheet kapanirken arka plandaki mesaj listesi yeniden
+      kompozisyonlanir, listState gecersiz olabilir veya scroll islemi
+      yarim kalabilir.
+      Search'te de ayni yariş var ama calisiyor — fark muhtemelen
+      highlightMsgId'nin recomposition tetiklemesi.
+      COZUM: animateScrollToItem'den ONCE kisa delay ekle:
+        scope.launch {
+            delay(250)          // sheet kapanma animasyonu bekle
+            listState.animateScrollToItem(idx)
+            highlightMsgId = msg.id
+        }
+
+    NEDEN 3 — highlightMsgId eksik oldugu icin kullanici goremiyor
+      Scroll belki CALISIYOR ama mesaj vurgulanmadigi icin kullanici
+      nereye gittigini fark etmiyor (mesaj uzakta, ekran kaydi ama
+      vurgu yok). Search'te mesaj accent renkli vurgulaniyor.
+      COZUM: pinned tiklama koduna da highlightMsgId = msg.id ekle.
+
+    NEDEN 4 — listState mesaj listesine bagli degil
+      ChatScreen'de birden fazla LazyColumn olabilir (mesaj listesi,
+      pinned listesi, search listesi). listState degiskeni mesaj
+      listesine bagli mi kontrol et:
+        val listState = rememberLazyListState()   // mesaj listesi
+      Pinned tiklama bu listState'i kullaniyor mu? Eger pinned
+      listesi kendi LazyColumn'una ait baska bir state kullaniyorsa
+      scroll yanlis listeye uygulanir.
+
+    ===== PLANLI COZUM =====
+
+    ChatScreen.kt:269-272 pinned tiklama kodunu search ile
+    birebir ayni yap:
+
+      Row(...).clickable {
+          showPinned = false
+          val idx = msgs.indexOfFirst { it.id == msg.id }
+          if (idx >= 0) scope.launch {
+              delay(250)                          // sheet kapanma bekle
+              listState.animateScrollToItem(idx)
+              highlightMsgId = msg.id             // vurgu
+          }
+      }
+
+    Ayrica highlightMsgId mesaj Row'unda vurgu olarak kullaniliyor
+    mu kontrol et (search'te nasil ise ayni sekilde).
+
+    ===== TEST ADIMLARI =====
+    1. Bir mesaji sabitle
+    2. Pinned Messages'i ac
+    3. Sabitlenen mesaja tikla
+    4. Sheet kapanmali, sohbette o mesaja kayilmali ve mesaj
+       vurgulanmali (search'teki gibi)
+    5. Mesaj uzaktaysa da dogru konuma gitmeli
+
+===============================================================================
+
+[x] 15. [MOBIL] STORY KISMINDA PROFIL FOTOGRAFIM YERINE "8" YAZIYOR
+    Durum: Story'lerin listelendigi yerde (Story bar), kendi profil
+           dairesinde profil fotografi yerine "8" karakteri
+           gorunuyor. Profil fotografi yuklenmiyor.
+
+    KOK NEDEN (KESIN TESPIT):
+
+    A) "8" NEREDEN GELIYOR?
+       ChatListScreen.kt:112:
+         repo.fetchUserName(repo.uid) { name ->
+             myNameInitial = name.first().uppercase().toString()
+             myAvatarUrl = repo.userCache[repo.uid] ?: ""
+         }
+       Repository.kt:79 (fetchUserName):
+         val name = snap.getString("displayName")
+                    ?: snap.getString("username")
+                    ?: userId.take(8)
+       → Firestore'daki /users/{uid} dokumaninda displayName VE
+         username ALANLARI YOKSA fallback: userId.take(8) doner.
+       → Kullanicinin UID'si "8vMlGKcIULWfktgWKcYRSlm9Ojg1" gibi
+         oldugu icin userId.take(8) = "8vMlGKcI" olur.
+       → name.first() = '8' → ekranda "8" gorunur!
+       → Yani "8", kullanicinin UID'sinin ILK KARAKTERI.
+
+    B) PROFIL FOTOGRAFI NEDEN GORUNMUYOR?
+       ChatListScreen.kt:273-274 (story bar kendi profili):
+         AvatarImage(url = myAvatarUrl, fallbackText = myNameInitial, ...)
+       AvatarImage.kt:36:
+         if (url.startsWith("data:image/")) { decode... }
+         else if (url.isNotEmpty()) { /* Coil */ }
+         else null   // ← avatar bos ise fallback'e duser
+       → myAvatarUrl bos/gecersiz geliyorsa TextFallback gosterilir:
+         TextFallbackContent (AvatarImage.kt:77):
+           text.firstOrNull()?.uppercase() ?: "?"
+         → myNameInitial = "8" oldugu icin "8" basilir.
+
+    C) NEDEN myAvatarUrl BOS GELIYOR OLABILIR?
+       Repository.kt:80:
+         val avatar = snap.getString("avatarUrl")
+                      ?: snap.getString("avatar")
+                      ?: ""
+       Desktop avatar'i 'avatar' alanina base64 dataUrl olarak yazar.
+       Eger Firestore'daki dokumanda 'avatar' alani da YOKSA (kayit
+       sirasinda avatar secilmediyse) bos doner.
+       VEYA avatar dolu ama 'data:image/' prefix'i yoksa:
+       AvatarImage sadece 'data:image/' ile baslayani decode eder,
+       diger durumda Coil'e atar (url.isNotEmpty() ise).
+       Desktop'un yazdigi format 'data:image/png;base64,...' olmali.
+
+    ===== PLANLI COZUM =====
+
+    ADIM 1 — FALLBACK ISMI DUZELT (Repository.kt:79)
+      userId.take(8) YERINE "Kullanıcı" gibi sabit bir fallback:
+        val name = snap.getString("displayName")
+                   ?: snap.getString("username")
+                   ?: "Kullanıcı"
+      Boylece UID karakterleri asla gorunmez.
+      (Tercihen: tr'ye bagli 'Kullanıcı'/'User' kullan)
+
+    ADIM 2 — AVATAR ALANI KONTROL (Repository.kt:80)
+      Desktop 'avatar' alanina yaziyor. 'avatarUrl' alani DESKTOP'TA
+      YOK. Sira onemli degil ama emin olmak icin ikisini de oku.
+      NOT: Desktop'un kayit sirasinda (accounts.js:337) avatar
+      'avatar' alanina yaziliyor. Kullanici avatar secmediyse null.
+      → Kullanici desktop'ta profil fotosu SECMEDIYSE Firestore'da
+        avatar alani yok, mobilde de yok → fallback dogal.
+
+    ADIM 3 — AVATARIMAGE FALLBACK'INI IYILESTIR (AvatarImage.kt:77)
+      Su an: text.firstOrNull()?.uppercase()
+      → '8' gibi istenmeyen karakter gosterebilir.
+      → myNameInitial'i guvenli uret: eger name 'Kullanıcı' veya
+        UID tureviyse '?' goster:
+        val ch = text.firstOrNull()?.uppercase()
+        Text(if (ch?.isLetter() == true) ch else "?", ...)
+      → Ya da displayName'den harf olmayanlari at.
+
+    ADIM 4 — GECICI KONTROL / LOG
+      Repository.kt:83 zaten log basiyor:
+        avatarLen=... validDataUrl=...
+      Firebase Console'dan /users/{uid} dokumanini ac:
+        - displayName dolu mu?
+        - username dolu mu?
+        - avatar dolu mu? data:image/ ile mi basliyor?
+      Bu verilere gore sorunun hangi katmanda oldugunu netlestir.
+
+    ===== TEST ADIMLARI =====
+    1. Firebase Console'da kullanici dokumaninda displayName/username
+       alanlarini kontrol et. Yoksa ekle (veya ADIM 1 fallback'ini uygula)
+    2. Story bar'da kendi profili ac → "8" yerine profil fotografi
+       veya dogru bas harf gorunmeli
+    3. Desktop'ta profil fotosu sec → mobilde story bar'da gorunmeli
+    4. Avatar yoksa kullanici adinin bas harfi gorunmeli (UID degil)
+
+===============================================================================
+
+[x] 16. [MOBIL] "+ NEW" SAYFASINDAKI ARKADAS LISTESI ALFABETIK SIRALANSIN
+    Durum: "+ New" sayfasindaki arkadas listesinde kullanicilar
+           alfabetik siralamada gorunmuyor.
+
+    MEVCUT KOD (ChatListScreen.kt:249):
+      val filteredConvs = if (newSearchQuery.isBlank())
+          convs.filter { !it.isGroup && !it.isArchived }
+               .sortedByDescending { it.online }      // ← ONLINE'A GORE
+      else
+          convs.filter { !it.isGroup && !it.isArchived &&
+                         it.name.contains(newSearchQuery, ignoreCase = true) }
+               .sortedByDescending { it.online }
+
+    → Listeyi 'online' durumuna gore siralyor (cevrimici olanlar ustte).
+    → Alfabetik siralama YOK.
+
+    COZUM (ChatListScreen.kt:249):
+    GUNCELLENEN ISTEK: Aktif (cevrimici) kullanicilar USTTE olsun,
+    AMA aktifler kendi arasinda ve pasifler kendi arasinda ALFABETIK
+    siralansin:
+
+      val filteredConvs = if (newSearchQuery.isBlank())
+          convs.filter { !it.isGroup && !it.isArchived }
+               .sortedWith(
+                   compareByDescending<Conversation> { it.online }   // once aktifler
+                       .thenBy { it.name.lowercase() }               // sonra alfabetik
+               )
+      else
+          convs.filter { !it.isGroup && !it.isArchived &&
+                         it.name.contains(newSearchQuery, ignoreCase = true) }
+               .sortedWith(
+                   compareByDescending<Conversation> { it.online }
+                       .thenBy { it.name.lowercase() }
+               )
+
+    DAVRANIS:
+    - Tum cevrimici arkadaslar ustte (kendi aralarinda A-Z)
+    - Sonra cevrimdisi arkadaslar (kendi aralarinda A-Z)
+    - Arama yapilinca da ayni oncelik korunur
+
+    NOT: Gruplar bu sayfada gizleniyor (filter !it.isGroup) — sadece
+    arkadaslar listeleniyor. Degisiklik sadece siralamayi etkiler.
+
+    ===== TEST ADIMLARI =====
+    1. "+ New" sekmesine git
+    2. Cevaplimci arkadaslar ustte, kendi aralarinda alfabetik olmali
+    3. Cevaplimci olmayanlar altta, kendi aralarinda alfabetik olmali
+    4. Arama yapinca da ayni oncelik korunmali
+
+===============================================================================
+
+[x] 17. [MOBIL] DUZENLENEN MESAJDA "EDITED" ETIKETI GORUNMUYOR
+    Durum: Bir mesaji edit'ledigimde masaustunde "(düzenlendi)"
+           yazisi gorunuyor ama mobilde gorunmuyor. Mesajin
+           duzenlendigi belli olmuyor. Ceviri destekli (TR/EN)
+           olmali.
+
+    MEVCUT DURUM (MOBIL):
+
+    A) FIRESTORE'A YAZILIYOR (Repository.kt:420):
+         msgRef.update("text", newText, "edited", true, "editedTime", editTime)
+       → 'edited: true' ve 'editedTime' Firestore'a YAZILIYOR ✓
+
+    B) AMA HIC OKUNMUYOR:
+       - docToMessage (Repository.kt:42-53) 'edited'/'editedTime'
+         alanlarini OKUMUYOR.
+       - Message modelinde (Models.kt:7) 'edited'/'editedTime'
+         alanlari YOK.
+       - ChatScreen.kt mesaj render ederken 'edited' kontrolu YOK.
+
+    → Zincir kopuk: yaziliyor → okunmuyor → modelde yok → UI'da yok.
+
+    MASAUSTU REFERANSI (CALISIYOR):
+    messaging.js:1303:
+      (m.edited?'<span class="msg-edited">(düzenlendi)</span>':'')
+    Desktop'ta 'edited' bayragi mesaj metninin yaninda
+    "(düzenlendi)" olarak gorunuyor.
+
+    ===== PLANLI COZUM (MOBIL) =====
+
+    ADIM 1 — MESSAGE MODELINE ALAN EKLE (Models.kt:7)
+      data class Message(..., val edited: Boolean = false,
+                         val editedTime: String = "")
+
+    ADIM 2 — docToMessage'A OKUMA EKLE (Repository.kt:42-53)
+      edited = d["edited"] as? Boolean ?: false,
+      editedTime = d["editedTime"] as? String ?: ""
+
+    ADIM 3 — MESAJ RENDER'DA ETIKET GÖSTER (ChatScreen.kt)
+      Mesaj metninin yaninda/altinda:
+        if (msg.edited) {
+            Text(
+                "(${tr["edited"] ?: "edited"})",
+                color = t.text4, fontSize = 9.sp,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+      Dikkat: Masaustunde format "(düzenlendi)" parantezli.
+      Mobilde de ayni: "(düzenlendi)" / "(edited)" seklinde.
+
+    ADIM 4 — CEVIRI ANAHTARI EKLE (Translations.kt)
+      "edited" to "düzenlendi" (TR) / "edited" (EN)
+      Kullanici istegi: "dillerle çevrilecek şekilde"
+      → tr["edited"] anahtari ile TR/EN destegi.
+
+    ADIM 5 — (OPSIYONEL) EDITED TIME GÖSTER
+      Desktop editedTime gostermiyor (sadece '(düzenlendi)').
+      Istersen time'in yaninda:
+        Text("${msg.time}${if (msg.editedTime.isNotEmpty()) " · " + msg.editedTime else ""}")
+      Ama desktop uyumlulugu icin sadece "(edited)" yeterli.
+
+    ===== TEST ADIMLARI =====
+    1. Mobilde bir mesaji duzenle (mesaja basili tut > Edit)
+    2. Mesajin yaninda "(düzenlendi)" yazisi gorunmeli
+    3. Uygulamayi Ingilizceye cevir → "(edited)" gorunmeli
+    4. Masaustunde duzenlenen mesaj mobilde de "(düzenlendi)"
+       gostermeli (Firestore'daki edited:true okunuyor)
+    5. Eski mesajlar (edit edilmemis) etiketsiz kalmali
+
+===============================================================================
+
+[x] 18. [MOBIL] REPLY BAR CALISMIYOR + KLAVYE ACILINCA BUYUK KUTU MESAJLARI ENGELLIYOR
+    Durum: Edit modunda hedef mesaj barı (TargetMessageBar) input'un
+           ustunde yapisik calisiyor ✓. AMA:
+           1) Reply modunda bu bar CALISMIYOR — yanitlanan mesaj
+              gorunmuyor.
+           2) Mesaj yazmak icin klavye acildiginda "Message..."
+              kutusunun ustunde TEMA ILE AYNI ARKA PLAN RENGINDE
+              BUYUK BIR KUTU beliriyor ve mesajlari engelliyor.
+
+    MEVCUT KOD (ChatScreen.kt) — YAPI ANALIZI:
+
+    A) REPLY BAR — ChatScreen.kt:199-204:
+         // Reply bar
+         AnimatedVisibility(visible = replyToMsg != null, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
+             replyToMsg?.let { replyMsg ->
+                 TargetMessageBar(mode = "reply", content = replyMsg.text, onClose = { replyToMsg = null; keyboard?.hide() })
+             }
+         }
+       SORUN: Bu blok Scaffold'un DISINDA yazilmis (satir 199,
+       Scaffold content'i satir 598'de basliyor). Yani:
+       - Reply bar Scaffold layout'una DAHIL DEGIL
+       - ChatScreen'in en dis yapisinda (muhtemelen Column) bir
+         yerde duruyor — yanlis konumda, bu yuzden "calismiyor"
+         gorunuyor ya da ekranda rastgele bir yerde beliriyor.
+
+    B) EDIT BAR — ChatScreen.kt:531-533 (CALISIYOR):
+         if (editingMsg != null) {
+             TargetMessageBar(mode = "edit", content = editDraft, ...)
+         }
+       SORUN YOK: bottomBar Surface Column'u icinde, input'un
+       hemen ustunde. Bu yuzden edit modunda calisiyor.
+
+    C) BUYUK KUTU — muhtemel nedenler:
+
+       NEDEN 1: Reply bar'in Scaffold disinda olmasi.
+       AnimatedVisibility, replyToMsg != null oldugunda aciliyor ama
+       Scaffold disinda oldugu icin ekranda konumlanmamis/duzgun
+       render edilmemis olabilir → tema renginde buyuk bos kutu
+       olarak gorunuyor ve mesajlari ortubiliyor.
+
+       NEDEN 2: CIFT imePadding uygulamasi.
+       - bottomBar Surface: ...navigationBarsPadding().imePadding() (satir 528)
+       - LazyColumn content: ...imePadding() (satir 599)
+       Iki katman da imePadding uyguluyor. Klavye acilinca ikisi
+       toplanabilir ve input'un ustunde gereksiz BUYUK BOSLUK olusur.
+       Bu bosluk, tema arka plan renginde oldugu icin "buyuk kutu"
+       gibi gorunur.
+
+       NEDEN 3: reply bar kapatilinca exit animasyonu yarim kaliyor
+       (slideOutVertically) ve gorunmez ama yer kaplayan bir kutu
+       kaliyor. AnimatedVisibility state'i ile Scaffold content
+       cakisabilir.
+
+    ===== PLANLI COZUM =====
+
+    ADIM 1 — REPLY BAR'I SCAFFOLD ICINE, INPUT'UN USTUNE TASI
+    Reply bar'i bottomBar Surface Column'unun icine (edit bar gibi):
+      bottomBar = {
+          Surface(...) {
+              Column {
+                  if (replyToMsg != null) {
+                      TargetMessageBar(mode = "reply", content = replyToMsg!!.text,
+                          onClose = { replyToMsg = null; keyboard?.hide() })
+                  }
+                  if (editingMsg != null) {
+                      TargetMessageBar(mode = "edit", content = editDraft, ...)
+                  }
+                  Row { /* input + gonder */ }
+              }
+          }
+      }
+    Böylece hem reply hem edit bar input'un hemen ustunde, yapisik
+    ve duzgun gorunur. ChatScreen.kt:199-204'teki Scaffold disindaki
+    AnimatedVisibility blogu KALDIRILMALI.
+
+    ADIM 2 — CIFT imePadding'I DUZELT
+    Iki secenekten birini sec:
+      a) bottomBar'daki imePadding()'i kaldir (LazyColumn'da kalsin)
+      b) LazyColumn'daki imePadding()'i kaldir (bottomBar'da kalsin)
+    IKISI AYNI ANDA OLAMAZ. Scaffold bottomBar zaten klavye
+    acilinca itilir; content icinde ayrica imePadding ekstra bosluk
+    ekler. Oneri: bottomBar'da kalsin, LazyColumn'dan kaldirilsin
+    (satir 599'daki .imePadding() silinmeli).
+
+    ADIM 3 — REPLY BAR KAPANINCA KLAVYE/KUTU TEMIZLIGI
+    onClose'da keyboard?.hide() zaten var. Ek olarak:
+      - replyToMsg = null yapinca AnimatedVisibility yerine
+        direkt if kontrolu kullanildigi icin kutu aninda kaybolur
+        (animasyon yerine kosullu render — buyuk kutu sorununu
+        da cozer).
+
+    ADIM 4 — MESAJ LISTESI USTUNE BASKA OGE VAR MI KONTROL ET
+    Scaffold disinda kalan baska eleman var mi (AnimatedVisibility,
+    Surface, Box) — hepsi Scaffold icindeki content'e tasinmali.
+    Aksi halde benzer "hayalet kutu" sorunlari devam eder.
+
+    ===== TEST ADIMLARI =====
+    1. Bir mesaja basili tut > Reply
+    2. Input'un hemen ustunde "Yanıtlıyorsun:" + mesaj icerigi
+       yapisik gorunmeli (edit modundaki gibi)
+    3. Klavye acikken input'un ustunde BUYUK BOS KUTU olmamali
+    4. Reply bar'i X ile kapat → kutu aninda kaybolmali
+    5. Edit modunda da her sey eskisi gibi calismali
+    6. Klavye acilinca mesajlar tam gorunur olmali (bosluk yok)
+
+===============================================================================
+
+[x] 19. [MOBIL] LOGOUT SONRASI ANA SAYFADA KALINIYOR, GIRIS SAYFASINA GIDILMIYOR
+    Durum: "Çıkış Yap" (Logout) denildiginde kullanici giris sayfasina
+           yonlendirilmiyor. Ana sayfada kaliyor; mesaj listesi bos,
+           story kisminda 10 tane "Waxur Studio" (kendi hesabin
+           story'leri) yan yana listeleniyor. Uygulama sanki hesapta
+           kalinmis gibi kullanilmaya devam edebiliyor.
+
+    MEVCUT KOD (ChatListScreen.kt:153-156):
+      DropdownMenuItem(text = { Text(tr["logout"] ?: "Logout", ...) }, onClick = {
+          showMenu = false; repo.logout(); prefs.edit().clear().apply()
+          (ctx as? android.app.Activity)?.recreate()      // ← YANLIS YAKLASIM
+      }, ...)
+
+    SORUN 1 — onLogout callback'i kullanilmiyor
+    WaxMesApp.kt:70'te DOGRU akis tanimli:
+      onLogout = { repo.logout(); prefs.edit().clear().apply();
+                   isLoggedIn = false;
+                   navController.navigate("login") { popUpTo(0) { inclusive = true } } }
+    AMA ChatListScreen sadece onChatClick + onSettingsClick aliyor
+    (WaxMesApp.kt:65). Logout menü ogesi kendi basina
+    repo.logout() + recreate() yapiyor, isLoggedIn=false ve
+    login'e navigate ETMIYOR.
+
+    SORUN 2 — recreate() guvenilir degil
+    activity.recreate() ile WaxMesApp yeniden kurulur ve
+    isLoggedIn = repo.auth.currentUser != null okunur.
+    Eger auth.signOut() asenkron/tamamlanmamis veya basarisizsa
+    currentUser hala dolu → isLoggedIn=true → ana sayfada kalinir.
+
+    SORUN 3 — Story listener'lar durdurulmuyor
+    repo.logout() (Repository.kt:131-134):
+      fun logout() {
+          if (uid.isNotEmpty()) db.collection("users").document(uid).update("online", false)
+          auth.signOut()
+      }
+    → listenStories / listenConversations listener'larina ABONE
+      kalinir. Uid hala gecerliyse kendi story'leri (Waxur Studio)
+      yuklenmeye devam eder → "10 tane Waxur Studio" sorunu.
+    → prefs temizlendigi icin mesaj listesi bos gorunur.
+
+    ===== PLANLI COZUM =====
+
+    ADIM 1 — ChatListScreen'e onLogout parametresi ekle
+      fun ChatListScreen(repo, onChatClick, onSettingsClick, onLogout) {
+      ...
+      DropdownMenuItem(... "Logout" ..., onClick = {
+          showMenu = false
+          onLogout()          // ← WaxMesApp'teki dogru akis
+      })
+
+    ADIM 2 — WaxMesApp.kt:65'te onLogout'u gecir
+      composable("chats") {
+          ChatListScreen(repo,
+              onChatClick = {...},
+              onSettingsClick = {...},
+              onLogout = {
+                  repo.logout()
+                  prefs.edit().clear().apply()
+                  isLoggedIn = false
+                  navController.navigate("login") { popUpTo(0) { inclusive = true } }
+              })
+      }
+
+    ADIM 3 — Repository.logout()'ta listener'lari temizle
+      Repository'de abonelikler durdurulmali:
+        private val storyListener = mutableListOf<ListenerRegistration>()
+        private val convListener = mutableListOf<ListenerRegistration>()
+      listenStories / listenConversations'da:
+        storyListener.add(db...addSnapshotListener {...})
+      logout() icinde:
+        fun logout() {
+            storyListener.forEach { it.remove() }; storyListener.clear()
+            convListener.forEach { it.remove() }; convListener.clear()
+            if (uid.isNotEmpty()) db.collection("users").document(uid).update("online", false)
+            auth.signOut()
+        }
+
+    ADIM 4 — (OPSIYONEL) Auth state dinle
+      FirebaseAuth.AuthStateListener eklenirse currentUser null
+      oldugunda otomatik login'e donulur:
+        auth.addAuthStateListener { if (it.currentUser == null) { isLoggedIn = false; navigate login } }
+      Bu, logout'un yani sira oturum suresi doldugunda da
+      koruma saglar. AMA dikkat: login ekraninda da dinlenmemeli
+      (ilk acilis). WaxMesApp'te akilli kullanilmalı.
+
+    ===== TEST ADIMLARI =====
+    1. Menuden "Çıkış Yap" → aninda giris sayfasina donulmeli
+    2. Ana sayfada kalinmamali, story'ler gorunmemeli
+    3. Tekrar giris yapilabilmeli
+    4. Cikis sonrasi prefs temizlenmeli (eski hesap verileri yok)
+    5. Cikis yapilan hesabin story'leri yeni oturumda gorunmemeli
+
+===============================================================================
+
+[x] 20. [MOBIL] LOG ANALIZI — 6 KRITIK BULGU (13.07.2026 loglari)
+    Asagidaki bulgular kullanicinin paylastigi konsol loglarindan
+    cikarilmistir (12:51 - 13:08 arasi).
+
+    ===== BULGU 1 (KRITIK): listenStories PERMISSION_DENIED =====
+    Log:
+      13:05:59 listenStories error: PERMISSION_DENIED:
+              Missing or insufficient permissions.  (20+ kez tekrar)
+      13:05:59 listenStories: Check Firestore rules for 'stories'
+              collection - needs allow read: if request.auth != null
+    → Firestore rules'da 'stories' koleksiyonu icin read izni
+      HALA YOK veya Firebase Console'a UYGULANMAMIS.
+    → Kullanici daha once "allow read eklendi" demisti ama loglar
+      aksini gosteriyor: rules ya yayinlanmamis ya da yanlis.
+    COZUM: Firebase Console > Firestore > Rules > stories icin
+      allow read: if request.auth != null EKLE ve PUBLISH ET.
+
+    ===== BULGU 2 (KRITIK): LISTENER'LAR SUREKLI YENIDEN BASLIYOR =====
+    Log'da su cikti CIK SAYISI 10+:
+      12:51:07 Fetching conversations...
+      12:51:07 listenStories: starting listener...
+      12:51:08 Fetching conversations...  (yine)
+      12:51:34 Fetching conversations...  (yine)
+      12:52:31 / 12:52:50 / 12:52:53 / 12:52:55 / 12:53:11 /
+      12:55:20 / 12:55:23 / 13:05:54 ... surekli tekrar
+    → ChatListScreen recompose oldugunda LaunchedEffect(Unit)
+      her seferinde calisiyor → her seferinde YENI onSnapshot
+      listener aciliyor. Eski listener KAPATILMIYOR.
+    → Hem Firestore maliyeti artar hem de duplicate listener'lar
+      birikir. Logda "10 total, 3 own" gibi ciktilari 2 kez
+      gormek bunun kaniti.
+    COZUM: LaunchedEffect(Unit) yerine listener'larin
+      onDispose ile kaldirilmasi + cagri yalnizca ilk yuklemede
+      yapilmasi (flag ile). Repository'de mevcut listener'lari
+      once remove() edip yenisini eklemek.
+
+    ===== BULGU 3: AYNI KULLANICI ICIN fetchUserName TEKRARI =====
+    Log'da sovekaii (oyYrm7vKKbXzjkH0KIzdave0LAb2) icin 10+ kez:
+      12:51:08 fetchUserName: userId=oyYrm7v... fetching...
+      (tekrar tekrar)
+    → nameCache var ama yine de cok istek atiliyor.
+    → Her conversation icin ayri cagri + listener her tetiklenmede
+      tekrar tekrar.
+    COZUM: nameCache'e 'isFetching' bayragi ekle (aynı uid icin
+      ikinci istegi atma). Ayrica Bulgu 2 cozulurse bu da azalir.
+
+    ===== BULGU 4: ESKI mp9... KONUSMALARI DM OLARAK GORUNUYOR =====
+    Log:
+      12:51:09 AVATAR: conv=mp9t0r89cxfj otherId=oyYrm7v... avatarUrl=EMPTY
+      12:51:09 AVATAR: conv=mp9ucs92zv1k otherId=oyYrm7v...
+      12:51:09 AVATAR: conv=mp9un5jasfdg otherId=oyYrm7v...
+      12:51:09 AVATAR: conv=mp9uxkoo8gum otherId=oyYrm7v...
+    → mp9... ID'li 4 konusma, sovekaii'nin DM'i olarak yorumlaniyor.
+    → Bunlar ESKI GRUP konusmalari olabilir (Bug #3 ile ayni kok:
+      isGroup tespiti). 2 uyeli eski gruplar mobilde DM saniliyor.
+    → Sonuc: sovekaii ile 5 ayri konusma gorunuyor (1 dm_ + 4 mp9_).
+    COZUM: Bug #3'teki gibi isGroup tespitine d["type"]=="group"
+      kontrolu eklenmeli + dedup calismali. mp9... konusmalari
+      gruptu ise mobil grupta gostermeli.
+
+    ===== BULGU 5: KENDI PROFIL: name=8vMlGKcI, avatarLen=0 =====
+    Log:
+      12:51:08 fetchUserName: name=8vMlGKcI avatarLen=0 validDataUrl=false
+      12:51:29 Profile loaded: 8vMlGKcI
+    → Kendi kullanici adi UID'nin ilk 8 karakteri (displayName/
+      username Firestore'da yok) ve avatar bos.
+    → Bu, Bug #15'teki "8" sorununun teyidi. Kendi Firestore
+      dokumaninda displayName/username/avatar ALANLARI YOK.
+    COZUM: Bug #15'teki gibi fallback 'Kullanıcı' + avatar kontrolu.
+      Ayrica kullanicinin desktop'ta profil olusturup
+      Firestore'a displayName/username/avatar yazmasi gerekebilir.
+
+    ===== BULGU 6: "3 own, 0 active" STORY DURUMU =====
+    Log:
+      12:51:08 listenStories: 10 total, 3 own, 0 active
+      13:05:59 listenStories: 10 total, 0 own, 3 active
+    → 12:51'de kendi story'leri 3 tane ama "0 active" → expiresAt
+      kontrolunde hata olabilir (kendi story'leri aktif sayilmiyor).
+    → 13:05'te (cikis sonrasi?) own=0, active=3 — baska hesaplarin
+      story'leri. PERMISSION_DENIED almasina ragmen active=3 gelmesi
+      ilginc — rules degisken davraniyor veya cache'ten geliyor.
+    COZUM: listenStories icindeki active kontrolunu ve rules'i
+      birlikte dogrula. 3 own story'nin neden aktif sayilmadigini
+      arastir (expiresAt > now kontrolu).
+
+    ===== NOT: IYI HABERLER (calisanlar) =====
+    - Edit calisiyor: "Merhaba deneme" Firestore'da guncellenmis
+      ve listener ile cekilmis ✓
+    - Reply calisiyor: replyTo=7S6XE2lFq... dogru yazilmis ✓
+    - Avatar dataUrl okumasi calisiyor: waxur_test/deneme/hyper
+      avatarLen=15254/13314/81606 validDataUrl=true ✓
+    - Eski Turkce sesli arama loglari Firestore'da duruyor ama
+      yeni log Ingilizce: "📞 Voice Call (Beta) · 11:43" ✓
+      (Bug #2 desktop tarafinda cozulmus gorunuyor)
+
+===============================================================================
+
+[x] 21. [MOBIL] REPLY GONDERINCE DM ONIZLEMESI (lastMsg) YANLIS
+    Durum: Mobil'den bir mesaji yanitlayip gonderince, DM kutusundaki
+           onizleme (preview) yalnizca yazilan metin yerine
+           "↩ yanitlanan-metin: yeni-metin" gibi gorunuyor. Masaustunde
+           boyle bir sorun yok.
+
+    KOK NEDEN (Repository.kt:236):
+      val lastMsg = if (isMedia) "📷 Photo"
+                    else if (replyToId.isNotEmpty()) "↩ $replyToText: $text"
+                    else text
+      → Mobil reply gonderirken lastMsg'e "↩ <replyText>: <text>"
+        formatini yaziyor. Bu, DM listesi onizlemesinde gorunuyor.
+
+    MASAUSTU KARSILASTIRMA (messaging.js:196 sendMessage):
+      if(conv){conv.lastMsg=msg._decrypted||txt; ...}
+      → Desktop'ta reply gonderilse bile lastMsg SADECE yeni mesaj
+        metni oluyor. replyTo/replyText bilgisi mesaj dokumaninda
+        saklaniyor ama onizlemeye yansimiyor.
+
+    LOGLARDA DOGRULAMA (kullanici loglari):
+      docToMessage: id=M0s96hNUo4b97XK1wODP text=↩ Deneme: Deneme replyTo=null
+      → Bu "↩ Deneme: Deneme" mesaji mobil reply ile gonderilmis ve
+        text alanina da oyle yazilmis. (Eski kayit olabilir veya
+        text'e de yaziliyor — kontrol edilmeli.)
+
+    ===== PLANLI COZUM =====
+
+    ADIM 1 — Repository.kt:236 lastMsg'i desktop ile ayni yap:
+      val lastMsg = if (isMedia) "📷 Photo" else text
+      → replyToId olsa da lastMsg = sadece yazilan metin.
+
+    ADIM 2 — (KONTROL) sendMessage'da msg["text"] reply ozel
+    isaretleri iceriyor mu?
+      Satir 233: msg["text"] = text → text'e hicbir ek yok ✓
+      Yani mesaj dokumanina replyTo/replyText ayri alanlarda yaziliyor.
+      Sadece lastMsg'te yanlis format var.
+
+    ADIM 3 — (OPSIYONEL) MEVCUT ESKI KAYITLAR
+      Firestore'da "↩ ..." seklinde onizlemeye yansiyan eski
+      conversation.lastMsg kayitlari kaldi. Bunlar zamanla yeni
+      mesajlarla guncellenir, tek tek duzeltmeye gerek yok.
+
+    ADIM 4 — DESKTOP UYUMLULUK KONTROL
+      Desktop'ta reply mesaji gosterirken mesajin icinde
+      replyText'i "⤴" ile gosteriyor (messaging.js:1336-1337).
+      Mobil de sohbet icinde reply'yi gosteriyor mu kontrol edilmeli
+      (ChatScreen'de msg.replyTo/replyText renderi). Bu sorun
+      onizleme ile ilgili; sohbet ici reply gosterimi ayri.
+
+    ===== TEST ADIMLARI =====
+    1. Mobil'den bir mesaji yanitla, metin yaz, gonder
+    2. DM listesinde onizleme SADECE yazilan metni gostermeli
+       ("↩ ..." olmamali)
+    3. Sohbetin icinde yanitlanan mesaj (replyTo/replyText) dogru
+       gosterilmeli (ayri alanlardan)
+    4. Masaustunde ayni konusmanin onizlemesi ayni metni gostermeli
+    5. Masaustunden reply gonder → mobilde de sadece metin gorunmeli
+
+===============================================================================
+
 [x] 13. [DESKTOP] AYARLARDA DIL SEKME SI GIRILEMIYOR
     Durum: Ayarlar sayfasinda "Dil" sekmesine tiklaninca sayfa
            acilmiyor, en son acik olan sekmelerin icerigi gorunmeye

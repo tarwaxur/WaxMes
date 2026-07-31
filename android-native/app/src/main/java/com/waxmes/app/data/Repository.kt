@@ -61,7 +61,9 @@ fun docToMessage(doc: DocumentSnapshot, uid: String): Message {
         isForwarded = d["isForwarded"] as? Boolean ?: false,
         originalSender = d["originalSender"] as? String ?: "",
         forwardComment = d["forwardComment"] as? String ?: "",
-        createdAt = createdAt)
+        createdAt = createdAt,
+        edited = d["edited"] as? Boolean ?: false,
+        editedTime = d["editedTime"] as? String ?: "")
 }
 
 class Repository {
@@ -71,12 +73,19 @@ class Repository {
     val nameCache = mutableMapOf<String, String>()
     val userCache = mutableMapOf<String, String>()
     val onlineCache = mutableMapOf<String, Boolean>()
+    private val storyListeners = mutableListOf<com.google.firebase.firestore.ListenerRegistration>()
+    private val convListeners = mutableListOf<com.google.firebase.firestore.ListenerRegistration>()
+    private val msgListeners = mutableListOf<com.google.firebase.firestore.ListenerRegistration>()
+    private val pendingNameFetches = mutableMapOf<String, MutableList<(String) -> Unit>>()
 
     fun fetchUserName(userId: String, onResult: (String) -> Unit) {
         if (nameCache.containsKey(userId)) { onResult(nameCache[userId]!!); return }
+        val pending = pendingNameFetches[userId]
+        if (pending != null) { pending.add(onResult); return }
+        pendingNameFetches[userId] = mutableListOf(onResult)
         appLog("fetchUserName: userId=$userId fetching from Firestore...")
         db.collection("users").document(userId).get(Source.SERVER).addOnSuccessListener { snap ->
-            val name = snap.getString("displayName") ?: snap.getString("username") ?: userId.take(8)
+            val name = snap.getString("displayName") ?: snap.getString("username") ?: "Kullanıcı"
             val avatar = snap.getString("avatarUrl") ?: snap.getString("avatar") ?: ""
             val online = snap.getBoolean("online") ?: false
             nameCache[userId] = name; userCache[userId] = avatar; onlineCache[userId] = online
@@ -84,8 +93,11 @@ class Repository {
             if (avatar.isNotEmpty() && avatar.length > 10 && !avatar.startsWith("data:image/")) {
                 appLog("AVATAR_WARN: userId=$userId avatar does NOT start with data:image/ prefix! Starts with: ${avatar.take(20)}")
             }
-            onResult(name)
-        }.addOnFailureListener { e -> appLog("fetchUserName FAIL: ${e.message}") }
+            pendingNameFetches.remove(userId)?.forEach { it(name) }
+        }.addOnFailureListener { e ->
+            appLog("fetchUserName FAIL: ${e.message}")
+            pendingNameFetches.remove(userId)?.forEach { it(userId.take(8)) }
+        }
     }
 
     fun fetchUserStatus(userId: String, onResult: (String, Boolean, String) -> Unit) {
@@ -98,7 +110,7 @@ class Repository {
             onResult(cachedName, cachedOnline, cachedAvatar); return
         }
         db.collection("users").document(userId).get(Source.SERVER).addOnSuccessListener { snap ->
-            val name = snap.getString("displayName") ?: snap.getString("username") ?: userId.take(8)
+            val name = snap.getString("displayName") ?: snap.getString("username") ?: "Kullanıcı"
             val avatar = snap.getString("avatarUrl") ?: snap.getString("avatar") ?: ""
             val online = snap.getBoolean("online") ?: false
             appLog("fetchUserStatus: Firestore -> name=$name online=$online avatarField='${snap.getString("avatarUrl") ?: snap.getString("avatar") ?: "EMPTY"}' avatarLen=${avatar.length}")
@@ -129,6 +141,12 @@ class Repository {
     }
 
     fun logout() {
+        storyListeners.forEach { it.remove() }; storyListeners.clear()
+        convListeners.forEach { it.remove() }; convListeners.clear()
+        msgListeners.forEach { it.remove() }; msgListeners.clear()
+        pendingNameFetches.clear()
+        nameCache.clear(); userCache.clear(); onlineCache.clear()
+        ownStories.clear(); activeStories.clear()
         if (uid.isNotEmpty()) db.collection("users").document(uid).update("online", false)
         auth.signOut()
     }
@@ -179,7 +197,8 @@ class Repository {
     }
 
     fun listenConversations(onChange: (List<Conversation>) -> Unit) {
-        db.collection("conversations").whereArrayContains("memberIds", uid).addSnapshotListener { snap, _ ->
+        convListeners.forEach { it.remove() }; convListeners.clear()
+        convListeners.add(db.collection("conversations").whereArrayContains("memberIds", uid).addSnapshotListener { snap, _ ->
             if (snap == null) return@addSnapshotListener
             val convs = snap.documents.mapNotNull { docToConversation(it, uid, nameCache, userCache, onlineCache) }
             var pending = 0
@@ -195,15 +214,17 @@ class Repository {
                 }
             }
             if (pending == 0) onChange(dedup(convs))
-        }
+        })
     }
 
-    fun listenMessages(convId: String, onChange: (List<Message>) -> Unit) =
-        db.collection("conversations").document(convId).collection("messages")
+    fun listenMessages(convId: String, onChange: (List<Message>) -> Unit) {
+        msgListeners.forEach { it.remove() }; msgListeners.clear()
+        msgListeners.add(db.collection("conversations").document(convId).collection("messages")
             .orderBy("createdAt", Query.Direction.ASCENDING).addSnapshotListener { snap, _ ->
                 if (snap == null) return@addSnapshotListener
                 onChange(snap.documents.map { docToMessage(it, uid) })
-            }
+            })
+    }
 
     fun getConversationName(convId: String, onResult: (String) -> Unit = {}) {
         db.collection("conversations").document(convId).get().addOnSuccessListener { snap ->
@@ -233,7 +254,7 @@ class Repository {
         else msg["text"] = text
         if (replyToId.isNotEmpty()) { msg["replyTo"] = replyToId; msg["replyText"] = replyToText }
         db.collection("conversations").document(convId).collection("messages").add(msg)
-        val lastMsg = if (isMedia) "📷 Photo" else if (replyToId.isNotEmpty()) "↩ $replyToText: $text" else text
+        val lastMsg = if (isMedia) "📷 Photo" else text
         db.collection("conversations").document(convId)
             .set(mapOf("lastMsg" to lastMsg, "lastActivity" to com.google.firebase.firestore.FieldValue.serverTimestamp()),
                 com.google.firebase.firestore.SetOptions.merge())
@@ -247,7 +268,8 @@ class Repository {
 
     fun listenStories(onChange: (List<Story>) -> Unit) {
         appLog("listenStories: starting listener on 'stories' collection")
-        db.collection("stories").addSnapshotListener { snap, error ->
+        storyListeners.forEach { it.remove() }; storyListeners.clear()
+        storyListeners.add(db.collection("stories").addSnapshotListener { snap, error ->
             if (error != null) { appLog("listenStories error: ${error.message}"); appLog("listenStories: Check Firestore rules for 'stories' collection - needs allow read: if request.auth != null"); return@addSnapshotListener }
                 if (snap == null) return@addSnapshotListener
                 val all = snap.documents.mapNotNull { doc ->
@@ -271,11 +293,11 @@ class Repository {
                 activeStories = all.filter { (it.expiresAt == 0L || it.expiresAt > now) && !it.viewers.contains(uid) }.toMutableList()
                 appLog("listenStories: ${all.size} total, ${ownStories.size} own, ${activeStories.size} active")
                 onChange(all)
-            }
+            })
     }
 
     fun createStory(text: String, type: String = "text", onResult: (String?) -> Unit) {
-        val myName = nameCache[uid] ?: uid.take(6)
+        val myName = nameCache[uid] ?: "Kullanıcı"
         val storyData = mutableMapOf<String, Any>(
             "authorId" to uid, "authorName" to myName,
             "authorAvatar" to (userCache[uid] ?: myName.first().uppercase().toString()),
