@@ -195,6 +195,15 @@ fun translateSystemMessage(msg: String, translations: Map<String, String>): Stri
     if (msg.contains("📷 Photo") || msg.contains("📷 Fotoğraf") || msg == "📷 Photo" || msg.startsWith("📷")) {
         return "📷 " + (translations["image"]?.removePrefix("📷 ") ?: "Photo")
     }
+    // Voice call logs: "📞 Sesli arama · START → END (DURATION)"
+    if (lower.contains("sesli arama") || lower.contains("voice call")) {
+        val callLabel = translations["voice_call"]?.removeSuffix(" (Beta)") ?: "Sesli Arama"
+        // Replace "Sesli arama" or "Voice Call" with translated label
+        val rest = msg
+            .replace(Regex("(?i)Sesli arama"), callLabel)
+            .replace(Regex("(?i)Voice Call"), callLabel)
+        return rest
+    }
     // Reply messages: "↩ text: text" - keep as-is, they contain user content
     return msg
 }

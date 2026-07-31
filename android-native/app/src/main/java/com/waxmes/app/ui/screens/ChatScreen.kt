@@ -43,6 +43,7 @@ import com.waxmes.app.data.appLog
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.launch
 import com.waxmes.app.data.LocalTranslations
+import com.waxmes.app.data.translateSystemMessage
 import com.waxmes.app.ui.screens.AvatarImage
 import com.waxmes.app.ui.theme.*
 
@@ -320,9 +321,9 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
                                     AsyncImage(model = msg.image, contentDescription = null,
                                         modifier = Modifier.size(240.dp).clip(RoundedCornerShape(18.dp)).padding(4.dp),
                                         contentScale = ContentScale.Crop)
-                                    if (msg.text.isNotEmpty()) Text(msg.text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp), color = t.text3, fontSize = 12.sp)
+                                    if (msg.text.isNotEmpty()) Text(translateSystemMessage(msg.text, tr), modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp), color = t.text3, fontSize = 12.sp)
                                 } else if (msg.text.isNotEmpty()) {
-                                    Text(msg.text, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), color = t.text, fontSize = 15.sp, maxLines = 10)
+                                    Text(translateSystemMessage(msg.text, tr), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), color = t.text, fontSize = 15.sp, maxLines = 10)
                                 }
                                 }
                             }
