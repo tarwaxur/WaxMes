@@ -79,6 +79,11 @@ fun ChatScreen(repo: Repository, convId: String, onBack: () -> Unit) {
     }
 
     LaunchedEffect(convId) {
+        // Reset states when conversation changes
+        replyToMsg = null
+        text = ""
+        mediaUri = null
+        showProfileSheet = false
         repo.listenMessages(convId) { msgs = it }
         repo.getConversationName(convId) { name -> convName = name }
         repo.getConversationStatus(convId) { displayName, online, avatar ->

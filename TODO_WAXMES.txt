@@ -1,167 +1,1400 @@
 ===============================================================================
-WAXMES — DM SIRALAMASI & MESAJ YUKLEME SORUNU (KESIN TESPIT)
+WAXMES — BUG RAPORU
+Her satirin basindaki kutucugu [ ] -> [x] yaparak cozuldugunu isaretleyebilirsin.
+NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 ===============================================================================
 
-SORUN: Kullanıcı mobilden hyper'e mesaj atıyor. Masaüstü açılınca
-DM listesinde hyper'in son mesajı ESKİ mesaj olarak görünüyor.
-Kullanıcı hyper sohbetine girince YENİ mesaj geliyor.
+[x] 13. [DESKTOP] AYARLARDA DIL SEKME SI GIRILEMIYOR
+    Durum: Ayarlar sayfasinda "Dil" sekmesine tiklaninca sayfa
+           acilmiyor, en son acik olan sekmelerin icerigi gorunmeye
+           devam ediyor.
+
+    KOK NEDEN (KESIN TESPIT):
+    settings.js:10 showSettingsCat(cat) fonksiyonunda 'language'
+    kategorisi ICIN HICBIR KOD YOK!
+
+    MEVCUT KATEGORILER (settings.js satirlar):
+      14:   if(cat==='profile')    { ... }
+      24:   else if(cat==='theme') { ... }
+      29:   else if(cat==='privacy'){ ... }
+      58:   else if(cat==='media') { ... }
+     128:   else if(cat==='shortcuts'){ ... }
+     153:   else if(cat==='danger') { ... }
+     157:   else if(cat==='about')  { ... }
+     (172): requestAnimationFrame(...)
+
+    → 'language' icin else-if BLOGU HIC YOK!
+    → Kullanici "Dil" sekmesine tiklayinca showSettingsCat('language')
+      cagrilir, satir 11-12 ile sag menude aktif class degisir AMA
+      content.innerHTML HIC DEGISMEDIGI icin onceki sayfanin icerigi
+      gorunur. Bu yuzden "en son hangi sayfa aciksa o sayfa geliyor".
+
+    DESTEKLEYICI KANIT:
+    index.html:254'te 'language' kategorisi VAR (menu ogesi mevcut):
+      <div class="settings-cat" data-cat="language">... Dil ...</div>
+    translations.js:148-151,468-471 dil sayfasi icin CEVIRI ANAHTARLARI
+      HAZIR:
+        select_language: 'Dil Seçin' / 'Select Language'
+        available_languages: 'Kullanılabilir Diller'
+        current_language: 'Mevcut Dil'
+        use_device_lang: 'Sistem Dilini Kullan'
+    → Demek ki dil sayfasi render kodu YAZILMAMIS ama anahtarlar
+      onceden hazirlanmis.
+
+    COZUM:
+    settings.js showSettingsCat'e 'language' else-if blogu ekle:
+      } else if(cat==='language'){
+        var langs=getLanguages();
+        var cur=getCurrentLang();
+        var html='<div class="stitle">'+tr('select_language')+'</div>'+
+          '<div class="stitle-sub">'+tr('available_languages')+'</div>'+
+          '<div style="display:flex;flex-direction:column;gap:6px">';
+        for(var li=0;li<langs.length;li++){
+          var lg=langs[li];
+          var isActive=(lg.code===cur)?'style="background:rgba(129,140,248,.08);border-color:var(--accent)"':'';
+          html+='<button data-action="select-lang" data-lang="'+lg.code+'" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:13px;color:var(--text2);transition:all .15s" '+isActive+'>'+
+            '<span style="font-size:20px">'+lg.flag+'</span><span style="flex:1;text-align:left">'+lg.name+'</span>'+
+            (isActive?'<span style="color:var(--accent);font-size:12px">✓</span>':'')+
+          '</button>'
+        }
+        html+='</div>'+
+          '<div style="margin-top:16px"><button data-action="use-device-lang" style="padding:8px 16px;border:none;border-radius:8px;background:var(--bg3);color:var(--text3);font-family:inherit;font-size:12px;cursor:pointer">'+tr('use_device_lang')+'</button></div>';
+        content.innerHTML=html
+      }
+
+    AYNI ZAMANDA init-ui.js settings-content click handler'ina
+    'select-lang' ve 'use-device-lang' aksiyonlarini ekle:
+      case 'select-lang': if(t.dataset.lang)setLanguage(t.dataset.lang);break;
+      case 'use-device-lang': setLanguage(detectSystemLanguage());break;
+
+    NOT: www/ (eski kopya) index.html'de 'language' menu ogesi YOK,
+    sadece kok index.html'de var. Yani bu yeni eklenmis bir sekme,
+    render kodu unutulmus.
 
 ===============================================================================
-1. KONSOL LOG ANALİZİ
-===============================================================================
 
-00:45:40 [LOG] [msg] cache-loaded dm_...TzLZ... 8 msgs
-00:45:40 [LOG] [upd] preview hyper = Deneme act: 1785247026177
+[ ] 1. MESAJ YAZMA KUTUSUNUN USTUNDE BUYUK KUTU / BAR GORUNUYOR
+    Durum: Sohbet ekraninda mesaj yazma kutusunun hemen ustunde
+           buyuk bir kutu/bar gorunuyor. Eski bir sorunun tekrari.
 
-"cache-loaded" = Mesajlar localStorage'dan OKUNDU, Firestore'dan DEGIL.
-Bu 8 mesaj, kullanıcının masaüstünü en son kapattığı andaki mesajlar.
-Mobilden sonra atılan mesajlar bu cache'te YOK.
-Sadece localStorage'ta ne varsa o yuklendi.
+    BUYUK KUTU OLABILECEK OGELLER (index.html satirlar):
 
-00:45:38 [LOG] [conv] added dm_...TzLZ... dm lastMsg:Deneme
-Conversation listener ise DOGRU lastMsg'i goruyor (Firestore'dan).
-Yani:
-  - Conversation listener: hyper.lastMsg = "Deneme" ← dogru (Firestore'dan)
-  - Message cache: hyper mesajlari = 8 eski mesaj ← YANLIS (localStorage)
-  - updateConvPreview: conv.lastMsg = "Deneme" ← dogru guncellendi
+    a) EMOJI PICKER (index.html:207-218) — 320x260px BUYUK KUTU
+         display:none ile baslar. toggleEmojiPicker() acar/kapar.
+         YANLIS GORUNME NEDENI:
+         - document click handler (messaging.js:640-643) sadece
+           disari tiklandiginda kapatir. Eger acikken baska bir
+           ekrana gecilirse kapanmadan kalabilir.
+         - selectConversation() / goToHome() / resetSessionState()
+           icinde emoji picker kapatilmaz! Sohbet degisince picker
+           acik kalir.
+       COZUM: selectConversation() ve resetSessionState() icinde
+              ep.style.display='none'; store.emojiPickerVisible=false
+              ekle.
 
-Ama kullanici sohbete GIRINCE:
-  selectConversation() → fbListenMessages() basliyor
-  → Firestore'dan yeni mesajlar geliyor
-  → Mesaj kutusunda yeni mesaj gorunuyor ✅
-  → Ama zaten goruntulenmis olan preview'i guncellemiyor
+    b) UPLOAD MENU (index.html:201-205) — min-width:160px kutu
+         classList.toggle('active') ile acilir.
+         YANLIS GORUNME NEDENI:
+         - toggleUploadMenu() sadece .active class'ini degistirir.
+         - Eger acikken baska ekrana gecilirse kapanmaz.
+         - hideUploadMenu() sadece .active'i kaldirir.
+         - selectConversation() / goToHome() icinde hideUploadMenu()
+           cagrilmiyor.
+       COZUM: selectConversation() ve goToHome() icinde
+              hideUploadMenu() ekle.
 
-===============================================================================
-2. ASIL NEDEN: fbListenMessages SADECE AKTIF KONUSMA ICIN BASLATILIYOR
-===============================================================================
+    c) REPLY BAR (index.html:225-228) — mesaj yanitla cubugu
+         store.replyToMsgId doluysa gosterilir (updateReplyBar).
+         YANLIS GORUNME NEDENI:
+         - Kullanici bir mesaja "Yanitla" deyip konusmayi degistirirse
+           store.replyToMsgId SIFIRLANMAZ! (resetSessionState'te
+           sifirlaniyor ama selectConversation'da sifirlanmiyor)
+         - Boylece yeni konusmada da reply bar gorunur.
+       COZUM: selectConversation() icinde replyToMsgId/replyToMsgText
+              sifirla + updateReplyBar() cagir.
 
-showApp() (messaging.js:2) su asamalari icerir:
-  1. loadMessages() → localStorage'dan tum konusma ve mesajlari yukler
-  2. fbListenConversations() → konusma dokumanlarini canli dinler
-     (lastMsg, lastActivity guncellenir ✅)
-  3. fbListenMessages() → SADECE activeConvId icin cagrilir
-     (aktif konusma yoksa HIC KONUSMA ICIN CAGRIlMAZ ❌)
+    d) VOICE RECORDER (index.html:219-224) — ses kayit cubugu
+         startVoice() icinde display:flex yapilir.
+         YANLIS GORUNME NEDENI:
+         - Kayit baslatilip mikrofon erisimi reddedilirse
+           startVoice() catch bloguna duser ama voice-recorder
+           display:flex kalmis olabilir.
+         - cancelVoice() / sendVoice() display:'' yapar ama hata
+           durumunda cagrilmayabilir.
+       COZUM: startVoice() catch blogunda da UI'i geri al:
+              $('voice-recorder').style.display='none';
+              $('chat-input').style.display='';
+              $('chat-send').style.display='';
 
-fbListenMessages'in iki modu var:
-  a) Mesajlar cached ise (localStorage'da var): forward listener baslatir
-     → YALNIZCA YENI mesajlari Firestore'dan canli alir
-  b) Mesajlar cached degilse: Firestore'dan toplu ceker + forward listener
+    e) CALL BAR (index.html:156-180) — cagri cubugu, min-height:120px
+         startCall() icinde display:flex yapilir.
+         YANLIS GORUNME NEDENI:
+         - Cagri baslatilip bir hata olursa endCall() cagrilmayabilir.
+         - endCall() satir 365'te display:none yapar.
+       COZUM: startCall() icindeki hata yollarinda da $('call-bar')
+              .style.display='none' ekle.
 
-Yani:
-  - Konusma LISTESI (isimler, son mesaj, siralama):
-    Firestore listener ile CANLI ✅
-  - Konusma MESAJLARI (mesaj icerikleri):
-    Sadece kullanici o konusmayi acinca yukleniyor ❌
+    f) INCOMING CALL (index.html:182-196) — gelen arama cubugu
+         display:none ile baslar.
 
-Bu nedenle mobilden mesaj atinca:
-  - Firestore'da konusmanin lastMsg'i guncelleniyor ✅
-  - Desktop konusma listesinde dogru gorunuyor ✅
-  - Ama o konusmanin mesaj listesi localStorage'daki ESKI halinde ❌
-  - Desktop'ta hyper'e tıklanınca fbListenMessages basliyor,
-    forward listener yeni mesaji cekiyor ✅
+    KESIN TESPIT ICIN: Hangi kutu gorunuyor, ona gore cozum
+    uygulansin. En olasi adaylar: a) emoji picker (buyuk 320x260)
+    veya c) reply bar (mesaj yanitla sonrasi konusma degistirilince).
 
-===============================================================================
-3. COZUM: Tum Konusmalar Icin fbListenMessages Baslat
-===============================================================================
+    MOBIL SPESIFIK BULGULAR:
+    a) Mobile yazma kutusu ustundeki kutu BUYUK IHTIMALLE REPLY BAR
+       (ChatScreen.kt:136-152). AnimatedVisibility ile acilir:
+         AnimatedVisibility(visible = replyToMsg != null, ...) {
+           replyToMsg?.let { ... Surface(...) ... }
+         }
+       SORUN: replyToMsg state'i konusma degistirilince SIFIRLANMIYOR.
+       ChatScreen'e girerken replyToMsg null baslatiliyor mu?
+       ChatScreen.kt'in ust kisminda:
+         var replyToMsg by remember { mutableStateOf<Message?>(null) }
+       Eger 'remember' ile tanimliysa, screen yeniden olusturuldugunda
+       sifirlanir. AMA navController ayni composable'i tekrar
+       kullaniyorsa remember state KORUNUR!
+       COZUM: LaunchedEffect(convId) { replyToMsg = null } ekle.
+       Boylece konusma degisince reply bar sifirlanir.
 
-showApp() icinde, fbListenConversations'tan sonra, tum konusmalar
-icin fbListenMessages cagrilmali:
+    b) Mobilde EMOJI / UPLOAD / VOICE kutulari desktop gibi absolute
+       positioned degil, Compose Row icinde. Emoji/upload/voice
+       mobilde "coming soon" olabilir (ChatScreen.kt:214-223'te
+       menu item'lari gorunuyor). Yani buyuk kutu adayi buyuk
+       ihtimalle reply bar.
 
-  // showApp icinde (messaging.js ~49):
-  if(window.db&&currentFbUid){
-    fbListenConversations(currentFbUid);
-    fbListenStories();
-    startPendingListener(currentFbUid);
+    c) Ek kontrol: ChatScreen.kt:146 IconButton(onClick = { replyToMsg = null })
+       Reply bar'i kapatma butonu VAR. Kullanici X'e basinca
+       kapaniyor mu? Eger kapanmiyorsa state guncellemesi hatali.
 
-    // YENI: Tum konusmalar icin mesaj dinleyicisini baslat
-    for(var _sci=0;_sci<store.conversations.length;_sci++){
-      fbListenMessages(store.conversations[_sci].id);
-    }
-  }
-
-Bu sayede her konusma icin bir forward listener acilir.
-Firestore'daki yeni mesajlar anlik olarak alinir.
-Preview guncellenir, siralama dogru olur.
-
-DIKKAT: Her konusma icin onSnapshot listener'i acilir.
-Bu Firestore okuma sayisini artirir. 50 konusma = 50 listener.
-Firestore siniri: 100 eszamanli listener (guvenli tarafta).
-Okuma maliyeti: her yeni mesajda 1 okuma + listener bildirimi.
-Bu genelde kabul edilebilir bir maliyettir.
-
-ALTERNATIF COZUM (daha az maliyetli):
-  Sadece son 10 konusma icin listener ac, geri kalanlar icin
-  kullanici acinca yukle:
-    var convs=store.conversations.slice().sort(function(a,b){
-      return (b.lastActivity||0)-(a.lastActivity||0);
-    });
-    for(var _sci=0;_sci<Math.min(convs.length,10);_sci++){
-      fbListenMessages(convs[_sci].id);
-    }
-
-===============================================================================
-4. EK SORUN: updateConvPreview CI FTOSU (regresyon)
-===============================================================================
-
-Iki farkli updateConvPreview var, ayni isimde:
-
-firebase-data.js:327 — 3 parametreli, icinde renderConversations() ✅
-messaging.js:1090 — 1 parametreli, icinde renderConversations() YOK ❌
-
-messaging.js sonra yuklendigi icin firebase-data.js'dekini ezer.
-Bu nedenle firebase-data.js'deki debounced renderConversations cagrisi
-OLU KOD'dur ve hic calismaz.
-
-Cozum: messaging.js'deki updateConvPreview'in sonuna renderConversations
-ekle veya iki fonksiyonu birlestir.
+    d) Ek kontrol: reply bar Surface icindeki Row, message listesi
+       ve input arasinda mi konumlaniyor? ChatScreen'de Column
+       yapisinda: LazyColumn (mesajlar) → ReplyBar → InputRow
+       seklinde olmali. Eger yanlis konumdaysa goruntuye buyuk
+       kutu olarak yansir.
 
 ===============================================================================
-5. SON DURUM (NE YAPILACAK)
+
+[ ] 2. SESLI ARAMA LOG'LARI DILE GORE DEGISMIYOR (HARDCODED TURKCE)
+    Durum: Uygulama Ingilizce kullaniliyor ama sohbet icindeki arama
+           log'lari ("📞 Sesli arama") Turkce gorunuyor.
+
+    NEDEN (calls.js:384):
+      var endLogTxt='📞 Sesli arama \u00B7 '+startStr+' \u2192 '+endStr+' ('+durStr+')';
+    Bu satir HARDCODED Turkce metin kullaniyor. tr() fonksiyonu
+    cagrilmiyor. Ingilizce tercume anahtari OLMASINA RAGMEN
+    kullanilmiyor.
+
+    MEVCUT TERCOME ANAHTARLARI (translations.js):
+      voice_call: 'Voice Call (Beta)'  (EN) / 'Sesli Arama (Beta)' (TR)
+      calling:    'Calling...'         (EN) / 'Arıyor...'         (TR)
+      connected:  'Connected'          (EN) / 'Bağlandı'          (TR)
+      connecting: 'Connecting...'      (EN) / 'Bağlanıyor...'     (TR)
+      someone:    'Someone'            (EN) / 'Birisi'            (TR)
+
+    COZUM: calls.js:384'te tr('voice_call') kullan:
+      var callLabel = typeof tr==='function' ? tr('voice_call') : '📞 Sesli arama';
+      var endLogTxt='📞 '+callLabel+' \u00B7 '+startStr+' \u2192 '+endStr+' ('+durStr+')';
+    Not: 📞 emojisi zaten var, tr() 'Voice Call' doner.
+
+    DİĞER HARDCODED TURKCE METİNLER (calls.js):
+    a) Satir 35: $('call-bar-status').textContent='Çağrı başlatılıyor...'
+         → tr('calling') kullanilmali
+    b) Satir 144: alert('Mikrofon erişimi gerekli')
+         → tercume anahtari yok, eklenmeli
+    c) Satir 161,258,321,349: $('call-bar-status').textContent='Bağlandı'
+         → tr('connected') kullanilmali
+    d) Satir 193,299: $('call-bar-status').textContent='Bağlanıyor...'
+         → tr('connecting') kullanilmali
+    e) Satir 236: var callerName=d.callerName||'Birisi'
+         → tr('someone') kullanilmali
+    f) durStr kismi: (dm>0?dm+'dk ':'')+ds+'sn'
+         → 'dk' ve 'sn' Turkce kisaltmalar. Ingilizcede 'm' ve 's'
+         olmali. Bu da i18n ile cozulmeli veya noktalanmali:
+           dm+'m ' ... +ds+'s' (uluslararasi)
+
+    MOBIL SPESIFIK BULGULAR:
+    a) Mobile cagri ozelligi henuz "coming soon" (ChatScreen.kt:223),
+       yani mobil kendi cagri logu URETMIYOR.
+       Ama mobil, desktop'un Firestore'a yazdigi "📞 Sesli arama ..."
+       log mesajlarini sohbette GORUNTULUYOR.
+       Yani mobilde gorunen Turkce log, desktop calls.js:384'ten
+       geliyor. ASIL COZUM desktop'ta (tr('voice_call') kullan).
+
+    b) Mobil tarafinda ayrica: eger mesajlar goruntulenirken
+       hardcoded "📞 Sesli arama" metni tespit edilip yerel dile
+       cevrilmek isteniyorsa, mobilde Repository.kt'de docToMessage
+       veya ChatScreen'de mesaj render ederken kontrol eklenebilir:
+         if (msg.text.startsWith("📞 Sesli arama")) {
+            // tercume anahtarindan karsiligini goster
+         }
+       Ama bu band-aid; kalici cozum desktop'in Turkce yazmamasi.
+
+    c) NOT: Mobilde tr["voice_call"] anahtari ZATEN VAR
+       (Translations.kt:48 TR, :131 EN). Yani mobil tarafta
+       cevirmek isterseniz anahtar hazir.
+
 ===============================================================================
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ ONCELIKLI:                                                         │
-│ 1. showApp() icinde tum konusmalar icin fbListenMessages cagir     │
-│    → Mesajlar arka planda yuklensin                                │
-│ 2. messaging.js'deki updateConvPreview'a renderConversations EKLE  │
-│    → Siralama guncellensin                                         │
-│                                                                     │
-│ IKINCI:                                                            │
-│ 3. selectConversation'a renderConversations EKLE                   │
-│    → Kullanici acinca da siralama guncellensin                     │
-│ 4. fbListenConversations listener sonuna renderConversations EKLE  │
-│    → Firestore'dan gelen degisikliklerde siralama guncellensin     │
-└─────────────────────────────────────────────────────────────────────┘
+[ ] 3. GRUP KONUSMASI ACILMIYOR, UYENIN DM'I AÇILIYOR
+    Durum: Kullanici gruba tiklayinca grup sohbeti yerine grupta
+           olan bir uyenin DM sohbeti aciliyor.
+
+    KOK NEDEN: DESKTOP-MOBIL ALAN ADI UYUMSUZLUĞU
+
+    DESKTOP grubu Firestore'a SU ALANLA yaziyor (firebase-data.js:188):
+      db.collection(...).doc(convId).set({
+        type: 'group',        // ← 'type' alani
+        name: conv.name,
+        memberIds: mids,
+        ...
+      })
+
+    MOBIL grubu SU ALANLA OKUYOR (Repository.kt:20):
+      val isGroup = d["isGroup"] as? Boolean ?: (mids.size > 2)
+
+    Mobil 'isGroup' Boolean alanini arıyor ama desktop 'type'
+    String alanini yaziyor. Mobil isGroup'u BULAMIYOR.
+    Fallback: (mids.size > 2) — yani 2'den fazla uye varsa grup.
+
+    SORUN: 2 UYELI GRUPLARDA
+    Eger grupta sadece 2 kisi varsa (senin "Deneme (grup)" gibi):
+      mids.size = 2  →  (mids.size > 2) = false  →  isGroup = false
+    Mobil grubu DM SANIYOR → otherId = mids.first() (ilk uye)
+    → Gruba tiklaninca o uyenin DM'i aciliyor!
+
+    COZUM (MOBIL tarafi — Repository.kt:20):
+    'type' alanini da kontrol et:
+      val isGroup = d["isGroup"] as? Boolean
+                    ?: (d["type"] as? String) == "group"
+                    ?: (mids.size > 2)
+
+    COZUM (DESKTOP tarafi — firebase-data.js:188):
+    Grup yazarken 'isGroup: true' Boolean alanini da ekle:
+      if(conv.isGroup){
+        data.type='group';
+        data.isGroup=true;   // ← EKLE: mobil uyumluluk
+        ...
+      }
+
+    NOT: Desktop'ta grup olusturulurken de (ui-core.js:523)
+         isGroup:true eklenmeli:
+      db.collection(...).doc(gid).set({
+        type:'group',
+        isGroup:true,        // ← EKLE
+        ...
+      })
+
+    MOBIL SPESIFIK BULGULAR:
+    a) Mobil Repository.kt:20 isGroup tespiti hatali:
+         val isGroup = d["isGroup"] as? Boolean ?: (mids.size > 2)
+       Bu fallback, 2 uyeli gruplari DM sanar.
+       COZUM: d["type"]=="group" kontrolunu ekle.
+
+    b) ChatListScreen.kt:190 konusmaya tiklayinca conv.id gonderiliyor:
+         onClick = { onChatClick(conv.id) }
+       AMA eger mobil grup tespitini yanlis yaptiysa (isGroup=false),
+       ChatScreen grubu DM olarak yorumlar ve otherId'ye gore mesaj
+       ceker. COZUM: isGroup tespiti duzeltilirse bu otomatik cozulur.
+
+    c) Ek kontrol: ChatScreen.kt:51 fun ChatScreen(repo, convId, ...)
+       convId = grup id'si olmali. Eger buraya otherId geliyorsa
+       ChatListScreen'de yanlis deger gonderiliyor demektir.
+       Kontrol: onChatClick(conv.id) dogru, conv.id = doc.id olmali.
 
 ===============================================================================
-6. EK TESPIT: Ilk Snapshot'ta DM lastActivity Guncellenmiyor
+
+[ ] 4. "+ NEW" SAYFASINDA FAZLA ARAMA BUTONU
+    Durum: "+ New" sayfasinin sag ust kosesinde buyutec ikonlu
+           bir arama butonu var. Ama zaten "Search friends..."
+           arama cubugu mevcut. Sag ustteki buyutec butonu
+           gereksiz, kaldirilmali.
+
+    DOSYA: android-native/app/src/main/java/com/waxmes/app/
+           ui/screens/ChatListScreen.kt:146
+
+    KOD (satir 146):
+      IconButton(onClick = { isSearching = true }) { Icon(Icons.Default.Search, ...) }
+
+    Bu buton TopAppBar actions bolumunde ve TUM sekmelerde
+    gorunuyor (hem "Chats" hem "New").
+
+    COZUM: Buyutec butonunu sadece "New" sekmesinde GIZLE:
+      if (selectedTab != "new") {
+          IconButton(onClick = { isSearching = true }) { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) }
+      }
+    Boylece "Chats" sekmesinde arama butonu kalsin,
+    "+ New" sekmesinde "Search friends..." yeterli olsun.
+
+    ALTERNATIF: selectedTab == "new" iken TopAppBar actions'ina
+    hic arama butonu ekleme (kosullu render).
+
 ===============================================================================
 
-HALA DEVAM EDEN SORUN:
-Mesajlar arka planda yukleniyor ✅ (duzeltildi)
-Ancak DM siralamasi hala eski localStorage degerlerine gore yapiliyor ❌
+[ ] 5. MESAJ SABITLEME (PIN MESSAGE) — MOBIL VE DESKTOP ENTEGRASYONU
+    ISTEK: Mesaja basili tutup "Pin Message" → mesaj sabitlensin.
+           Mobilde sabitlenen mesaj masaustunde gorunsun.
+           Masaustunde sabitlenen mesaj mobilde gorunsun.
+           Yani tam cift yonlu entegrasyon.
 
-KESIN NEDEN (firebase-data.js:62):
-  }else if(change.type==='modified'){
+    MEVCUT DURUM:
 
-Ilk Firestore snapshot'inda TUM konusmalar change.type === 'added'
-olarak gelir. Yukaridaki satir sadece 'modified' tipini yakalar.
-Bu nedenle mevcut DM'lerin lastActivity degeri GUNCELLENMEZ.
+    A) MOBIL (ChatScreen.kt:171):
+         MsgActionItem(Icons.Default.PushPin, tr["pin_message"] ?: "Pin Message", ...)
+           { appLog("Pin - coming soon"); contextMsg = null }
+       → HICBIR SEY YAPMIYOR, sadece log yaziyor.
 
-Oysa grup konusmalari icin:
-  if(d.type==='group'){applyFirestoreGroupConversation(cid,d,uid);return}
-Bu fonksiyon HER ZAMAN (added/modified fark etmez) lastActivity'i
-gunceller ✅. DM'ler icin boyle bir kod YOK ❌.
+    B) MOBIL (ChatScreen.kt:214):
+         DropdownMenuItem(text = { Text(tr["pinned"] ?: "Pinned Messages") },
+           onClick = { appLog("Pinned messages - coming soon") })
+       → Sabitlenmis mesajlari gosteren ekran da "coming soon".
 
-COZUM (tek satir):
-  firebase-data.js satir 62:
-    }else if(change.type==='modified'){
-        ↓
-    }else{
+    C) DESKTOP (messaging.js:802 togglePinMessage):
+         var pinned=ls('pinnedMsg_'+convId)||[];
+         ...
+         ls('pinnedMsg_'+convId,pinned);
+       → Pinleme verisini localStorage'da tutuyor.
+       → FIRESTORE'A HICBIR SEY YAZMIYOR!
 
-Cunku bu noktaya sadece 'added' veya 'modified' tipleri gelir
-(removed tipi satir 15-20'de erken return eder).
-'added' tipinde de mevcut DM'lerin lastActivity'si guncellenmeli.
+    KOK SORUN: DESKTOP PINLEME VERISINI FIRESTORE'A KAYDETMIYOR.
+    Entegrasyon icin ONCE masaustunun pinleri Firestore'a yazmasi
+    lazim. Yoksa mobilin okuyacagi bir veri olmaz.
 
-ALTERNATIF COZUM:
-  }else if(change.type==='modified'||(change.type==='added'&&exists)){
+    ===== PLANLI COZUM =====
+
+    ADIM 1 — DESKTOP: Pinleme verisini Firestore'a yaz (messaging.js:802)
+    togglePinMessage icinde, localStorage'a ek olarak Firestore'a da yaz:
+      // localStorage (mevcut, korunur)
+      ls('pinnedMsg_'+convId,pinned);
+      // Firestore'a yaz (yeni)
+      if(window.db&&fbUserId()){
+        db.collection(COLLECTIONS.CONVERSATIONS).doc(convId)
+          .set({pinnedMsgIds:pinned},{merge:true}).catch(console.error);
+      }
+    NOT: pinned bir array. Firestore 'pinnedMsgIds' alanina yaz.
+
+    ADIM 2 — DESKTOP: Pinleri Firestore'dan oku (showPinnedMessages:824)
+    showPinnedMessages icinde localStorage yerine ONCE Firestore'dan
+    oku, yoksa localStorage'a dus:
+      var pinned=ls('pinnedMsg_'+store.activeConvId)||[];
+      if(window.db){
+        db.collection(COLLECTIONS.CONVERSATIONS).doc(store.activeConvId).get()
+          .then(function(doc){
+            if(doc.exists&&doc.data().pinnedMsgIds){
+              pinned=doc.data().pinnedMsgIds;
+              renderPinnedList(pinned); // mevcut render kodu
+            }
+          });
+      }
+    (Veya fbListenConversations listener'inda pinnedMsgIds'i oku,
+    conv._pinnedMsgIds'e ata, showPinnedMessages onu kullansin.)
+
+    ADIM 3 — MOBIL: Repository'de pinnedMsgIds okuma (Repository.kt)
+    docToConversation veya ayri bir fonksiyonda:
+      val pinnedIds = d["pinnedMsgIds"] as? List<String> ?: emptyList()
+    Conversation modeline ekle (Models.kt):
+      var pinnedMsgIds: List<String> = emptyList()
+    ListenConversations listener'inda guncelle.
+
+    ADIM 4 — MOBIL: Pin Message butonunu aktif et (ChatScreen.kt:171)
+      MsgActionItem(Icons.Default.PushPin, tr["pin_message"] ...) {
+          repo.togglePinMessage(convId, msg.id)  // yeni fonksiyon
+          contextMsg = null
+      }
+    Repository'ye togglePinMessage ekle:
+      fun togglePinMessage(convId: String, msgId: String) {
+          val convRef = db.collection("conversations").document(convId)
+          convRef.get().addOnSuccessListener { doc ->
+              val ids = (doc.get("pinnedMsgIds") as? List<String> ?: emptyList()).toMutableList()
+              val isPinned = ids.contains(msgId)
+              if (isPinned) ids.remove(msgId) else ids.add(msgId)
+              convRef.set(mapOf("pinnedMsgIds" to ids), SetOptions.merge())
+              // ayrica log mesaji: 📌 "..." mesaji sabitlendi
+          }
+      }
+
+    ADIM 5 — MOBIL: Sabitlenmis mesajlari goster (ChatScreen.kt:214)
+    "Pinned Messages" dropdown'una tiklayinca:
+      - Konusmanin pinnedMsgIds listesini al
+      - Bu ID'lere karsilik gelen mesajlari store.messages'tan filtrele
+      - BottomSheet veya AlertDialog ile listele
+      - Her mesajda "Sabitlemeyi Kaldir" butonu (togglePinMessage)
+
+    ADIM 6 — DESKTOP: Sabitlenmis mesaj gosterimi (mevcut calisiyor)
+    Desktop'ta showPinnedMessages (messaging.js:824) zaten var ve
+    modal-pinned icinde listeliyor. Sadece Firestore'dan okuma
+    eklenmeli (ADIM 2).
+
+    ===== VERI MODELI =====
+    Firestore /conversations/{convId}:
+      pinnedMsgIds: ["msgDocId1", "msgDocId2", ...]
+    Dikkat: Mesaj ID'leri — desktop mesajlari clientId olarak kendi
+    uid() ile uretir, Firestore doc id ayri olur. fbSendMessage'de
+    clientId: msg.id yaziliyor. Yani pin icin HANGI ID'nin
+    kullanilacagina dikkat:
+      - Desktop'ta store.messages'daki mesajin .id (local uid)
+      - Firestore'daki mesaj dokumaninin doc.id (_fbId)
+    EN IYISI: pinnedMsgIds'e _fbId (Firestore doc id) yaz. Mobil de
+    mesajlari doc.id ile goruntuluyor (docToMessage: id = doc.id).
+    → Desktop'ta togglePinMessage'a gelen msgId local uid'dir,
+      onu _fbId'ye cevirmek gerekir veya pinned listesinde
+      local id saklanir ve mobil ile uyumsuz olur.
+    Oneri: pinnedMsgIds'e FIRESTORE DOC ID (_fbId) yaz.
+      Desktop'ta: var docId = msgs[pi]._fbId || msgId; pinned.push(docId);
+
+    ===== TEST ADIMLARI =====
+    1. Masaustunde bir mesaji pinle (sag tik > Mesaji Sabitle)
+    2. Mobilde ayni konusmayi ac, sabitlenmis mesajlari listele
+       → masaustunde sabitlenen mesaj gorunmeli
+    3. Mobilde bir mesaji pinle
+    4. Masaustunde sabitlenmis mesajlari listele (sabitleme ikonu)
+       → mobilde sabitlenen mesaj gorunmeli
+    5. Sabitlemeyi kaldir → iki tarafta da listeden dusmeli
+
+===============================================================================
+
+[ ] 6. MESAJ DUZENLEME (EDIT) — MOBIL AKTIF ETME + DESKTOP ENTEGRASYONU
+    ISTEK: Mesaja basili tutup "Edit" deyince:
+           1) Input'ta "Reply..." degil "Edit..." yazisi gorunsun
+           2) Edit/gonder sistemi masaustuyle AYNI olsun
+           3) Duzeltilen mesaj sohbet listesi preview'inda
+              (lastMsg) guncellenmis haliyle gorunsun
+           4) Edit'e tiklayinca mesaj icerigi input'ta HAZIR
+              yazili halde olsun (sifirdan yazma yok)
+
+    MEVCUT DURUM:
+
+    A) MOBIL (ChatScreen.kt:173):
+         MsgActionItem(Icons.Default.Edit, tr["edit"] ?: "Edit", ...)
+           { appLog("Edit - coming soon"); contextMsg = null }
+       → HICBIR SEY YAPMIYOR, "coming soon" log'u.
+
+    B) MOBIL (ChatScreen.kt:136-152): replyToMsg state'i var.
+       Kullanici "Reply..." yazisini goruyor cunku mobil edit'i
+       reply sistemine bagliyor gibi dusunuyor. Aslinda mobilde
+       edit hic yok, reply var.
+
+    C) DESKTOP (messaging.js:1015-1045): edit AKTIF calisiyor.
+
+    ===== DESKTOP EDIT NASIL CALISIYOR (REFERANS) =====
+
+    editMessage(msgId) (messaging.js:1015):
+      - Mesaji store.messages'ta bulur
+      - oldT = msg._decrypted || msg.text (sifreli ise cozer)
+      - Mesaj elementini textarea + Kaydet/Iptal butonlarina cevirir
+      - textarea'nin icine oldT'yi HAZIR yazili olarak koyar  ← ISTEK 4
+      - Enter = kaydet, Escape = iptal
+
+    saveEdit(msgId) (messaging.js:1027):
+      - textarea degerini alir
+      - Eger mesaj E2E sifreliydi, yeni metni yeniden sifreler
+      - msgs[si].text = yeniMetin
+      - msgs[si].edited = true; msgs[si].editedTime = timeNow()
+      - Eger duzenlenen mesaj son mesajsa:
+          conv.lastMsg = yeniMetin
+          Firestore'a conv.lastMsg gunceller (satir 1040)
+      - renderMessages + saveMessages
+
+    ===== KRITIK EKSIK: EDIT EDILEN METIN FIRESTORE'A YAZILMIYOR =====
+
+    Desktop saveEdit (messaging.js:1037-1043):
+      msgs[si].text = newTxt;   // sadece LOCAL store.messages
+      renderMessages(convId);   // local render
+      saveMessages()            // localStorage'a yazar
+
+    → Edit edilen metin sadece localStorage'da.
+    → Firestore'daki mesaj dokumanina YENI METIN YAZILMIYOR!
+    → Mobil, Firestore'dan mesaji cektiginde ESKI metni gorur.
+    → Bu yuzden entegrasyon icin desktop'un da duzeltilmesi gerekir.
+
+    fbSendMessage (firebase-data.js:177-203) edited mesajin metnini
+    degil sadece 'edited' bayragini yaziyor:
+      sendData.edited = !!msg.edited
+    → Firestore'da mesaj dokumani {edited:true} olur ama text ESKI kalir.
+
+    ===== PLANLI COZUM =====
+
+    ADIM 1 — MOBIL: Edit butonunu aktif et (ChatScreen.kt:173)
+      MsgActionItem(Icons.Default.Edit, tr["edit"] ?: "Edit", ...) {
+          editingMsg = msg          // yeni state
+          editDraft = msg.text      // HAZIR yazili icerik  ← ISTEK 4
+          contextMsg = null
+      }
+      State ekle:
+        var editingMsg by remember { mutableStateOf<Message?>(null) }
+        var editDraft by remember { mutableStateOf("") }
+
+    ADIM 2 — MOBIL: Input'ta "Edit..." goster (ChatScreen.kt input alani)
+      Mevcut placeholder "Reply..." icin ayri bir state var.
+      editingMsg != null ise:
+        placeholder = "Edit..."
+        etiket/icerik = editDraft (hazir yazili)
+      Input Row'unun ustune edit modu cubugu ekle:
+        if (editingMsg != null) {
+          Surface(...) {
+            Text(tr["edit"] ?: "Edit", color = t.accent, fontSize = 11.sp)
+            Text(editDraft.take(40), ...)
+            IconButton(onClick = { editingMsg = null; editDraft = "" }) { Close }
+          }
+        }
+
+    ADIM 3 — MOBIL: Repository'ye editMessage ekle (Repository.kt)
+      fun editMessage(convId: String, msgId: String, newText: String) {
+          val msgRef = db.collection("conversations")
+                         .document(convId).collection("messages").document(msgId)
+          msgRef.update(mapOf("text" to newText, "edited" to true,
+                              "editedTime" to timeNow()))
+              .addOnSuccessListener {
+                  // Son mesajsa conversation lastMsg'i guncelle
+                  msgRef.get().addOnSuccessListener { doc ->
+                      // (siralama gerekli olabilir — son mesaj mi kontrolu)
+                  }
+              }
+      }
+
+    ADIM 4 — MOBIL: Gonder butonu edit modunda calissin (ChatScreen.kt)
+      if (editingMsg != null) {
+          repo.editMessage(convId, editingMsg.id, inputText)
+          editingMsg = null; editDraft = ""; inputText = ""
+      } else {
+          repo.sendMessage(...)   // normal gonderim
+      }
+      NOT: Firebase mesaj doc id = msg.id (docToMessage: id = doc.id).
+      Yani edit'te msgId = doc.id dogrudan kullanilabilir. ✓
+
+    ADIM 5 — DESKTOP: Edit edilen metni Firestore'a yaz (messaging.js:1037)
+      saveEdit icinde, _fbId varsa Firestore'daki mesaj dokumanini
+      da guncelle:
+        if(msgs[si]._fbId&&window.db){
+          db.collection(COLLECTIONS.CONVERSATIONS)
+            .doc(convId).collection(COLLECTIONS.MESSAGES)
+            .doc(msgs[si]._fbId)
+            .update({text:newTxt, edited:true, editedTime:timeNow()})
+            .catch(function(){})
+        }
+      NOT: E2E sifreli mesajlarda newTxt zaten sifrelenmis halde
+      (satir 1036). Firestore'a sifrelenmis metni yaz.
+
+    ADIM 6 — DESKTOP: Preview guncelleme (zaten var, dogrula)
+      saveEdit (satir 1039-1040) son mesajsa conv.lastMsg'i ve
+      Firestore'daki conversation.lastMsg'i guncelliyor ✓
+      Sadece MESAJ dokumanindaki text guncellenmemis. ADIM 5 cozer.
+
+    ===== VERI MODELI =====
+    Firestore /conversations/{convId}/messages/{docId}:
+      text: "yeni duzeltilmis metin"     ← ADIM 5/3 ile guncellenir
+      edited: true
+      editedTime: "HH:MM"
+
+    ===== TEST ADIMLARI =====
+    1. Mobilde mesaja basili tut > Edit
+    2. Input'ta "Edit..." yazisi + mesaj icerigi hazir yazili olmali
+    3. Metni degistir, gonder
+    4. Mobil sohbet listesinde (lastMsg) duzeltilmis metin gorunmeli
+    5. Masaustunde ayni konusmayi ac → duzeltilmis metin gorunmeli
+    6. Masaustunde mesaj duzenle → mobilde duzeltilmis gorunmeli
+
+===============================================================================
+
+[ ] 7. YANITLAMA / DUZENLEME SIRASINDA HEDEF MESAJ GORUNUR OLSUN
+    ISTEK: Mesaji yanitlarken veya duzenlerken, HANGI mesaji
+           yanitladigimizi/duzenledigimizi net gormek icin hedef
+           mesajin icerigi, mesaj yazma kutusunun hemen ustune
+           SABIT sekilde (pinli/yerlesik) yazilsin.
+
+    MEVCUT DURUM (MOBIL):
+
+    A) REPLY MODU — ChatScreen.kt:136-152 reply bar VAR ama zayif:
+         AnimatedVisibility(visible = replyToMsg != null, ...) {
+           Surface(color = t.bg3, shadowElevation = 2.dp) {
+             Row {
+               Box(3.dp x 32.dp, accent)      // renkli bar
+               Text(tr["replying"] ?: "Replying")   // "Replying"
+               Text(replyMsg.text.ifEmpty { "📷 Image" }, maxLines = 1)
+               IconButton(Close)               // kapat
+             }
+           }
+         }
+       → Metin var ama KUCUK, tek satir, maxLines=1. Icerigi
+         tam goremiyoruz. Yalnizca "Replying" etiketi var.
+       → Input placeholder'i da "Reply..." oluyor (ChatScreen.kt:245).
+
+    B) EDIT MODU — HIC YOK (ChatScreen.kt:173 "coming soon")
+       Bug #6'da planlandi. Edit modunda hedef mesaj gosterimi
+       de HIC planlanmadi.
+
+    ===== TASARIM HEDEFI =====
+
+    Mesaj yazma kutusunun USTUNE, input ile birlikte sabit kalan
+    bir "hedef mesaj" cubugu. Hem reply hem edit modunda:
+    - Mavi/accent sol bar
+    - "Yanıtlıyorsun:" veya "Düzenliyorsun:" etiketi
+    - Mesaj icerigi (cok satirli, maxLines 2-3, uzun metinde ...)
+    - Kapatma (X) butonu (reply icin; edit icin de iptal)
+    - Kullanici yazarken kaybolmasin, input'un uzerinde KALINSIN
+
+    ===== PLANLI COZUM (MOBIL) =====
+
+    ADIM 1 — ORTAK BIR "TargetMessageBar" composable olustur
+    ChatScreen.kt icinde:
+      @Composable
+      fun TargetMessageBar(
+          mode: String,           // "reply" veya "edit"
+          content: String,        // hedef mesaj icerigi
+          onClose: () -> Unit
+      ) {
+          Surface(color = t.bg3, shadowElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
+              Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                  verticalAlignment = Alignment.CenterVertically) {
+                  Box(Modifier.width(3.dp).height(40.dp).background(t.accent, RoundedCornerShape(2.dp)))
+                  Spacer(Modifier.width(10.dp))
+                  Column(Modifier.weight(1f)) {
+                      Text(
+                          text = if (mode == "reply") (tr["replying"] ?: "Replying")
+                                 else (tr["editing"] ?: "Editing"),
+                          color = t.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold
+                      )
+                      Text(
+                          text = content.ifEmpty { tr["image"] ?: "📷 Image" },
+                          color = t.text3, fontSize = 12.sp, maxLines = 3,
+                          overflow = TextOverflow.Ellipsis
+                      )
+                  }
+                  IconButton(onClick = onClose) {
+                      Icon(Icons.Default.Close, contentDescription = null, tint = t.text4, modifier = Modifier.size(18.dp))
+                  }
+              }
+          }
+      }
+
+    ADIM 2 — REPLY MODU: Mevcut reply bar'i TargetMessageBar ile degistir
+    ChatScreen.kt:136-152'yi yeni composable ile degistir:
+      TargetMessageBar(mode = "reply", content = replyToMsg!!.text,
+                       onClose = { replyToMsg = null })
+    Daha buyuk (maxLines=3) ve "Replying" etiketi daha net.
+
+    ADIM 3 — EDIT MODU: editingMsg state'i ekle (Bug #6 ile birlikte)
+      var editingMsg by remember { mutableStateOf<Message?>(null) }
+      var editDraft by remember { mutableStateOf("") }
+    Edit butonu (ChatScreen.kt:173):
+      editingMsg = msg; editDraft = msg.text
+    Input uzerinde:
+      TargetMessageBar(mode = "edit", content = editDraft,
+                       onClose = { editingMsg = null; editDraft = "" })
+
+    ADIM 4 — INPUT PLACEHOLDER GUNCELLE (ChatScreen.kt:245)
+      Su an: replyToMsg != null ise "Reply..."
+      Yeni:  editingMsg != null ise "Edit..." goster
+             replyToMsg != null ise "Reply..." goster
+             ikisi de null ise "Message..."
+      placeholder = {
+          Text(
+              when {
+                  editingMsg != null -> tr["edit"] ?: "Edit..."  // YENI anahtar
+                  replyToMsg != null -> tr["reply_text"] ?: "Reply..."
+                  else -> tr["message_text"] ?: "Message..."
+              }, color = t.text4
+          )
+      }
+
+    ADIM 5 — GONDER BUTONU MODE GORE CALISSIN (ChatScreen.kt:253-262, 273-279)
+      if (editingMsg != null) {
+          repo.editMessage(convId, editingMsg.id, text)   // Bug #6 ADIM 3
+          editingMsg = null; editDraft = ""; text = ""
+      } else if (replyToMsg != null) {
+          // mevcut reply gonderimi
+      } else {
+          repo.sendMessage(convId, text)
+      }
+
+    ADIM 6 — CEVIRI ANAHTARLARI EKLE (Translations.kt)
+      "editing" to "Düzenliyorsun:" (TR) / "Editing:" (EN)
+      "edit_text" to "Edit..." (TR/EN)
+      Mevcut "replying" anahtari Translations.kt'de var mi kontrol et:
+        grep "replying" Translations.kt → yoksa ekle
+
+    ===== NOT: MASAUSTU REFERANS =====
+    Desktop reply bar (index.html:225-228) yanitlanan mesaji gosterir:
+      ⤴ + store.replyToMsgText
+    Desktop edit (messaging.js:1015-1023) mesaji textarea'ya donusturur,
+    mesaj icerigi textarea icinde HAZIR yazili olur. Ayrica bir ust
+    cubuk gostermez ama textarea'da icerik gorunur.
+    Mobilde edit modunda icerik hem input'ta hazir olacak (Bug #6)
+    hem de TargetMessageBar ile ustte gorunecek (bu bug).
+
+    ===== TEST ADIMLARI =====
+    1. Bir mesaji yanitla → input ustunde "Yanıtlıyorsun:" + mesaj
+       icerigi sabit gorunmeli
+    2. Yazmaya basla → cubuk kaybolmamali
+    3. X'e bas → cubuk kapanir, placeholder "Message..." olur
+    4. Bir mesaji duzenle → "Düzenliyorsun:" + mesaj icerigi + input'ta
+       hazir yazili icerik gorunmeli
+    5. Iptal → cubuk kapanir, edit modu sonlanir
+
+===============================================================================
+
+[ ] 8. YANITLARKEN / DUZENLERKEN KLAVYE OTOMATIK AÇILSIN
+    ISTEK: Mesaji yanitlamak veya duzenlemek icin basili tutup
+           "Reply"/"Edit" secildiginde, mesaj yazma kutusuna
+           otomatik odaklanilip klavye otomatik AÇILSIN.
+
+    MEVCUT DURUM (MOBIL):
+    - ChatScreen.kt:244 OutlinedTextField(value = text, ...)
+      → Hicbir focusRequest/klavye yonetimi YOK.
+    - Reply secilince (ChatScreen.kt:170 replyToMsg = msg) sadece
+      replyToMsg state'i degisiyor, input'a odak YOK.
+    - Edit secilince (Bug #6 ile eklenecek) yine odak YOK.
+
+    ===== COZUM (MOBIL — ChatScreen.kt) =====
+
+    ADIM 1 — FocusRequester ekle
+      var inputFocusRequester = remember { FocusRequester() }
+      OutlinedTextField'e ekle:
+        OutlinedTextField(
+          value = text,
+          onValueChange = { text = it },
+          modifier = Modifier.weight(1f).focusRequester(inputFocusRequester),
+          ...
+        )
+
+    ADIM 2 — REPLY secilince odakla
+      Reply butonu (ChatScreen.kt:170):
+        MsgActionItem(Icons.Default.Reply, tr["reply"] ?: "Reply", t, t.text) {
+            replyToMsg = msg; contextMsg = null
+            scope.launch { inputFocusRequester.requestFocus() }  // ← EKLE
+        }
+      NOT: contextMsg AlertDialog kapaniyor; focus cagrisi dialog
+      kapanmadan once yapilirsa klavye acilmayabilir. Dialog
+      kapandiktan sonra cagrilmasi icin:
+        scope.launch {
+            delay(200)   // dialog kapanma animasyonu
+            inputFocusRequester.requestFocus()
+        }
+
+    ADIM 3 — EDIT secilince odakla
+      Edit butonu (Bug #6 ile):
+        MsgActionItem(Icons.Default.Edit, tr["edit"] ?: "Edit", ...) {
+            editingMsg = msg; editDraft = msg.text; contextMsg = null
+            scope.launch {
+                delay(200)
+                inputFocusRequester.requestFocus()
+            }
+        }
+
+    ADIM 4 — EDIT modunda klavye acikken imlec sona
+      editDraft hazir yazili geldigi icin (Bug #6), imlecin metnin
+      SONUNA gitmesi icin:
+        OutlinedTextField(
+          value = text,
+          onValueChange = { text = it },
+          keyboardOptions = ...,
+          // edit modunda text'i hazir yaz:
+          // LaunchedEffect(editingMsg) { text = editingMsg?.text ?: ""; ... }
+        )
+      Istege bagli: KeyboardController'u gizleme gerek yok, focus
+      request klavyeyi acar.
+
+    ===== GEREKLI IMPORTLAR =====
+      androidx.compose.ui.focus.FocusRequester
+      androidx.compose.ui.focus.focusRequester
+      kotlinx.coroutines.delay
+
+    ===== TEST ADIMLARI =====
+    1. Mesaja basili tut > Reply → klavye otomatik açilmali,
+       input odakli olmali
+    2. Mesaja basili tut > Edit → klavye otomatik açilmali,
+       mesaj icerigi hazir + imlec sonunda olmali
+    3. X ile bar kapatilinca klavye kapanmali (opsiyonel:
+       keyboardController?.hide())
+
+===============================================================================
+
+[ ] 9. MESAJ ILETME (FORWARD) — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
+    ISTEK: Mesaja basili tutup "Forward" deyince:
+           - Alttan yukari kayarak bir sayfa (BottomSheet) gelsin
+           - "Groups" ve "Friends" diye IKI KATEGORI olsun
+           - Kullanicilar ve gruplar listelensin
+           - Her satirin yaninda BOS CIKEMBER olsun
+           - Tiklama → cemberin icinde TIK (checkmark) belirsin
+           - Altta "Gönder" butonu: en az 1 seciliyse gorunsun,
+             hic secili degilse GIZLI olsun
+           - Birden fazla secim → gonder butonuna tiklayinca hepsine
+             iletilir
+           - Masaustu sistemiyle AYNI calissin + entegre
+
+    MEVCUT DURUM (MOBIL):
+    ChatScreen.kt:172:
+      MsgActionItem(Icons.Default.Forward, tr["forward"] ?: "Forward", ...)
+        { repo.forwardMessage(convId, msg.text, msg.id) }
+    Repository.kt:357-359:
+      fun forwardMessage(convId, text, originalMsgId) {
+          sendMessage(convId, "↪ Forwarded: $text")
+      }
+    → SADECE tek hedefe, "↪ Forwarded:" metni olarak iletir.
+    → Coklu secim yok, kategori yok, cember/tik yok, BottomSheet yok.
+    → Desktop'un isForwarded/originalSender/forwardComment alanlari
+      KULLANILMIYOR.
+
+    ===== DESKTOP NASIL CALISIYOR (REFERANS) =====
+
+    showForwardModal (ui-core.js:71-83):
+      - store.forwardMsgData = iletilecek mesaj verisi
+      - Tum conversations listelenir (grup + DM karisik, tek liste)
+      - Her satir: avatar + isim + tik cemberi (mm-check)
+      - Tiklama → classList.toggle('selected')
+
+    forwardToSelected (ui-core.js:469-498):
+      - Secili her konusma icin dongu:
+        - fwdTxt = forwardMsgData.text
+        - E2E sifreli ise hedefe gore yeniden sifreler
+        - fwd = { id, type:'sent', text:fwdTxt,
+                  image/video/audio, duration,
+                  isForwarded:true,
+                  originalSender: <kimin mesaji>,
+                  forwardComment: caption || null,
+                  sender: benim adim }
+        - store.messages[cid].push(fwd)
+        - fbSendMessage(cid, fwd)  → Firestore'a yazar
+      - fwd e2e ise conv.lastMsg='🔒 Mesaj'
+      - renderConversations + saveMessages + renderMessages
+
+    FIRESTORE VERI ALANLARI (firebase-data.js:197):
+      isForwarded, forwardComment, originalSender
+    → fbSendMessage bunlari yazar. Mobil docToMessage bu alanlari
+      okuyabilir (Models.kt Message modeline eklenmeli).
+
+    ===== PLANLI COZUM (MOBIL) =====
+
+    ADIM 1 — MODAL BOTTOM SHEET (ChatScreen.kt)
+    "Forward" butonuna tiklayinca:
+      var forwardMsg by remember { mutableStateOf<Message?>(null) }
+      var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+      var forwardCaption by remember { mutableStateOf("") }
+
+      MsgActionItem(Icons.Default.Forward, tr["forward"] ?: "Forward", ...) {
+          forwardMsg = msg
+          selectedIds = emptySet()
+          contextMsg = null
+      }
+
+      if (forwardMsg != null) {
+          ModalBottomSheet(
+              containerColor = t.bg2,
+              onDismissRequest = { forwardMsg = null }
+          ) {
+              // Baslik: "Mesaji Ilet"
+              Text(tr["forward"] ?: "Forward", ...)
+              // Caption (istege bagli)
+              OutlinedTextField(value = forwardCaption, ...)
+              // Kategoriler
+              Text(tr["groups"] ?: "Groups", ...)    // yeni anahtar
+              ForwardList(gruplar, selectedIds) { ... toggle }
+              Text(tr["friends"] ?: "Friends", ...)  // yeni anahtar
+              ForwardList(arkadaslar, selectedIds) { ... toggle }
+              // Gonder butonu (secim varsa)
+              if (selectedIds.isNotEmpty()) {
+                  Button(onClick = {
+                      selectedIds.forEach { repo.forwardTo(convId, forwardMsg!!, it, forwardCaption) }
+                      forwardMsg = null; selectedIds = emptySet()
+                  }) { Text(tr["send"] ?: "Send") }
+              }
+          }
+      }
+
+    ADIM 2 — ILETILEBILIR HEDEF LISTESI
+    Iki kaynak:
+      Gruplar: convs.filter { it.isGroup }
+      Arkadaslar: convs.filter { !it.isGroup }
+    (convs = repo.listenConversations'tan gelen liste)
+
+    ADIM 3 — SATIR + CIKEMBER + TIK (ForwardList composable)
+      Row(clickable = { onToggle(id) }) {
+          AvatarImage(...)
+          Text(name)
+          // Bos cember / dolu tik
+          if (selected) Icon(Icons.Default.CheckCircle, tint = accent)
+          else Icon(Icons.Default.RadioButtonUnchecked, tint = t.text4)
+      }
+    → Kullanici tiklama: selectedIds'e ekle/cikar.
+    → Gonder butonu: selectedIds.isNotEmpty() oldugunda gorunur,
+      bosken kaybolur (yukarida ADIM 1'de kosullu).
+
+    ADIM 4 — REPOSITORY: forwardTo fonksiyonu (Repository.kt)
+      Mevcut forwardMessage'ı gelistir / yenisini ekle:
+      fun forwardTo(currentConvId: String, msg: Message,
+                    targetConvId: String, caption: String) {
+          val base = db.collection("conversations").document(targetConvId)
+                       .collection("messages")
+          val data = hashMapOf(
+              "type" to "text",
+              "text" to msg.text,
+              "image" to msg.image,      // medya iletme destegi
+              "video" to msg.video,
+              "audio" to msg.audio,
+              "senderId" to uid,
+              "isForwarded" to true,
+              "originalSender" to msg.senderId,   // kimin mesaji
+              "forwardComment" to caption.ifEmpty { null },
+              "clientId" to UUID.randomUUID().toString(),
+              "createdAt" to FieldValue.serverTimestamp(),
+              "time" to SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+          )
+          base.add(data)
+          // Conversation lastMsg guncelle
+          db.collection("conversations").document(targetConvId)
+            .update("lastMsg", if (msg.image.isNotEmpty()) "📷 Fotoğraf"
+                     else if (msg.video.isNotEmpty()) "🎬 Video"
+                     else if (msg.audio.isNotEmpty()) "🎤 Ses"
+                     else msg.text, "lastActivity", System.currentTimeMillis())
+      }
+
+    ADIM 5 — MESSAGE MODELINE ALAN EKLE (Models.kt)
+      docToMessage'a isForwarded/originalSender/forwardComment oku:
+        data class Message(..., var isForwarded: Boolean = false,
+                           var originalSender: String = "",
+                           var forwardComment: String = "")
+      docToMessage (Repository.kt:42):
+        isForwarded = d["isForwarded"] as? Boolean ?: false,
+        originalSender = d["originalSender"] as? String ?: "",
+        forwardComment = d["forwardComment"] as? String ?: ""
+
+    ADIM 6 — MESAJ GORUNTULEMEDE "ILETILDI" GÖSTER (ChatScreen.kt)
+      Iletilen mesajlarin ustunde "📤 İletildi" kucuk yazi:
+        if (msg.isForwarded) {
+            Text("📤 ${tr["forwarded"] ?: "Forwarded"}", fontSize = 9.sp, ...)
+        }
+      ForwardComment varsa altinda goster:
+        if (msg.forwardComment.isNotEmpty()) Text("💬 ${msg.forwardComment}")
+
+    ADIM 7 — CEVIRI ANAHTARLARI (Translations.kt)
+      "groups" to "Groups" / "Gruplar"
+      "friends" to "Friends" / "Arkadaşlar"
+      "forwarded" to "Forwarded" / "İletildi"
+      "send" mevcut mu kontrol et.
+
+    ===== DESKTOP UYUMLULUK NOTU =====
+    Desktop showForwardModal tum conversations'i tek listede gosteriyor
+    (kategori yok). Mobilde "Groups"/"Friends" iki kategori isteniyor.
+    Bu sadece mobil UI farki; FIRESTORE veri modeli AYNI:
+      isForwarded: true
+      originalSender: <uid>
+      forwardComment: <caption|null>
+    → Desktop tarafinda degisiklik GEREKMİYOR. Mobil bu alanlari
+      yazinca desktop'ta "📤 İletildi" olarak gorunur.
+
+    ===== TEST ADIMLARI =====
+    1. Mesaja basili tut > Forward
+    2. BottomSheet alttan kayarak gelmeli
+    3. Groups + Friends kategorileri ve satirlar gorunmeli
+    4. Satira tikla → bos cemberin icine tik gelmeli
+    5. Hic secili degilken gonder butonu GORUNMEMELI
+    6. Bir secince buton gorunmeli, hepsini kaldirinca kaybolmali
+    7. 2 kisi + 1 grup sec, gonder → 3 hedefe de iletilmeli
+    8. Masaustunde hedef konusmalari ac → "📤 İletildi" + mesaj
+    9. Masaustunde mesaj ilet → mobilde goruntulensin
+
+===============================================================================
+
+[ ] 10. SABITLENMIS MESAJLAR SAYFASI — MOBIL BOTTOM SHEET + ENTEGRASYON
+    ISTEK: Kullaniciyla olan sohbette sag ust menuden (⋮)
+           "Pinned Messages" butonuna tiklayinca:
+           - Alttan yukari animasyonla bir sayfa acilsin (BottomSheet)
+           - Sabitlenen mesajlar listelensin
+           - Sabitlenen mesaj YOKSA masaustuyle AYNI metin:
+             "📌 Sabitlenmiş mesaj yok."
+           - Masaustuyle entegre: masaustunde pinlenen mesaj mobilde,
+             mobilde pinlenen masaustunde gorunsun
+
+    MEVCUT DURUM:
+    A) MOBIL (ChatScreen.kt:213-215):
+         DropdownMenuItem(text = { Text(tr["pinned"] ?: "Pinned Messages") },
+           onClick = { showChatMenu = false; appLog("Pinned messages - coming soon") })
+       → "coming soon" logu, hicbir sayfa acilmiyor.
+
+    B) DESKTOP (messaging.js:824 showPinnedMessages):
+       Zaten calisiyor. modal-pinned icinde listeliyor:
+         - Bos ise: "📌 Sabitlenmiş mesaj yok." (satir 832)
+         - Dolu ise: "X mesaj" baslik + her mesaj satiri
+       AMA pin verisi localStorage'da (pinnedMsg_{convId}),
+       Firestore'da DEGIL (Bug #5 ile cozulecek).
+
+    ===== PLANLI COZUM (MOBIL) =====
+    NOT: Ocelikle Bug #5 (pin verisi Firestore'a) cozulmeli,
+         yoksa entegrasyon imkansiz.
+
+    ADIM 1 — DROPDOWN'U AKTIF ET (ChatScreen.kt:214)
+      var showPinned by remember { mutableStateOf(false) }
+      DropdownMenuItem(... "Pinned Messages" ...,
+        onClick = { showChatMenu = false; showPinned = true })
+
+    ADIM 2 — BOTTOM SHEET (ChatScreen.kt)
+      if (showPinned) {
+          ModalBottomSheet(
+              containerColor = t.bg2,
+              shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+              onDismissRequest = { showPinned = false }
+          ) {
+              // Baslik
+              Text(tr["pinned"] ?: "Pinned Messages",
+                   color = t.text, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                   modifier = Modifier.padding(20.dp, 16.dp, 20.dp, 8.dp))
+              // Liste
+              val pinnedMsgs = msgs.filter { it.isPinned }   // model alani
+              if (pinnedMsgs.isEmpty()) {
+                  Text("📌 ${tr["no_pinned_messages"] ?: "Sabitlenmiş mesaj yok."}",
+                       color = t.text4, fontSize = 12.sp,
+                       modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                       textAlign = TextAlign.Center)
+              } else {
+                  Text("${pinnedMsgs.size} ${tr["messages"] ?: "messages"}",
+                       color = t.text4, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 20.dp))
+                  LazyColumn { items(pinnedMsgs) { msg ->
+                      PinnedMessageRow(msg, onClick = { ... }, onUnpin = { repo.togglePinMessage(convId, msg.id) })
+                  } }
+              }
+          }
+      }
+
+    ADIM 3 — MESSAGE MODELINE isPinned EKLE (Models.kt)
+      data class Message(..., var isPinned: Boolean = false)
+      docToMessage (Repository.kt:42):
+        isPinned = d["isPinned"] as? Boolean ?: false
+      NOT: Pin bilgisi Bug #5'te pinnedMsgIds (array) olarak
+      conversation dokumanina yazilacak. Alternatif olarak mesaj
+      dokumanina isPinned:true da yazilabilir. HANGISI seçilirse
+      mobil ona gore okumali. Bug #5 veri modeli:
+        /conversations/{convId}: pinnedMsgIds: [docId1, docId2]
+      → Mobil bu durumda msgs'ten degil, pinnedMsgIds'ten filtreler:
+        val pinnedSet = convPinnedIds  // conversation dokumanindan
+        val pinnedMsgs = msgs.filter { pinnedSet.contains(it.id) }
+      (iki yontem de yazilir, gelistirici secer)
+
+    ADIM 4 — SATIR GORUNUMU (PinnedMessageRow)
+      Desktop referansi (messaging.js:843-851):
+        - padding 8x10, border-left 2px accent, flex
+        - Icerik: max 120 karakter
+        - Media: 36x36 thumb (image) / 🎬 / 🎤 ikon
+        - Sagda: mesaj saati + "Kaldır" butonu (unpin)
+      Mobilde ayni yapi:
+        Row(clickable = { /* mesaja git */ }) {
+            Box(2.dp genislik accent bar)
+            if (msg.image.isNotEmpty()) AsyncImage(36.dp)
+            else if (msg.video.isNotEmpty()) Text("🎬")
+            else if (msg.audio.isNotEmpty()) Text("🎤")
+            else Text(msg.text.take(120), maxLines = 2, ellipsis)
+            Spacer(weight)
+            Text(msg.time, fontSize = 10.sp)
+            IconButton(onClick = { repo.togglePinMessage(convId, msg.id); /* yenile */ }) {
+                Icon(Icons.Default.Close / PushPin, tint = Color(0xFFef4444))
+            }
+        }
+
+    ADIM 5 — MESAJA TIKLAYINCA SOHBETTE O MESAJI GÖSTER (opsiyonel)
+      Desktop (messaging.js:852-861): tiklama → modal kapanir,
+      mesaj elementine scrollIntoView + accent outline vurgusu.
+      Mobilde: BottomSheet kapanir, listState.animateScrollToItem
+      ile o mesaj indexine kayilir.
+
+    ADIM 6 — CEVIRI ANAHTARLARI (Translations.kt)
+      "no_pinned_messages" to "Sabitlenmiş mesaj yok." / "No pinned messages."
+      "messages" to "mesaj" / "messages"  (mevcut mu kontrol et)
+      "unpin" mevcut (Translations.kt:29).
+
+    ===== ENTEGRASYON / DESKTOP UYUMLULUK =====
+    Bug #5 (pin verisi Firestore'a) cozuldugunde:
+      - Desktop pinler → Firestore pinnedMsgIds → mobil gorur
+      - Mobil pinler → Firestore pinnedMsgIds → desktop gorur
+    Bu bug (10) sadece mobilde GORUNTULEME sayfasini ekliyor.
+    Veri modeli ortak oldugu icin desktop degisikligi gerekmez.
+
+    ===== TEST ADIMLARI =====
+    1. Sohbet sag ust menuden "Pinned Messages" → BottomSheet acilmali
+    2. Pin yoksa: "📌 Sabitlenmiş mesaj yok." yazmali (desktop ile ayni)
+    3. Masaustunde bir mesaj pinle → mobilde listede gorunmeli
+    4. Mobilde listeden "Kaldır" → masaustunde de kalkmali
+    5. Mobilde bir mesaji pinle → masaustu pinned listesinde gorunmeli
+    6. Mesaja tiklayinca (opsiyonel) sohbette o mesaja kaymali
+
+===============================================================================
+
+[ ] 11. MEDIA GALLERY — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
+    ISTEK: Kullaniciyla olan sohbette sag ust menuden (⋮)
+           "Media Gallery" butonuna tiklayinca:
+           - "Pinned Messages" gibi alttan yukari sayfa acilsin
+           - Sohbetteki MEDYALAR (fotograf + video) listelensin
+           - Masaustuyle entegre:
+             * Fotograf sildiysem galeride gorunmesin
+             * Sohbeti temizlediysem medya galeride gorunmesin
+             * Karsi kullanici silmediyse o tarafta gorunebilir
+           - Masaustundeki sistemin birebir aynisi
+
+    MEVCUT DURUM:
+    A) MOBIL (ChatScreen.kt:216-218):
+         DropdownMenuItem(text = { Text(tr["media"] ?: "Media Gallery") },
+           onClick = { showChatMenu = false; appLog("Media gallery - coming soon") })
+       → "coming soon" logu, sayfa acilmiyor.
+
+    B) DESKTOP (messaging.js:872 showMediaGallery) — CALISIYOR:
+       Filtre (satir 876):
+         var media=msgs.filter(function(m){
+           return !m.deleted && (m.image||m.video)
+         });
+       → m.deleted OLANLAR listelenmez ✓ (kullanici silince)
+       → Sohbet temizlenince store.messages[convId] silinir,
+         media bos olur ✓
+       Bos ise (satir 878):
+         "📷 Medya bulunamadı."
+       Grid: aspect-ratio:1 kare, hover scale.
+       Tiklama → showImage / showVideoPreview.
+       Sag tik menusu: Kaydet / Kopyala / Videoyu Indir / Mesaja Git.
+
+    ===== DESKTOP VERI KAYNAGI (ENTEGRASYON ICIN ONEMLI) =====
+    Desktop galeri, store.messages[convId]'dan besleniyor.
+    Bu liste, Firestore'dan fbListenMessages ile yukleniyor.
+    m.deleted bayragi Firestore'daki mesaj dokumaninda deleted:true
+    olarak saklaniyor (fbSendMessage sendData.deleted).
+    Mobil docToMessage (Repository.kt:44) deleted bayragini
+    OKUYOR: val deleted = d["deleted"] as? Boolean ?: false
+    → Mobil galeri icin ayni filtreyi kullanabilir.
+
+    ===== PLANLI COZUM (MOBIL) =====
+
+    ADIM 1 — DROPDOWN'U AKTIF ET (ChatScreen.kt:217)
+      var showGallery by remember { mutableStateOf(false) }
+      DropdownMenuItem(... "Media Gallery" ...,
+        onClick = { showChatMenu = false; showGallery = true })
+
+    ADIM 2 — BOTTOM SHEET (ChatScreen.kt)
+      if (showGallery) {
+          ModalBottomSheet(
+              containerColor = t.bg2,
+              shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+              onDismissRequest = { showGallery = false }
+          ) {
+              Text(tr["media"] ?: "Media Gallery", color = t.text,
+                   fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                   modifier = Modifier.padding(20.dp, 16.dp, 20.dp, 8.dp))
+              val mediaMsgs = msgs.filter { !it.deleted && (it.image.isNotEmpty() || it.video.isNotEmpty()) }
+              if (mediaMsgs.isEmpty()) {
+                  Text("📷 ${tr["no_media"] ?: "Medya bulunamadı."}",
+                       color = t.text4, fontSize = 12.sp,
+                       modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                       textAlign = TextAlign.Center)
+              } else {
+                  // Kare grid
+                  LazyVerticalGrid(columns = GridCells.Fixed(3),
+                      contentPadding = PaddingValues(12.dp)) {
+                      items(mediaMsgs.size) { i ->
+                          MediaTile(mediaMsgs[i], onClick = {
+                              if (image) showImage...
+                              else video izleyici...
+                          })
+                      }
+                  }
+              }
+          }
+      }
+
+    ADIM 3 — MEDIA TILE (MediaTile composable)
+      Desktop referansi (messaging.js:881-890):
+        - aspect-ratio:1, kose 8dp, object-fit:cover
+        - image: AsyncImage / Coil ile URL yukle
+        - video: video first frame veya 🎬 ikon + play overlaid
+      Kod:
+        Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(8.dp))
+                 .clickable { onClick() }.background(t.bg3)) {
+            if (msg.image.isNotEmpty()) {
+                AsyncImage(model = msg.image, contentDescription = null,
+                           contentScale = ContentScale.Crop,
+                           modifier = Modifier.fillMaxSize())
+            } else if (msg.video.isNotEmpty()) {
+                // video thumb yoksa: bg3 + play ikonu
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.PlayArrow, tint = Color.White, modifier = Modifier.size(32.dp))
+                }
+                // video thumb: VideoThumbnail composable (ekstra) ile
+            }
+        }
+
+    ADIM 4 — MEDYA GORUNTULEME (tiklama)
+      image → mevcut ChatScreen'in buyuk gorsel gosterme yolu
+             (repo/Activity) veya yeni full-screen dialog.
+      video → VideoView/ExoPlayer full-screen.
+
+    ADIM 5 — CEVIRI ANAHTARLARI (Translations.kt)
+      "no_media" to "Medya bulunamadı." / "No media found."
+      "media" mevcut (Translations.kt? kontrol et).
+
+    ===== SILME / TEMIZLEME ENTEGRASYONU =====
+    - Kullanici bir fotograf mesajini SILERSE:
+      docToMessage deleted=true okur → filtre onu cikarir ✓
+      (Desktop'la ayni mantik, otomatik entegre)
+    - Sohbeti temizlerse:
+      Desktop fbClearConversationMessages Firestore'daki mesajlari
+      siler (Bug: ui-core.js clearConversation). Mobil de Firestore
+      listener'i mesajlari removed olarak gorur → msgs bosalir →
+      galeri bosalir ✓
+    - Karsi kullanici SİLMEZSE, onun kendi galerisinde gorunur.
+      Cunku herkesin galerisi kendi store.messages'ina bagli ve
+      deleted bayragi herkeste kendi silme islemine gore degisir.
+      Desktop'ta da boyle — deleted bayragi Firestore'da ortak olsa
+      da, "mesaji sil" islemi (confirmDelete/selfDeleteMessage)
+      sadece kendi localStorage'inaki mesaji deleted yapar mi?
+      KONTROL: confirmDelete (messaging.js:1075) sadece local
+      store.messages'i deleted yapar, Firestore'a sadece lastMsg
+      yazar. Yani desktop'ta mesaj silmek Firestore'daki deleted
+      bayragini DEGISTIRMEZ. Galeri kendi local mesajlarindan
+      beslenir → silince kendi galerisinden duser.
+      → Mobil de AYNI sekilde: silme islemi lokal listede deleted
+        yapmali. Repository.deleteMessage'ın store'dan mesaji
+        deleted isaretleyip isaretlemedigine bakilmali.
+
+    ===== TEST ADIMLARI =====
+    1. Sohbet sag ust menuden "Media Gallery" → BottomSheet acilmali
+    2. Fotograf/video mesajlari kare grid'de gorunmeli
+    3. Medya yoksa: "📷 Medya bulunamadı." yazmali
+    4. Bir fotograf mesajini sil → galeri yenilenince o medya
+       gorunmemeli
+    5. Sohbeti temizle → galeri bosalmali
+    6. Karsi kullanici ayni medyayi gorebiliyor olmali (silmediyse)
+    7. Masaustunde galeri ac → ayni medyalar gorunmeli
+
+===============================================================================
+
+[ ] 12. MESAJ ARAMA (SEARCH) — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
+    ISTEK: Kullaniciyla olan sohbette sag ust menuden (⋮)
+           "Search..." butonuna tiklayinca:
+           - "Pinned Messages" / "Media Gallery" gibi alttan yukari
+             kayarak sayfa acilsin
+           - En ustte ARAMA BAR'i olsun
+           - Arama barinin altinda TUM mesajlar KATEGORILI listelensin:
+             "Bugün", "Dün", "Şu tarihte", "Şu tarihte" alt alta
+           - Arama kutusuna yazdikca mesajlar filtrelensin (örn: "merhaba")
+           - Herhangi bir sonuca tiklayinca sayfa asagi dogru kayarak
+             animasyonlu kapansin ve sohbette o mesajin oldugu konuma
+             yukari/dogru kayarak gotursun
+           - Masaustu arama sistemiyle entegre
+
+    MEVCUT DURUM:
+    A) MOBIL (ChatScreen.kt:219-221):
+         DropdownMenuItem(text = { Text(tr["search"] ?: "Search") },
+           onClick = { showChatMenu = false; appLog("Search - coming soon") })
+       → "coming soon" logu.
+
+    B) DESKTOP (messaging.js:676 searchMessages) — CALISIYOR:
+       - store.messages[activeConvId] icinde ara
+       - Filtre (satir 682):
+           if(m.text && m.text.toLowerCase().indexOf(q)!==-1 && !m.deleted)
+       - Arama metni vurgulanir (accent renkli <b>)
+       - Sonuca tiklayinca modal kapanir, msgEl.scrollIntoView + outline
+       - KATEGORI YOK (desktop düz liste)
+
+    ===== PLANLI COZUM (MOBIL) =====
+
+    ADIM 1 — DROPDOWN'U AKTIF ET (ChatScreen.kt:220)
+      var showSearch by remember { mutableStateOf(false) }
+      var searchQuery by remember { mutableStateOf("") }
+      DropdownMenuItem(... "Search" ...,
+        onClick = { showChatMenu = false; showSearch = true; searchQuery = "" })
+
+    ADIM 2 — BOTTOM SHEET + ARAMA BARI (ChatScreen.kt)
+      if (showSearch) {
+          ModalBottomSheet(
+              containerColor = t.bg2,
+              shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+              onDismissRequest = { showSearch = false }
+          ) {
+              OutlinedTextField(
+                  value = searchQuery,
+                  onValueChange = { searchQuery = it },
+                  placeholder = { Text(tr["search"] ?: "Search...") },
+                  leadingIcon = { Icon(Icons.Default.Search) },
+                  trailingIcon = { if (searchQuery.isNotEmpty()) IconButton({ searchQuery = "" }) { Close } },
+                  modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+              )
+              SearchResultsList(msgs, searchQuery) { msg ->
+                  showSearch = false
+                  // animasyonlu kapanma + scroll
+                  scope.launch {
+                      listState.animateScrollToItem(msgs.indexOf(msg))
+                      // vurgu
+                  }
+              }
+          }
+      }
+
+    ADIM 3 — KATEGORILI LISE (SearchResultsList)
+      Mesajlari 4 kategoriye ayir:
+        "Bugün"       → ayni gun
+        "Dün"         → dunku gun
+        "Şu tarihte"  → ayri gunler (ornek: "12 Temmuz")
+      Kategori hesaplama:
+        val today = Calendar.getInstance()
+        fun categorize(ts): String {
+            // mesajda time "HH:MM" ama tarih yok! Mobil mesaj
+            // modelinde sadece time string'i var mi? (Models.kt)
+        }
+      NOT: Mesaj modelinde createdAt Timestamp'i mobilde OKUNUYOR MU?
+      Kontrol: docToMessage (Repository.kt:42-53) createdAt'i
+      okumuyor olabilir. Kategori icin mesajin TIMESTAMP'I gerekli.
+      → docToMessage'a createdAt eklenmeli:
+          val ts = d["createdAt"]
+          val createdAt = when(ts) { is Timestamp -> ts.toDate() ; else -> Date() }
+          Message(..., createdAt = createdAt)
+
+    ADIM 4 — ARAMA FILTRESI (desktop ile ayni)
+      val q = searchQuery.trim().lowercase()
+      val filtered = if (q.isEmpty()) msgs else
+          msgs.filter { !it.deleted && it.text.lowercase().contains(q) }
+      → Kategori yapisi filtere sonrasi yeniden uygulanir
+      → Her kategoride arama metni vurgulanir (desktop:713-718 gibi,
+        SpannedString / AnnotatedString ile accent renk)
+
+    ADIM 5 — SONUCA TIKLAYINCA MESAJA GIT
+      Desktop referansi (messaging.js:698-708):
+        selectConversation; scrollIntoView({block:'center'});
+        outline accent 2px, 2 sn sonra kaldir
+      Mobil:
+        showSearch = false   // BottomSheet asagi kayarak kapanir
+        scope.launch {
+            listState.animateScrollToItem(msgs.indexOf(msg))
+        }
+        // Vurgu: seçilen mesajin arka planini accent yapip 1.5sn
+        // sonra normale dondur (state ile)
+
+    ADIM 6 — CEVIRI ANAHTARLARI (Translations.kt)
+      "today" to "Bugün" / "Today"
+      "yesterday" to "Dün" / "Yesterday"
+      "search" mevcut (ChatListScreen'de kullaniliyor)
+      "no_results" to "Sonuç bulunamadı" / "No results found"
+
+    ===== ENTEGRASYON =====
+    Desktop ve mobil AYNI Firestore mesajlarini okuyor.
+    Arama filtresi (text contains + !deleted) iki tarafta da ayni.
+    Kategori farki sadece mobil UI'da. Veri entegrasyonu otomatik.
+
+    ===== TEST ADIMLARI =====
+    1. Sohbet menuden "Search" → BottomSheet + ustte arama bari
+    2. Arama barinin altinda "Bugün/Dün/tarih" kategorileri + mesajlar
+    3. "merhaba" yaz → sadece iceren mesajlar kalir + vurgulanir
+    4. Sonuca tikla → sayfa asagi kayar, sohbette o mesaja gider
+    5. Masaustunde ayni arama yap → ayni sonuclar
+
+===============================================================================
+
+===============================================================================
+MOBIL ICIN KISA OZET
+===============================================================================
+
+SORUN 1 (buyuk kutu): ChatScreen.kt'de replyToMsg state'i konusma
+degistirilince sifirlanmiyor olabilir. LaunchedEffect(convId) ekle.
+Dosya: android-native/.../ui/screens/ChatScreen.kt
+
+SORUN 2 (Türkçe arama logu): Desktop calls.js:384 "📞 Sesli arama"
+yaziyor, mobil goruntuluyor. Kalici cozum desktop'ta tr('voice_call').
+Mobilde tr["voice_call"] anahtari hazir (Translations.kt).
+Dosya: src/calls.js (kaynak), Translations.kt (ceviri hazir)
+
+SORUN 3 (grup DM olarak aciliyor): Repository.kt:20 isGroup tespiti
+d["type"]=="group" kontrolu eklenmeli. 2 uyeli gruplar DM saniliyor.
+Dosya: android-native/.../data/Repository.kt

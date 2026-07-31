@@ -193,6 +193,8 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
         case 'reset-shortcut':resetShortcut(t.dataset.scId);break;
         case 'check-update':checkUpdate();break;
         case 'clear-local-data':clearLocalData();break;
+        case 'select-lang':if(t.dataset.lang)setLanguage(t.dataset.lang);break;
+        case 'use-device-lang':setLanguage(detectSystemLanguage());break;
       }
     });
     sh.addEventListener('change',function(e){

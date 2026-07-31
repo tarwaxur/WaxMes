@@ -193,6 +193,8 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
         case 'reset-shortcut':resetShortcut(t.dataset.scId);break;
         case 'check-update':checkUpdate();break;
         case 'clear-local-data':clearLocalData();break;
+        case 'select-lang':if(t.dataset.lang)setLanguage(t.dataset.lang);break;
+        case 'use-device-lang':setLanguage(detectSystemLanguage());break;
       }
     });
     sh.addEventListener('change',function(e){
@@ -388,6 +390,7 @@ if(regBtns.length>=2)regBtns[1].onclick=function(){goToWelcome()};
       if (f && store.storyDraft) {
         store.storyDraft.font = f;
         var btns=target.parentElement;if(btns){var afs=btns.querySelectorAll('.story-font-btn.active');for(var afi=0;afi<afs.length;afi++)afs[afi].classList.remove('active')}target.classList.add('active');
+        var _sfTi=$('story-text-input');if(_sfTi){for(var _sfFi=0;_sfFi<STORY_FONTS.length;_sfFi++){if(STORY_FONTS[_sfFi].id===f){_sfTi.style.fontFamily=STORY_FONTS[_sfFi].stack;break}}}
         var _sfP=$('story-font-preview');if(_sfP){for(var _sfPi=0;_sfPi<STORY_FONTS.length;_sfPi++){if(STORY_FONTS[_sfPi].id===f){_sfP.style.fontFamily=STORY_FONTS[_sfPi].stack;break}}}
       }
     } else if (action === 'pick-story-media') {

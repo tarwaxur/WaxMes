@@ -26,6 +26,23 @@ async function showSettingsCat(cat){
     content.innerHTML='<div class="stitle">Tema Ayarları</div><div class="stitle-sub">Fareyi tema üzerine getirerek önizle, tıklayarak aktif et</div><div class="theme-grid">'+
       ['default','royal','forest','wine','slate','plum','coffee','teal','ember','navy','emerald','cloud','pearl','mist','cream','sage','lilac','coral','sky','linen','frost'].map(function(t){return '<div class="theme-card tp-'+t+(cur===t?' active':'')+'" data-theme="'+t+'" data-action="select-theme"><div class="theme-card-preview"><div class="tcp-dot"></div><div class="tcp-bar"><div></div><div></div><div></div></div></div><div class="theme-card-name">'+themes[t]+'</div></div>'}).join('')+
       '</div>'
+  }else if(cat==='language'){
+    var langs=getLanguages();
+    var cur=getCurrentLang();
+    var html='<div class="stitle">'+tr('select_language')+'</div>'+
+      '<div class="stitle-sub">'+tr('available_languages')+'</div>'+
+      '<div style="display:flex;flex-direction:column;gap:6px">';
+    for(var li=0;li<langs.length;li++){
+      var lg=langs[li];
+      var isActive=(lg.code===cur)?'style="background:rgba(129,140,248,.08);border-color:var(--accent)"':'';
+      html+='<button data-action="select-lang" data-lang="'+lg.code+'" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:13px;color:var(--text2);transition:all .15s" '+isActive+'>'+
+        '<span style="font-size:20px">'+lg.flag+'</span><span style="flex:1;text-align:left">'+lg.name+'</span>'+
+        (isActive?'<span style="color:var(--accent);font-size:12px">✓</span>':'')+
+      '</button>'
+    }
+    html+='</div>'+
+      '<div style="margin-top:16px"><button data-action="use-device-lang" style="padding:8px 16px;border:none;border-radius:8px;background:var(--bg3);color:var(--text3);font-family:inherit;font-size:12px;cursor:pointer">'+tr('use_device_lang')+'</button></div>';
+    content.innerHTML=html
   }else if(cat==='privacy'){
     var notifChecked=ls(STORAGE_KEYS.NOTIFICATIONS)!==false?'checked':'';
     var autoStartChecked='';var bgChecked='';
