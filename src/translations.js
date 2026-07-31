@@ -294,6 +294,7 @@ function _getTranslations(code) {
     app_description: 'WaxMes is a modern messaging app designed for friend groups. Fast, secure, and easy to use.',
     // Missing keys added for full i18n support
     calling: 'Calling...', connected: 'Connected', connecting: 'Connecting...', someone: 'Someone',
+    dur_min: 'm', dur_sec: 's',
     mic_required: 'Microphone access required', no_screen_found: 'No screens found',
     camera_error: 'Camera error', camera_toggle: 'Turn Camera Off',
     encrypted_message: '🔒 Encrypted', conversations_load_failed: 'Conversations failed to load',
@@ -375,7 +376,41 @@ function _getTranslations(code) {
     group_name_placeholder: 'e.g. Friends',
     comment: 'Comment',
     comment_placeholder: 'Add a comment to the forwarded message...',
-    forward_help: 'Click to select multiple'
+    forward_help: 'Click to select multiple',
+    typing: 'Typing...',
+    messages: 'messages',
+    no_results: 'No results',
+    results: 'results',
+    photo: 'Photo',
+    audio: 'Audio',
+    forwarded: 'Forwarded',
+    edited: 'edited',
+    delete_group: 'Delete Group',
+    delete_group_confirm: 'Delete this group permanently? This action cannot be undone.',
+    remove_from_group: 'Remove from Group',
+    remove_admin: 'Remove Admin',
+    make_admin: 'Make Admin',
+    remove: 'Remove',
+    remove_member_confirm: 'Remove this person from the group?',
+    self_delete_confirm: 'Delete this message only for you?',
+    decrypt_failed: 'Could not decrypt',
+    no_media: 'No media found.',
+    download_video: 'Download Video',
+    go_to_message: 'Go to Message',
+    edit_media: 'Edit Media',
+    forward_all: 'Forward All',
+    images: 'images',
+    delete_media_confirm: ' media will be deleted permanently?',
+    cannot_add_self: 'You cannot send a request to yourself.',
+    already_friends: 'This user is already in your friends list.',
+    too_many_pending: 'You have too many pending requests.',
+    request_sent: 'You already sent a request to this user.',
+    remove_friend: 'Remove Friend',
+    decline: 'Decline',
+    withdraw: 'Withdraw Request',
+    close_conversation: 'Close Chat',
+    add_to_group: 'Add to Group',
+    archive_hide: 'Archive (hide)', archive_empty: 'Archive empty'
   };
   return { // Turkish (default)
     waxmes: 'WaxMes',
@@ -613,6 +648,7 @@ function _getTranslations(code) {
     welcome_version: 'v0.1.0',
     app_description: 'WaxMes, arkadaş grupları için tasarlanmış modern bir mesajlaşma uygulamasıdır. Hızlı, güvenli ve kullanımı kolaydır.',
     calling: 'Arıyor...', connected: 'Bağlandı', connecting: 'Bağlanıyor...', someone: 'Birisi',
+    dur_min: 'dk', dur_sec: 'sn',
     mic_required: 'Mikrofon erişimi gerekli', no_screen_found: 'Ekran bulunamadı',
     camera_error: 'Kamera hatası', camera_toggle: 'Kamerayı Kapat',
     encrypted_message: '🔒 Mesaj', conversations_load_failed: 'Konuşmalar yüklenemedi',
@@ -650,7 +686,7 @@ function _getTranslations(code) {
     incoming: 'Gelen', just_now: 'Az önce', media_desktop_only: 'Medya yükleme sadece masaüstünde kullanılabilir.',
     media_read_error: 'Medya dosyası okunamadı.', member: 'Üye', members: 'üye',
     minutes_ago: 'dk önce', new_group: 'Yeni Grup', no_stories_yet: 'Henüz durum yok',
-    ok: 'Tamam',     no_pinned: 'No pinned messages', pending: 'Bekleyen', photo_or_video: 'Fotoğraf veya Video',
+    ok: 'Tamam',     pending: 'Bekleyen', photo_or_video: 'Fotoğraf veya Video',
     remove_media: 'Medyayı Kaldır', rounded: 'Yuvarlak', saving: 'Kaydediliyor...',
     select_media: 'Medya Seç', select_photo_video: 'Fotoğraf veya Video Seç',
     share: 'Paylaş', story_share_error: 'Durum paylaşılamadı.', tech: 'Teknik',
@@ -695,7 +731,41 @@ function _getTranslations(code) {
     group_name_placeholder: 'Örn: Arkadaşlar',
     comment: 'Yorum',
     comment_placeholder: 'İletilen mesaja yorum ekle...',
-    forward_help: 'Birden fazla seçmek için tıklayın'
+    forward_help: 'Birden fazla seçmek için tıklayın',
+    typing: 'Yazıyor...',
+    messages: 'mesaj',
+    no_results: 'Sonuç yok',
+    results: 'sonuç',
+    photo: 'Fotoğraf',
+    audio: 'Ses',
+    forwarded: 'İletildi',
+    edited: 'düzenlendi',
+    delete_group: 'Grubu Sil',
+    delete_group_confirm: 'Grup kalıcı olarak silinsin mi? Bu işlem geri alınamaz.',
+    remove_from_group: 'Gruptan Çıkar',
+    remove_admin: 'Yöneticiliği Kaldır',
+    make_admin: 'Yönetici Yap',
+    remove: 'Çıkar',
+    remove_member_confirm: 'Bu kişi gruptan çıkarılsın mı?',
+    self_delete_confirm: 'Bu mesaj sadece senin tarafında silinsin mi?',
+    decrypt_failed: 'Çözülemedi',
+    no_media: 'Medya bulunamadı.',
+    download_video: 'Videoyu İndir',
+    go_to_message: 'Mesaja Git',
+    edit_media: 'Medyaları Düzenle',
+    forward_all: 'Tümünü İlet',
+    images: 'görsel',
+    delete_media_confirm: ' medya kalıcı olarak silinsin mi?',
+    cannot_add_self: 'Kendine istek gönderemezsin.',
+    already_friends: 'Bu kullanıcı zaten arkadaşlarında.',
+    too_many_pending: 'Çok fazla bekleyen isteğin var.',
+    request_sent: 'Bu kullanıcıya zaten istek göndermişsin.',
+    remove_friend: 'Arkadaşlıktan Çıkar',
+    decline: 'Reddet',
+    withdraw: 'İsteği Geri Al',
+    close_conversation: 'Sohbeti Kapat',
+    add_to_group: 'Gruba Ekle',
+    archive_hide: 'Arşiv (gizle)', archive_empty: 'Arşiv boş'
   };
 }
 
@@ -725,6 +795,12 @@ function translatePreview(msg) {
     '📤 İletildi': 'forwarded',
     '📤 Forwarded': 'forwarded'
   };
+  // Voice call log: "📞 Sesli arama · 12:30 → 12:31 (1dk 5sn)"
+  // Store call type neutrally and translate the label while keeping time/duration
+  var callMatch = msg.match(/^📞 (Sesli arama|Voice Call)[^\d]*(\d+:\d+.*)$/);
+  if (callMatch) {
+    return '📞 ' + tr('voice_call') + ' · ' + callMatch[2];
+  }
   // Check if msg starts with a known system prefix (emoji + text combinations)
   for (var key in systemMsgs) {
     if (msg.indexOf(key) !== -1) {

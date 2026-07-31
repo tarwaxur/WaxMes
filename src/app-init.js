@@ -195,3 +195,36 @@ loadFirebase(function(){
 
 // Wire up store events for reactive UI
 store.on('conversations', renderConversations);
+
+// Update static HTML text on language change
+function updateStaticI18n() {
+  // Handle data-i18n-title separately (translates only title, not textContent)
+  document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+    var key = el.dataset.i18nTitle;
+    if (key) el.title = tr(key);
+  });
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.dataset.i18n;
+    if (!key) return;
+    if (el.tagName === 'INPUT' && el.placeholder !== undefined) {
+      el.placeholder = tr(key);
+      return;
+    }
+    if (el.title !== undefined) {
+      el.title = tr(key);
+    }
+    // Find and update the last non-empty text node (preserves SVG children)
+    var child = el.lastChild;
+    while (child) {
+      if (child.nodeType === 3 && child.textContent.trim().length > 0) {
+        child.textContent = child.textContent.replace(child.textContent.trim(), tr(key));
+        return;
+      }
+      child = child.previousSibling;
+    }
+    // Fallback: no text node found, safe to use textContent
+    if (el.children.length === 0) el.textContent = tr(key);
+  });
+}
+updateStaticI18n();
+onLangChange(updateStaticI18n);

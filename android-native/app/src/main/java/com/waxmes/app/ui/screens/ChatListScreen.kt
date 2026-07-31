@@ -143,7 +143,9 @@ fun ChatListScreen(repo: Repository, onChatClick: (String) -> Unit, onSettingsCl
                             }
                         }) { BadgedBox(badge = { Badge(containerColor = Color(0xFF22c55e)) }) { Icon(Icons.Default.FileDownload, contentDescription = null, tint = Color(0xFF22c55e)) } }
                     }
-                    IconButton(onClick = { isSearching = true }) { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) }
+                    if (selectedTab != "new") {
+                        IconButton(onClick = { isSearching = true }) { Icon(Icons.Default.Search, contentDescription = null, tint = t.text3) }
+                    }
                     Box {
                         IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = null, tint = t.text3) }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, shape = RoundedCornerShape(20.dp), offset = DpOffset(0.dp, 4.dp), containerColor = t.bg2) {

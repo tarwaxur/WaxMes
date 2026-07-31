@@ -40,11 +40,11 @@ function storyTimeAgo(story) {
   var cMs = (c && typeof c.toMillis === 'function') ? c.toMillis() : (typeof c === 'number' ? c : storyNow());
   var diff = Math.max(0, storyNow() - cMs);
   var min = Math.floor(diff / 60000);
-  if (min < 1) return 'şimdi';
-  if (min < 60) return min + ' dk önce';
+  if (min < 1) return tr('just_now');
+  if (min < 60) return min + ' '+tr('minutes_ago');
   var hr = Math.floor(min / 60);
-  if (hr < 24) return hr + ' sa önce';
-  return Math.floor(hr / 24) + ' gün önce';
+  if (hr < 24) return hr + ' '+tr('hours_ago');
+  return Math.floor(hr / 24) + ' '+tr('yesterday');
 }
 
 // ===== FIRESTORE LİSTENER =====
@@ -131,7 +131,7 @@ function groupStoriesByAuthor(items) {
     if (!byAuthor[s.authorId]) {
       byAuthor[s.authorId] = {
         authorId: s.authorId,
-        authorName: s.authorName || 'Kullanıcı',
+        authorName: s.authorName || tr('user'),
         authorAvatar: s.authorAvatar || '?',
         authorColor: s.authorColor || '#818cf8',
         items: [],
@@ -176,7 +176,7 @@ async function fbCreateStory(type, payload) {
       if (uDoc.exists) me = Object.assign(me, uDoc.data());
     } catch(e) {}
   }
-  var authorName = me.displayName || me.username || 'Kullanıcı';
+  var authorName = me.displayName || me.username || tr('user');
   var authorAvatar = me.avatar || (authorName || '?').charAt(0).toUpperCase();
   var authorColor = me.color || STORY_BG_COLORS[Math.floor(Math.random() * STORY_BG_COLORS.length)];
 
@@ -295,12 +295,12 @@ function renderStoryBar() {
     html += '<div class="story-avatar-add">+</div>';
   }
   html += '</div>';
-  html += '<div class="story-name">' + esc((myEntry && myEntry.authorName) || 'Sen') + '</div>';
+  html += '<div class="story-name">' + esc((myEntry && myEntry.authorName) || tr('you')) + '</div>';
   html += '</div>';
 
   // Arkadaş durumları
   if (others.length === 0 && !myHasStory) {
-    html += '<div class="story-empty">Henüz durum yok. İlk sen paylaş!</div>';
+    html += '<div class="story-empty">'+tr('no_stories_yet')+'. İlk sen paylaş!</div>';
   } else {
     for (var j = 0; j < others.length; j++) {
       var e = others[j];
@@ -528,7 +528,7 @@ function renderStoryViewer() {
     contentHtml = '<div class="story-media-content" style="position:absolute;inset:0"><video src="' + escJs(sanitizeUrl(item.mediaUrl)) + '" class="story-media-img" autoplay playsinline></video></div>' +
       (item.caption ? '<div class="story-caption" style="font-family:' + _fontForCaption2 + '">' + esc(item.caption) + '</div>' : '');
   } else {
-    contentHtml = '<div class="story-text-content" style="position:absolute;inset:0;background:var(--bg3)"><div class="story-text-inner">Desteklenmeyen içerik</div></div>';
+    contentHtml = '<div class="story-text-content" style="position:absolute;inset:0;background:var(--bg3)"><div class="story-text-inner">'+tr('unsupported_content')+'</div></div>';
   }
 
   // Header
@@ -540,13 +540,13 @@ function renderStoryViewer() {
           : esc(author.authorAvatar || (author.authorName||'?').charAt(0).toUpperCase())) +
       '</div>' +
       '<div class="story-viewer-meta">' +
-        '<div class="story-viewer-name">' + esc(author.authorName) + (author.isMine ? ' (Sen)' : '') + '</div>' +
+        '<div class="story-viewer-name">' + esc(author.authorName) + (author.isMine ? ' ('+tr('you')+')' : '') + '</div>' +
         '<div class="story-viewer-time">' + esc(storyTimeAgo(item)) + '</div>' +
       '</div>' +
     '</div>' +
     '<div class="story-viewer-actions">' +
-      (author.isMine ? '<button class="story-viewer-btn" data-action="delete-my-story" data-id="' + esc(item.id) + '" style="font-size:11px;padding:6px 14px;border-radius:8px;width:auto;background:rgba(255,255,255,.1)">Durumu Kald\u0131r</button>' : '') +
-      '<button class="story-viewer-btn" data-action="close-story" style="background:rgba(255,255,255,.1)" title="Kapat">✕</button>' +
+      (author.isMine ? '<button class="story-viewer-btn" data-action="delete-my-story" data-id="' + esc(item.id) + '" style="font-size:11px;padding:6px 14px;border-radius:8px;width:auto;background:rgba(255,255,255,.1)">'+tr('delete')+'</button>' : '') +
+      '<button class="story-viewer-btn" data-action="close-story" style="background:rgba(255,255,255,.1)" title="'+tr('close')+'">✕</button>' +
     '</div>' +
   '</div>';
 
@@ -646,11 +646,11 @@ function renderCreateStoryModal() {
   }
 
   m.innerHTML = '<div class="modal story-create-card">' +
-      '<div class="modal-header"><h3>Yeni Durum</h3><button class="modal-close" data-action="close-create-story">✕</button></div>' +
+      '<div class="modal-header"><h3>'+tr('add_story')+'</h3><button class="modal-close" data-action="close-create-story">✕</button></div>' +
       '<div class="modal-body">' + tabsHtml + bodyHtml + '</div>' +
       '<div class="modal-footer">' +
-        '<button class="modal-btn modal-btn-secondary" data-action="close-create-story">İptal</button>' +
-        '<button class="btn-primary" data-action="confirm-create-story" id="story-confirm-btn">Paylaş</button>' +
+        '<button class="modal-btn modal-btn-secondary" data-action="close-create-story">'+tr('cancel')+'</button>' +
+        '<button class="btn-primary" data-action="confirm-create-story" id="story-confirm-btn">'+tr('share')+'</button>' +
       '</div>' +
     '</div>';
 
@@ -700,7 +700,7 @@ function renderCreateStoryModal() {
 
 async function pickStoryMedia() {
   if (!window.electronAPI || !electronAPI.selectMedia) {
-    _showError('Medya seçimi sadece masaüstü uygulamada çalışır.', 'story.js:572');
+    _showError(tr('media_desktop_only'), 'story.js:572');
     return;
   }
   try {
@@ -729,13 +729,13 @@ async function confirmCreateStory() {
   if (!draft) return;
   store.storyPublishing=true;
   var btn = $('story-confirm-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Paylaşılıyor...'; }
+  if (btn) { btn.disabled = true; btn.textContent = tr('saving'); }
 
   try {
     if (draft.type === 'text') {
       if (!draft.text || !draft.text.trim()) {
         _showError('Lütfen bir metin yaz.', 'story.js:605');
-        if (btn) { btn.disabled = false; btn.textContent = 'Paylaş'; }
+        if (btn) { btn.disabled = false; btn.textContent = tr('share'); }
         store.storyPublishing=false;return;
       }
       var payload = {
@@ -750,14 +750,14 @@ async function confirmCreateStory() {
     } else {
       if (!draft.media) {
         _showError('Lütfen bir medya seç.', 'story.js:media');
-        if (btn) { btn.disabled = false; btn.textContent = 'Paylaş'; }
+        if (btn) { btn.disabled = false; btn.textContent = tr('share'); }
         store.storyPublishing=false;return;
       }
       var file = draft.media;
       var dataUrl = file.dataUrl;
       if (!dataUrl) {
         _showError('Medya dosyası okunamadı.', 'story.js:media');
-        if (btn) { btn.disabled = false; btn.textContent = 'Paylaş'; }
+        if (btn) { btn.disabled = false; btn.textContent = tr('share'); }
         store.storyPublishing=false;return;
       }
       var mediaUrl = dataUrl;
@@ -781,8 +781,8 @@ async function confirmCreateStory() {
     }
   } catch (e) {
     console.error('confirmCreateStory error:', e);
-    _showError('Durum paylaşılamadı: ' + (e.message || e), 'story.js:637');
-    if (btn) { btn.disabled = false; btn.textContent = 'Paylaş'; }
+        _showError(tr('story_share_error')+' ' + (e.message || e), 'story.js:637');
+    if (btn) { btn.disabled = false; btn.textContent = tr('share'); }
     store.storyPublishing=false;
   }
 }
@@ -1047,7 +1047,7 @@ function showSimpleAlert(title, desc) {
   bg.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:28px 32px;max-width:380px;text-align:center;box-shadow:0 16px 64px rgba(0,0,0,.5)">' +
     '<div style="color:var(--text2);font-size:15px;font-weight:600;margin-bottom:8px">' + esc(title) + '</div>' +
     '<div style="color:var(--text4);font-size:12px;line-height:1.5;margin-bottom:20px">' + esc(desc) + '</div>' +
-    '<button class="modal-btn btn-primary" style="padding:9px 28px;border:none;border-radius:10px;background:var(--grad);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Tamam</button>' +
+    '<button class="modal-btn btn-primary" style="padding:9px 28px;border:none;border-radius:10px;background:var(--grad);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">'+tr('ok')+'</button>' +
   '</div>';
   document.body.appendChild(bg);
   bg.querySelector('button').onclick = function() { bg.remove(); };

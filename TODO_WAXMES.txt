@@ -73,7 +73,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 1. MESAJ YAZMA KUTUSUNUN USTUNDE BUYUK KUTU / BAR GORUNUYOR
+[x] 1. MESAJ YAZMA KUTUSUNUN USTUNDE BUYUK KUTU / BAR GORUNUYOR
     Durum: Sohbet ekraninda mesaj yazma kutusunun hemen ustunde
            buyuk bir kutu/bar gorunuyor. Eski bir sorunun tekrari.
 
@@ -175,7 +175,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 2. SESLI ARAMA LOG'LARI DILE GORE DEGISMIYOR (HARDCODED TURKCE)
+[x] 2. SESLI ARAMA LOG'LARI DILE GORE DEGISMIYOR (HARDCODED TURKCE)
     Durum: Uygulama Ingilizce kullaniliyor ama sohbet icindeki arama
            log'lari ("📞 Sesli arama") Turkce gorunuyor.
 
@@ -236,7 +236,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 3. GRUP KONUSMASI ACILMIYOR, UYENIN DM'I AÇILIYOR
+[x] 3. GRUP KONUSMASI ACILMIYOR, UYENIN DM'I AÇILIYOR
     Durum: Kullanici gruba tiklayinca grup sohbeti yerine grupta
            olan bir uyenin DM sohbeti aciliyor.
 
@@ -304,7 +304,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 4. "+ NEW" SAYFASINDA FAZLA ARAMA BUTONU
+[x] 4. "+ NEW" SAYFASINDA FAZLA ARAMA BUTONU
     Durum: "+ New" sayfasinin sag ust kosesinde buyutec ikonlu
            bir arama butonu var. Ama zaten "Search friends..."
            arama cubugu mevcut. Sag ustteki buyutec butonu
@@ -331,7 +331,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 5. MESAJ SABITLEME (PIN MESSAGE) — MOBIL VE DESKTOP ENTEGRASYONU
+[x] 5. MESAJ SABITLEME (PIN MESSAGE) — MOBIL VE DESKTOP ENTEGRASYONU
     ISTEK: Mesaja basili tutup "Pin Message" → mesaj sabitlensin.
            Mobilde sabitlenen mesaj masaustunde gorunsun.
            Masaustunde sabitlenen mesaj mobilde gorunsun.
@@ -453,7 +453,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 6. MESAJ DUZENLEME (EDIT) — MOBIL AKTIF ETME + DESKTOP ENTEGRASYONU
+[x] 6. MESAJ DUZENLEME (EDIT) — MOBIL AKTIF ETME + DESKTOP ENTEGRASYONU
     ISTEK: Mesaja basili tutup "Edit" deyince:
            1) Input'ta "Reply..." degil "Edit..." yazisi gorunsun
            2) Edit/gonder sistemi masaustuyle AYNI olsun
@@ -596,7 +596,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 7. YANITLAMA / DUZENLEME SIRASINDA HEDEF MESAJ GORUNUR OLSUN
+[x] 7. YANITLAMA / DUZENLEME SIRASINDA HEDEF MESAJ GORUNUR OLSUN
     ISTEK: Mesaji yanitlarken veya duzenlerken, HANGI mesaji
            yanitladigimizi/duzenledigimizi net gormek icin hedef
            mesajin icerigi, mesaj yazma kutusunun hemen ustune
@@ -733,7 +733,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 8. YANITLARKEN / DUZENLERKEN KLAVYE OTOMATIK AÇILSIN
+[x] 8. YANITLARKEN / DUZENLERKEN KLAVYE OTOMATIK AÇILSIN
     ISTEK: Mesaji yanitlamak veya duzenlemek icin basili tutup
            "Reply"/"Edit" secildiginde, mesaj yazma kutusuna
            otomatik odaklanilip klavye otomatik AÇILSIN.
@@ -809,7 +809,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 9. MESAJ ILETME (FORWARD) — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
+[x] 9. MESAJ ILETME (FORWARD) — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
     ISTEK: Mesaja basili tutup "Forward" deyince:
            - Alttan yukari kayarak bir sayfa (BottomSheet) gelsin
            - "Groups" ve "Friends" diye IKI KATEGORI olsun
@@ -995,7 +995,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 10. SABITLENMIS MESAJLAR SAYFASI — MOBIL BOTTOM SHEET + ENTEGRASYON
+[x] 10. SABITLENMIS MESAJLAR SAYFASI — MOBIL BOTTOM SHEET + ENTEGRASYON
     ISTEK: Kullaniciyla olan sohbette sag ust menuden (⋮)
            "Pinned Messages" butonuna tiklayinca:
            - Alttan yukari animasyonla bir sayfa acilsin (BottomSheet)
@@ -1117,7 +1117,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 11. MEDIA GALLERY — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
+[x] 11. MEDIA GALLERY — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
     ISTEK: Kullaniciyla olan sohbette sag ust menuden (⋮)
            "Media Gallery" butonuna tiklayinca:
            - "Pinned Messages" gibi alttan yukari sayfa acilsin
@@ -1261,7 +1261,7 @@ NOT: 1-12 arasi MOBIL, 13+ DESKTOP (ELEKTRON JS) taraflarindadir.
 
 ===============================================================================
 
-[ ] 12. MESAJ ARAMA (SEARCH) — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
+[x] 12. MESAJ ARAMA (SEARCH) — MOBIL BOTTOM SHEET + DESKTOP ENTEGRASYONU
     ISTEK: Kullaniciyla olan sohbette sag ust menuden (⋮)
            "Search..." butonuna tiklayinca:
            - "Pinned Messages" / "Media Gallery" gibi alttan yukari

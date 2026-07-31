@@ -32,7 +32,7 @@ async function startCall(){
   // Show inline call bar
   $('call-bar').style.display='flex';
   $('call-bar-name').textContent=conv.name;
-  $('call-bar-status').textContent='Çağrı başlatılıyor...';
+  $('call-bar-status').textContent=tr('calling');
   $('call-bar-timer').style.display='none';
   // Helper: get avatar HTML for a user
   function makeCallAvatar(id, name, bgColor, avatarLetter, avatarUrl){
@@ -141,7 +141,7 @@ async function startLocalStream(){
         if(!vadSpeaking)vadNoiseFloor=vadNoiseFloor*0.95+avg*0.05
       },150)
     }catch(e){}
-  }catch(e){alert('Mikrofon erişimi gerekli');endCall()}
+  }catch(e){alert(tr('mic_required'));endCall()}
 }
 
 async function createOffer(callId){
@@ -158,7 +158,7 @@ async function createOffer(callId){
     if(store.callPeerConn.iceConnectionState==='connected'||store.callPeerConn.iceConnectionState==='completed'){
       if(store.callState!=='connected'){
         store.callState='connected';store.callStartTime=Date.now();
-        $('call-bar-status').textContent='Bağlandı';
+        $('call-bar-status').textContent=tr('connected');
         $('call-bar-timer').style.display='inline';
         stopRingtone();
         if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
@@ -190,8 +190,8 @@ async function createOffer(callId){
   try {
     var offer=await store.callPeerConn.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:false});
     store.callPeerConn.setLocalDescription(offer);
-    $('call-bar-status').textContent='Bağlanıyor...';
-    if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'offer',sdp:offer,callId:callId,callerName:$('sidebar-username').textContent||'Birisi'})
+    $('call-bar-status').textContent=tr('connecting');
+    if(store.activeConvId)fbSendCallSignal(store.activeConvId,{action:'offer',sdp:offer,callId:callId,callerName:$('sidebar-username').textContent||tr('someone')})
   }catch(e){console.error(e)}
 }
 
@@ -233,7 +233,7 @@ function fbListenCallSignals(convId){
           // Skip if caller is offline (DM only)
           if(!conv.isGroup&&conv.online===false)return;
           store._callSigOfferId=sid;
-          var callerName=d.callerName||'Birisi';
+          var callerName=d.callerName||tr('someone');
           $('incoming-caller-name').textContent=callerName;
           store.callState='ringing';
           store.pendingCallMsgId=sid;
@@ -255,7 +255,7 @@ function fbListenCallSignals(convId){
         // Incoming answer (we are the caller)
         if(d.action==='answer'&&d.sdp&&store.callPeerConn&&store.callPeerConn.localDescription&&store.callPeerConn.localDescription.type==='offer'){
           (async function(){try{await store.callPeerConn.setRemoteDescription(new RTCSessionDescription(d.sdp));
-            $('call-bar-status').textContent='Bağlandı';
+            $('call-bar-status').textContent=tr('connected');
             $('call-bar-timer').style.display='inline';
             store.callState='connected';
             store.callStartTime=Date.now();
@@ -296,7 +296,7 @@ async function acceptCall(){
   a.id='call-bar-avatar';a.textContent=name.charAt(0);
   avatarContainer.appendChild(a);
   $('call-bar-name').textContent=name;
-  $('call-bar-status').textContent='Bağlanıyor...';
+  $('call-bar-status').textContent=tr('connecting');
   $('call-bar-timer').style.display='none';
   store.callState='calling';
   
@@ -318,7 +318,7 @@ async function acceptCall(){
       if(store.callPeerConn.iceConnectionState==='connected'||store.callPeerConn.iceConnectionState==='completed'){
         if(store.callState!=='connected'){
           store.callState='connected';store.callStartTime=Date.now();
-          $('call-bar-status').textContent='Bağlandı';
+          $('call-bar-status').textContent=tr('connected');
           $('call-bar-timer').style.display='inline';
           if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
           store.callTimerInterval=setInterval(function(){
@@ -346,7 +346,7 @@ async function acceptCall(){
     var answer=await store.callPeerConn.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:false});
     await store.callPeerConn.setLocalDescription(answer);
     store.callState='connected';store.callStartTime=Date.now();
-    $('call-bar-status').textContent='Bağlandı';
+    $('call-bar-status').textContent=tr('connected');
     $('call-bar-timer').style.display='inline';
     if(store.callTimerInterval){clearInterval(store.callTimerInterval)}
     store.callTimerInterval=setInterval(function(){
@@ -380,8 +380,8 @@ function endCall(){
     var endH=new Date(now).getHours(),endM=new Date(now).getMinutes();
     var startStr=('0'+startH).slice(-2)+':'+('0'+startM).slice(-2);
     var endStr=('0'+endH).slice(-2)+':'+('0'+endM).slice(-2);
-    var durStr=(dm>0?dm+'dk ':'')+ds+'sn';
-    var endLogTxt='📞 Sesli arama \u00B7 '+startStr+' \u2192 '+endStr+' ('+durStr+')';
+    var durStr=(dm>0?dm+tr('dur_min')+' ':'')+ds+tr('dur_sec');
+    var endLogTxt='📞 '+tr('voice_call')+' \u00B7 '+startStr+' \u2192 '+endStr+' ('+durStr+')';
     var endLogMsg={id:uid(),type:'log',text:endLogTxt,time:timeNow(),senderId:fbUserId()};
     store.messages[store.activeConvId].push(endLogMsg);;
     fbSendMessage(store.activeConvId,endLogMsg);
@@ -418,7 +418,7 @@ function enlargeCallVideo(){
   if(!el||!el.srcObject)return;
   var overlay=document.createElement('div');
   overlay.id='call-video-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;-webkit-app-region:no-drag';
   overlay.onclick=function(e){if(e.target===overlay)closeCallVideo()};
   var video=document.createElement('video');
   video.srcObject=el.srcObject;video.autoplay=true;video.muted=true;
@@ -446,6 +446,7 @@ async function toggleCallCamera(){
     return
   }
   try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){console.log('[cam] getUserMedia not available');return}
     var stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
     store.callCamStream=stream;videoEl.srcObject=stream;container.style.display='';
     videoEl.play().catch(console.error);
@@ -463,15 +464,102 @@ async function toggleCallScreen(){
     return
   }
   try{
-    var stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
-    store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
-    videoEl.play().catch(console.error);
-    $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
-    stream.getVideoTracks()[0].onended=function(){
-      store.callScreenStream=null;videoEl.srcObject=null;container.style.display='none';
-      $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)'
+    // Try standard getDisplayMedia first (browser picker)
+    if(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia){
+      try{
+        var stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
+        if(stream){applyScreenStream(stream);return}
+      }catch(e){console.log('[screen] std failed')}
     }
-  }catch(e){console.error('Screen share error:',e)}
+    // Fallback: Electron desktopCapturer via IPC — show picker
+    if(window.electronAPI&&window.electronAPI.getScreenStream){
+      console.log('[screen] fetching sources via desktopCapturer');
+      var result=await window.electronAPI.getScreenStream();
+      console.log('[screen] got',result&&result.sources?result.sources.length:'0','sources, error:',result&&result.error);
+      if(result&&result.sources&&result.sources.length>0){
+        showScreenPicker(result.sources,function(sourceId){
+          console.log('[screen] user selected source',sourceId);
+          captureScreenById(sourceId,videoEl,container)
+        });return
+      }
+    }
+    console.log('[screen] all methods failed')
+  }catch(e){console.error('[screen] error:',e.name,e.message,e.code)}
+}
+function applyScreenStream(stream){
+  var videoEl=$('call-local-video-el');var container=$('call-local-video');
+  store.callScreenStream=stream;videoEl.srcObject=stream;container.style.display='';
+  videoEl.play().catch(console.error);
+  $('call-screen-btn').style.background='rgba(34,197,94,.15)';$('call-screen-btn').style.color='#22c55e';
+  stream.getVideoTracks()[0].onended=function(){
+    store.callScreenStream=null;videoEl.srcObject=null;container.style.display='none';
+    $('call-screen-btn').style.background='rgba(255,255,255,.04)';$('call-screen-btn').style.color='var(--text3)'
+  }
+}
+async function captureScreenById(sourceId,videoEl,container){
+  try{
+    console.log('[screen] capturing source',sourceId);
+    var stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:sourceId}}});
+    console.log('[screen] capture OK, applying stream');
+    applyScreenStream(stream)
+  }catch(e){console.log('[screen] capture failed',e.name,e.message)}
+}
+function showScreenPicker(sources,callback){
+  console.log('[picker] creating overlay with',sources.length,'sources');
+  var existing=document.getElementById('screen-picker-overlay');
+  if(existing)existing.remove();
+  var screens=sources.filter(function(s){return s.isScreen});
+  if(screens.length===0){console.log('[picker] no screens found');return}
+  // Sadece ekranları göster, window paylaşımını kaldır (Electron desktopCapturer sınırlı)
+  var activeTab='screens';
+
+  var overlay=document.createElement('div');
+  overlay.id='screen-picker-overlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;-webkit-app-region:no-drag';
+  document.body.appendChild(overlay);
+
+  var card=document.createElement('div');
+  card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:600px;max-width:92vw;max-height:80vh;overflow:hidden;box-shadow:0 16px 64px rgba(0,0,0,.5);display:flex;flex-direction:column';
+  overlay.appendChild(card);
+
+  // Header
+  var header=document.createElement('div');
+  header.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)';
+  header.innerHTML='<span style="font-size:16px;font-weight:700;color:var(--text)">'+tr('screen_share')+'</span>'+
+    '<button style="width:30px;height:30px;border:none;border-radius:7px;background:transparent;cursor:pointer;color:var(--text4);font-size:18px;display:flex;align-items:center;justify-content:center" onclick="this.closest(\'#screen-picker-overlay\').remove()">✕</button>';
+  card.appendChild(header);
+
+  // Grid: sadece ekranlar
+  var listContainer=document.createElement('div');
+  listContainer.style.cssText='flex:1;overflow-y:auto;padding:16px;min-height:120px';
+  card.appendChild(listContainer);
+
+  function renderScreens(){
+    var items=screens;
+    if(items.length===0){listContainer.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4);font-size:13px">'+tr('no_screen_found')+'</div>';return}
+    listContainer.innerHTML='';
+    var grid=document.createElement('div');
+    grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px';
+    items.forEach(function(s){
+      var item=document.createElement('div');
+      item.style.cssText='border:2px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;background:var(--bg3)';
+      item.onmouseenter=function(){this.style.borderColor='var(--accent)'};
+      item.onmouseleave=function(){this.style.borderColor='var(--border)'};
+      var img=document.createElement('img');
+      img.src=s.thumbnail;
+      img.style.cssText='width:100%;height:90px;object-fit:cover;display:block';
+      item.appendChild(img);
+      var label=document.createElement('div');
+      label.textContent=s.name;
+      label.style.cssText='padding:7px 8px;font-size:10px;color:var(--text3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      item.appendChild(label);
+      item.onclick=function(){console.log('[picker] selected',s.id);overlay.remove();callback(s.id)};
+      grid.appendChild(item)
+    });
+    listContainer.appendChild(grid)
+  }
+  renderScreens();
+  console.log('[picker] ready');
 }
 
 function toggleCallSpeaker(){

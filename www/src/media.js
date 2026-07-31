@@ -4,8 +4,8 @@ async function toggleCamera(){
   if(store.testCamStream){
     store.testCamStream.getTracks().forEach(function(t){t.stop()});
     store.testCamStream=null;
-    $('camera-preview').innerHTML='<span style="font-size:12px;color:var(--text4)">Kamera kapalı</span>';
-    $('camera-toggle-btn').textContent='Kamerayı Aç';
+    $('camera-preview').innerHTML='<span style="font-size:12px;color:var(--text4)">'+tr('camera_off')+'</span>';
+    $('camera-toggle-btn').textContent=tr('turn_on_camera');
     return
   }
   try{
@@ -19,8 +19,8 @@ async function toggleCamera(){
     $('camera-preview').innerHTML='';
     $('camera-preview').appendChild(video);
     video.play();
-    $('camera-toggle-btn').textContent='Kamerayı Kapat'
-  }catch(e){alert('Kamera hatası: '+e.message+'\n\nKameranın başka bir uygulamada açık olmadığından emin ol.');console.error('Camera error:',e)}
+    $('camera-toggle-btn').textContent=tr('camera_toggle')
+  }catch(e){alert(tr('camera_error')+': '+e.message+'\n\nKameranın başka bir uygulamada açık olmadığından emin ol.');console.error('Camera error:',e)}
 }
 
 async function testCamera(){
@@ -35,7 +35,7 @@ async function toggleMicTest(){
     if(store.micTestInterval){clearInterval(store.micTestInterval);store.micTestInterval=null}
     $('mic-level').style.width='0%';
     $('mic-level-text').textContent='- dB';
-    $('mic-toggle-btn').textContent='Mikrofonu Test Et';
+    $('mic-toggle-btn').textContent=tr('test_mic');
     return
   }
   try{
@@ -46,7 +46,7 @@ async function toggleMicTest(){
     store.analyser=store.audioCtx.createAnalyser();store.analyser.fftSize=256;
     source.connect(store.analyser);
     var data=new Uint8Array(store.analyser.frequencyBinCount);
-    $('mic-toggle-btn').textContent='Durdur';
+    $('mic-toggle-btn').textContent=tr('stop');
     if(store.micTestInterval){clearInterval(store.micTestInterval)}
     store.micTestInterval=setInterval(function(){
       store.analyser.getByteFrequencyData(data);
@@ -57,7 +57,7 @@ async function toggleMicTest(){
       $('mic-level').style.width=pct+'%';
       $('mic-level-text').textContent=Math.round(avg)+' dB'
     },100)
-  }catch(e){alert('Mikrofon erişimi reddedildi')}
+  }catch(e){alert(tr('mic_required'))}
 }
 
 function testSpeaker(){
@@ -75,7 +75,7 @@ async function testScreenShare(){
     var stream=await navigator.mediaDevices.getDisplayMedia({video:true});
     var preview=$('screen-share-preview');
     preview.style.display='flex';
-    preview.innerHTML='<span style="font-size:11px;color:var(--text4);opacity:.6">Yükleniyor...</span>';
+    preview.innerHTML='<span style="font-size:11px;color:var(--text4);opacity:.6">'+tr('loading')+'</span>';
     var video=document.createElement('video');
     video.srcObject=stream;
     video.autoplay=true;
@@ -85,12 +85,12 @@ async function testScreenShare(){
     preview.appendChild(video);
     video.play().catch(console.error);
     stream.getVideoTracks()[0].onended=function(){
-      preview.innerHTML='<span style="font-size:11px;color:var(--text4);opacity:.6">Paylaşım durduruldu</span>'
+      preview.innerHTML='<span style="font-size:11px;color:var(--text4);opacity:.6">'+tr('share_stopped')+'</span>'
     }
   }catch(e){
     var preview=$('screen-share-preview');
     preview.style.display='flex';
-    preview.innerHTML='<span style="font-size:11px;color:#ef4444">Hata: '+esc(e.message||'Erişim reddedildi')+'</span>'
+    preview.innerHTML='<span style="font-size:11px;color:#ef4444">'+tr('error')+': '+esc(e.message||tr('access_denied'))+'</span>'
   }
 }
 
@@ -127,5 +127,5 @@ function saveProfileSettings(){
     }
   }
 }
-function saveEmail(){showAlert('E-posta değiştirme şu anlık devre dışı. Yakında kullanıma sunulacak.')}
-async function changePassword(){var cur=$('cur-pass').value,nu=$('new-pass').value,nu2=$('new-pass2').value;if(!cur||nu.length<6||nu!==nu2)return;if(!window.auth||!auth.currentUser){showError('Oturum bulunamadı.','media.js:changePassword');return}if(cur===nu){showError('Yeni şifre, mevcut şifrenle aynı olamaz.','media.js:changePassword');return}try{var email=auth.currentUser.email;var cred=firebase.auth.EmailAuthProvider.credential(email,cur);await auth.currentUser.reauthenticateWithCredential(cred);await auth.currentUser.updatePassword(nu);rememberAccountPassword(getActiveAccount()||{id:store.activeAccountId,email:email},nu);$('save-pass-btn').textContent='✓ Değiştirildi';setTimeout(function(){$('save-pass-btn').textContent='Şifreyi Değiştir';$('cur-pass').value='';$('new-pass').value='';$('new-pass2').value='';$('save-pass-btn').disabled=true},2000)}catch(e){if(e.code==='auth/wrong-password')showError('Mevcut şifren yanlış.','media.js:changePassword');else showError('Şifre değiştirilemedi: '+e.message,'media.js:changePassword')}}
+function saveEmail(){showAlert(tr('email_disabled_desc'))}
+async function changePassword(){var cur=$('cur-pass').value,nu=$('new-pass').value,nu2=$('new-pass2').value;if(!cur||nu.length<6||nu!==nu2)return;if(!window.auth||!auth.currentUser){showError(tr('session_not_found'),'media.js:changePassword');return}if(cur===nu){showError(tr('same_password'),'media.js:changePassword');return}try{var email=auth.currentUser.email;var cred=firebase.auth.EmailAuthProvider.credential(email,cur);await auth.currentUser.reauthenticateWithCredential(cred);await auth.currentUser.updatePassword(nu);rememberAccountPassword(getActiveAccount()||{id:store.activeAccountId,email:email},nu);$('save-pass-btn').textContent=tr('password_changed');setTimeout(function(){$('save-pass-btn').textContent=tr('change_password');$('cur-pass').value='';$('new-pass').value='';$('new-pass2').value='';$('save-pass-btn').disabled=true},2000)}catch(e){if(e.code==='auth/wrong-password')showError(tr('password_incorrect'),'media.js:changePassword');else showError(tr('password_change_failed')+': '+e.message,'media.js:changePassword')}}

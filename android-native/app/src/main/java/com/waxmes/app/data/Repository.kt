@@ -17,7 +17,7 @@ import java.util.*
 fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<String, String>, avatarCache: MutableMap<String, String> = mutableMapOf(), onlineCache: MutableMap<String, Boolean> = mutableMapOf()): Conversation? {
     val d = doc.data ?: return null
     val mids = d["memberIds"] as? List<String> ?: return null
-    val isGroup = d["isGroup"] as? Boolean ?: (mids.size > 2)
+    val isGroup = d["isGroup"] as? Boolean ?: (d["type"] as? String) == "group" ?: (mids.size > 2)
     val name = d["name"] as? String
     val otherId = if (isGroup) mids.firstOrNull { it != uid } ?: mids.firstOrNull() ?: "" else mids.find { it != uid } ?: return null
     val displayName = when {
@@ -36,20 +36,32 @@ fun docToConversation(doc: DocumentSnapshot, uid: String, nameCache: MutableMap<
     val cachedOnline = if (isGroup) false else (onlineCache[otherId] ?: false)
     return Conversation(id = doc.id, name = displayName, lastMsg = (d["lastMsg"] as? String) ?: "",
         lastActivity = lastActivity, unread = 0, avatarUrl = cachedAvatar, color = if (isGroup) 0xFF818CF8 else 0xFF818CF8,
-        online = cachedOnline, otherId = otherId, isGroup = isGroup)
+        online = cachedOnline, otherId = otherId, isGroup = isGroup,
+        pinnedMsgIds = d["pinnedMsgIds"] as? List<String> ?: emptyList())
 }
 
 fun docToMessage(doc: DocumentSnapshot, uid: String): Message {
     val d = doc.data ?: return Message(id = doc.id)
     val deleted = d["deleted"] as? Boolean ?: false
     val deletedByMe = d["deletedByMe"] as? Boolean ?: false
+    val ts = d["createdAt"]
+    val createdAt = when (ts) {
+        is Timestamp -> ts.toDate()
+        else -> Date()
+    }
     appLog("docToMessage: id=${doc.id} deleted=$deleted text=${(d["text"] as? String ?: "").take(30)} replyTo=${d["replyTo"] ?: "null"}")
     return Message(id = doc.id, text = if (deleted) "" else (d["text"] as? String ?: ""),
         time = d["time"] as? String ?: "", senderId = d["senderId"] as? String ?: "",
         type = if ((d["senderId"] as? String) == uid) "sent" else "received",
         image = if (deleted) "" else (d["image"] as? String ?: ""),
+        video = if (deleted) "" else (d["video"] as? String ?: ""),
+        audio = if (deleted) "" else (d["audio"] as? String ?: ""),
         replyTo = d["replyTo"] as? String ?: "", replyText = d["replyText"] as? String ?: "",
-        deleted = deleted, deletedByMe = deletedByMe)
+        deleted = deleted, deletedByMe = deletedByMe,
+        isForwarded = d["isForwarded"] as? Boolean ?: false,
+        originalSender = d["originalSender"] as? String ?: "",
+        forwardComment = d["forwardComment"] as? String ?: "",
+        createdAt = createdAt)
 }
 
 class Repository {
@@ -357,6 +369,67 @@ class Repository {
     fun forwardMessage(convId: String, text: String, originalMsgId: String) {
         appLog("Forwarding message $originalMsgId to $convId")
         sendMessage(convId, "↪ Forwarded: $text")
+    }
+
+    fun forwardTo(targetConvId: String, msg: Message, caption: String) {
+        appLog("Forwarding message ${msg.id} to $targetConvId")
+        val base = db.collection("conversations").document(targetConvId).collection("messages")
+        val data = mutableMapOf<String, Any>(
+            "type" to "text",
+            "text" to msg.text,
+            "time" to SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
+            "senderId" to uid,
+            "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+            "isForwarded" to true,
+            "originalSender" to msg.senderId,
+            "forwardComment" to (caption.ifEmpty { null } ?: "")
+        )
+        if (msg.image.isNotEmpty()) data["image"] = msg.image
+        if (msg.video.isNotEmpty()) data["video"] = msg.video
+        if (msg.audio.isNotEmpty()) data["audio"] = msg.audio
+        base.add(data)
+        val lastMsg = when {
+            msg.image.isNotEmpty() -> "📷 Photo"
+            msg.video.isNotEmpty() -> "🎬 Video"
+            msg.audio.isNotEmpty() -> "🎤 Voice"
+            else -> msg.text
+        }
+        db.collection("conversations").document(targetConvId)
+            .update("lastMsg", lastMsg, "lastActivity", com.google.firebase.firestore.FieldValue.serverTimestamp())
+    }
+
+    fun togglePinMessage(convId: String, msgId: String) {
+        val convRef = db.collection("conversations").document(convId)
+        convRef.get().addOnSuccessListener { doc ->
+            val ids = ((doc.get("pinnedMsgIds") as? List<String>) ?: emptyList()).toMutableList()
+            if (ids.contains(msgId)) ids.remove(msgId) else ids.add(msgId)
+            convRef.set(mapOf("pinnedMsgIds" to ids), com.google.firebase.firestore.SetOptions.merge())
+        }.addOnFailureListener { e -> appLog("togglePinMessage FAIL: ${e.message}") }
+    }
+
+    fun getConversationPinnedIds(convId: String, onResult: (List<String>) -> Unit) {
+        db.collection("conversations").document(convId).get().addOnSuccessListener { snap ->
+            onResult((snap.get("pinnedMsgIds") as? List<String>) ?: emptyList())
+        }.addOnFailureListener { onResult(emptyList()) }
+    }
+
+    fun editMessage(convId: String, msgId: String, newText: String) {
+        appLog("Editing message $msgId in $convId")
+        val msgRef = db.collection("conversations").document(convId).collection("messages").document(msgId)
+        val editTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        msgRef.update("text", newText, "edited", true, "editedTime", editTime)
+            .addOnSuccessListener {
+                db.collection("conversations").document(convId).collection("messages")
+                    .orderBy("createdAt", Query.Direction.DESCENDING).limit(1).get()
+                    .addOnSuccessListener { snap ->
+                        if (snap.documents.isNotEmpty() && snap.documents.first().id == msgId) {
+                            db.collection("conversations").document(convId)
+                                .update("lastMsg", newText, "lastActivity", com.google.firebase.firestore.FieldValue.serverTimestamp())
+                        }
+                    }
+                appLog("Message edited")
+            }
+            .addOnFailureListener { e -> appLog("Edit fail: ${e.message}") }
     }
 
     fun clearMessages(convId: String) {
